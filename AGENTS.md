@@ -44,7 +44,7 @@ Breaking these rules can get the user's IP address blocked by Scryfall or break 
 
 ## Code conventions
 
-- The modules `query.js`, `cards.js`, `lists.js`, `deck-rules.js`, `export.js`, and `draw.js` in `src/` are pure: they don't use the DOM, the network, or storage. Put new logic in a pure module, and test it with `node --test`.
+- The modules `query.js`, `cards.js`, `lists.js`, `deck-rules.js`, `export.js`, `draw.js`, and `synergy.js` in `src/` are pure: they don't use the DOM, the network, or storage. Put new logic in a pure module, and test it with `node --test`.
 - UI code is in `src/ui/`. Build elements with the `h()` helper in `src/ui/dom.js`. Don't use `innerHTML` with card data or user text.
 - Don't use browser dialogs (`alert`, `confirm`, `prompt`). Use `confirmBox()` from `src/ui/dom.js`.
 - Keep the app usable by keyboard and screen reader: label every control, and send status messages through `announce()`.

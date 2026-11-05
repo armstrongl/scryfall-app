@@ -6,6 +6,7 @@ import { drawBatch, planCount } from "../draw.js";
 import { buildQuery, defaultCriteria, normalizeCriteria, scryfallSearchUrl } from "../query.js";
 import { errorMessage } from "../scryfall.js";
 import { openAddPanel } from "./add-panel.js";
+import { openSynergyPanel } from "./synergy-panel.js";
 import { cardMedia, cardView } from "./card-view.js";
 import { createCriteriaForm } from "./criteria-form.js";
 import { announce, confirmBox, copyText, field, formatDate, formatNumber, h, message, plural, replace } from "./dom.js";
@@ -282,7 +283,7 @@ export function createDiscoverView(app) {
     if (query.includes("game:arena") && Array.isArray(card.games) && !card.games.includes("arena")) {
       extra.push(h("p", { class: "msg msg-warn", text: "Scryfall does not list this printing on Arena." }));
     }
-    return cardView(snapshot, { onAdd: () => openAddPanel(app, snapshot), extra });
+    return cardView(snapshot, { onAdd: () => openAddPanel(app, snapshot), onSynergy: () => openSynergyPanel(app, snapshot), extra });
   }
 
   // History ------------------------------------------------------------------
@@ -319,7 +320,9 @@ export function createDiscoverView(app) {
           h("p", { class: "hint", text: item.card.typeLine }),
           h("p", { class: "hint" }, h("time", { datetime: item.drawnAt, text: formatDate(item.drawnAt) })),
           h("p", { class: "hint mono", text: item.query || "(any card)" }),
-          h("button", { type: "button", text: "Add to list", onclick: () => openAddPanel(app, item.card) })))));
+          h("div", { class: "row wrap" },
+            h("button", { type: "button", text: "Add to list", onclick: () => openAddPanel(app, item.card) }),
+            h("button", { type: "button", text: "Find synergies", "aria-label": `Find synergies for ${item.card.name}`, onclick: () => openSynergyPanel(app, item.card) }))))));
   }
 
   // Layout -------------------------------------------------------------------
@@ -364,6 +367,20 @@ export function createDiscoverView(app) {
     refresh() {
       renderPresets();
       renderHistory();
+    },
+    /**
+     * Loads criteria from elsewhere in the app, for example a synergy
+     * search, and explains where they came from.
+     * @param {import("../query.js").Criteria} criteria
+     * @param {string} note
+     */
+    load(criteria, note) {
+      form.set(criteria);
+      onCriteria(form.get());
+      results.replaceChildren();
+      replace(drawNotes, message("info", note));
+      drawBtn.focus();
+      announce(`${note} Select Draw to see cards.`);
     },
   };
 }

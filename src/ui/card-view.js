@@ -75,7 +75,7 @@ export function cardMedia(snapshot, opts = {}) {
 /**
  * A full card: image, details, and actions.
  * @param {import("../cards.js").CardSnapshot} snapshot
- * @param {{onAdd?: () => void, extra?: Node[], lazy?: boolean}} [opts]
+ * @param {{onAdd?: () => void, onSynergy?: () => void, extra?: Node[], lazy?: boolean}} [opts]
  */
 export function cardView(snapshot, opts = {}) {
   return h("article", { class: "card" },
@@ -87,5 +87,6 @@ export function cardView(snapshot, opts = {}) {
       opts.extra ?? null),
     h("div", { class: "card-actions" },
       h("a", { href: snapshot.scryfallUri, target: "_blank", rel: "noopener", class: "button", text: "View on Scryfall" }),
+      opts.onSynergy ? h("button", { type: "button", text: "Find synergies", "aria-label": `Find synergies for ${snapshot.name}`, onclick: opts.onSynergy }) : null,
       opts.onAdd ? h("button", { type: "button", class: "primary", text: "Add to list", onclick: opts.onAdd }) : null));
 }

@@ -1,0 +1,6 @@
+{
+  "object": "error",
+  "code": "not_found",
+  "status": 404,
+  "details": "0 cards matched this search, a random card could not be returned."
+}

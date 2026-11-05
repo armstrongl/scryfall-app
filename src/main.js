@@ -34,6 +34,12 @@ async function createApp() {
     history: [],
     /** @type {import("./export.js").Settings} */
     settings: defaultSettings(),
+    /**
+     * Opens Discover with the given criteria and a note. Set in start(),
+     * after the views exist.
+     * @type {(criteria: import("./query.js").Criteria, note: string) => void}
+     */
+    showInDiscover: () => {},
 
     onChange(fn) {
       listeners.add(fn);
@@ -215,6 +221,17 @@ async function start() {
     data: createDataView(app),
   };
   replace(main, views.discover.el, views.lists.el, views.data.el);
+
+  /** Opens Discover with the given criteria, for example a synergy search. */
+  app.showInDiscover = (criteria, note) => {
+    if (parseHash().view !== "discover") {
+      // pushState doesn't fire hashchange, so route here. Discover then
+      // moves focus to its Draw button instead of the view title.
+      history.pushState(null, "", "#discover");
+      route(false);
+    }
+    views.discover.load(criteria, note);
+  };
 
   let active = null;
   function route(focus) {

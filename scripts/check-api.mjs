@@ -2,6 +2,7 @@
 // Follows the Scryfall rules: Accept header, descriptive User-Agent, and at
 // least 500 ms between requests. Run: node scripts/check-api.mjs
 import { buildQuery, emptyCriteria } from "../src/query.js";
+import { PARTNER_QUERIES, rewardsQuery } from "../src/synergy.js";
 
 const API = "https://api.scryfall.com";
 const HEADERS = { Accept: "application/json;q=0.9,*/*;q=0.8", "User-Agent": "CardDiscoveryDev/0.1" };
@@ -63,6 +64,15 @@ for (const [label, changes] of Object.entries(rows)) {
   const { status, body } = await search(q);
   const warn = body.warnings?.length ? `WARNINGS: ${body.warnings.join(" | ")}` : "no warnings";
   console.log(`${label.padEnd(28)} ${q.padEnd(36)} ${status} ${body.total_cards ?? body.code} ${warn}`);
+}
+
+console.log("\n## Synergy queries (each partner query in src/synergy.js, in Standard on Arena)");
+const synergy = { ...PARTNER_QUERIES, "rewards (Elf)": rewardsQuery("Elf"), "exclude a card": 't:elf -!"Llanowar Elves"' };
+for (const [label, fragment] of Object.entries(synergy)) {
+  const q = `${def} (${fragment})`;
+  const { status, body } = await search(q);
+  const warn = body.warnings?.length ? `WARNINGS: ${body.warnings.join(" | ")}` : "no warnings";
+  console.log(`${label.padEnd(22)} ${status} ${body.total_cards ?? body.code} ${warn}`);
 }
 
 console.log("\n## Error responses");

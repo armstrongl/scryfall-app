@@ -39,6 +39,15 @@ The built-in **Arena Standard** preset finds cards that are legal in Standard an
 
 A list is a **Collection** or a **Deck (Standard)**. You can change the kind at any time in the **Lists** view, and the cards stay.
 
+### Find cards that work together
+
+1. On a drawn card, a card in **History**, or a card in a list, select **Find synergies**.
+2. The panel lists searches that the app makes from the card's rules text and types. For example, a card that sacrifices creatures gets a search for cards that do something when a creature dies, and an Elf gets a search for cards that reward Elves.
+3. Select **Search in Discover** on one of them. Discover opens with that search. It keeps your format and game, includes only cards in the card's colors, and leaves out the card itself.
+4. Select **Draw**, or change the criteria first.
+
+The suggestions come from patterns in the card's text, so some matches are loose. The app doesn't send a request until you count or draw cards.
+
 ### Build and export a deck
 
 1. Open **Lists**, then open a list with the kind **Deck (Standard)**.
@@ -62,7 +71,7 @@ The app sends Scryfall your card searches and, when you refresh a list, the Scry
 | `src/main.js` | App startup and navigation between views. |
 | `src/config.js` | The app name, API settings, and other constants. |
 | `src/scryfall.js` | The Scryfall API client. All API requests go through its queue, which spaces requests at least 500 ms apart. |
-| `src/query.js`, `src/cards.js`, `src/lists.js`, `src/deck-rules.js`, `src/export.js`, `src/draw.js` | App logic with no DOM code. The tests cover these modules. |
+| `src/query.js`, `src/cards.js`, `src/lists.js`, `src/deck-rules.js`, `src/export.js`, `src/draw.js`, `src/synergy.js` | App logic with no DOM code. The tests cover these modules. |
 | `src/storage/` | Data storage in IndexedDB, with a memory fallback. |
 | `src/ui/` | The views and the DOM helpers. |
 | `tests/` | Unit tests and saved Scryfall responses (`tests/fixtures/`). |

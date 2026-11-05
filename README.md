@@ -75,7 +75,7 @@ The app sends Scryfall your card searches and, when you refresh a list, the Scry
 | `src/storage/` | Data storage in IndexedDB, with a memory fallback. |
 | `src/ui/` | The views and the DOM helpers. |
 | `tests/` | Unit tests and saved Scryfall responses (`tests/fixtures/`). |
-| `scripts/` | Development tools: fixture download, live API checks, and icon drawing. |
+| `scripts/` | Development tools: fixture download, live API checks, browser tests, and icon drawing. |
 | `PLAN.md`, `REPORT.md` | The v1 plan and the report on what was built. |
 
 ## Run the tests
@@ -89,6 +89,10 @@ npm test
 You can also run `node --test` directly.
 
 The tests use real Scryfall responses saved in `tests/fixtures/`. To fetch them again, run `scripts/fetch-fixtures.sh`. To repeat the live API checks from section 9 of `PLAN.md`, run `node scripts/check-api.mjs`. Both scripts send the headers that Scryfall requires and wait at least 500 ms between requests.
+
+### Browser tests
+
+`node scripts/check-ui.mjs` runs the app in headless Chrome at phone width (390 px) and desktop width (1280 px), in light and dark mode. It checks controls, focus, and layout, and it fails if the page logs an error. It uses only Node.js built-ins and the Chrome installed on your computer. If Chrome is somewhere else, set `CHROME_PATH` to its executable. The app sends real Scryfall requests during the tests, through its own request queue. Each run starts with an empty browser profile.
 
 ## Turn on GitHub Pages
 

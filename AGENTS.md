@@ -6,6 +6,7 @@ These instructions are for coding agents that work in this repository. Read `REA
 
 - Run the tests: `npm test` (or `node --test`). Node.js 20 or later. There are no packages to install.
 - Run the app: `python3 -m http.server 8000`, then open <http://localhost:8000/>. ES modules don't load from `file://`.
+- Run the browser tests: `node scripts/check-ui.mjs`. It needs Chrome (set `CHROME_PATH` if it's not in the usual place) and network access, because the app sends real Scryfall requests through its queue. It runs at 390 px and 1280 px, in light and dark mode.
 - Repeat the live API checks: `node scripts/check-api.mjs`.
 - Fetch the test fixtures again: `scripts/fetch-fixtures.sh`.
 
@@ -42,6 +43,20 @@ Breaking these rules can get the user's IP address blocked by Scryfall or break 
 - To change the IndexedDB schema, raise `DB_VERSION` and add an upgrade step in `src/storage/indexeddb.js`. Never edit an earlier upgrade step.
 - To change the backup format, raise `BACKUP_SCHEMA_VERSION` and keep the import checks in `src/export.js` in step with it.
 
+## Test-driven development
+
+All work here is test driven.
+
+1. Write the test first and run it to see it fail for the expected reason.
+2. Write the smallest code that makes it pass, then refactor with the tests green.
+3. For a bug, first write a test that reproduces it.
+
+Where tests go:
+
+- Logic goes in a pure module, with unit tests in `tests/` that use the real fixtures. Run them with `npm test`.
+- UI behavior gets a check in `scripts/check-ui.mjs`: the control exists, it does the right thing, focus goes where it should, and nothing scrolls sideways. Add the check before you build the UI.
+- When a test is added after the code, break the code on purpose, see the test fail, then restore the code.
+
 ## Code conventions
 
 - The modules `query.js`, `cards.js`, `lists.js`, `deck-rules.js`, `export.js`, `draw.js`, and `synergy.js` in `src/` are pure: they don't use the DOM, the network, or storage. Put new logic in a pure module, and test it with `node --test`.
@@ -52,6 +67,6 @@ Breaking these rules can get the user's IP address blocked by Scryfall or break 
 
 ## Before you finish
 
-- The tests pass.
-- If you changed anything in the UI, load the app in a browser and check the change at phone width (390 px) and desktop width.
+- The tests were written before the code, and they pass.
+- If you changed anything in the UI, `node scripts/check-ui.mjs` passes, and its checks cover the change.
 - If you changed what the app does, update `README.md`.

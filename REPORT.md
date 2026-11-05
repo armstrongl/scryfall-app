@@ -1,6 +1,6 @@
 # Final report: Card discovery v1
 
-This report covers the v1 build described in `PLAN.md`. The work is on the `v1-build` branch. It has not been pushed, and no pull request exists, so the report is in this file.
+This report covers the v1 build described in `PLAN.md`. The work was built on the `v1-build` branch and merged to `main` with a fast-forward. No pull request was opened, so the report is in this file.
 
 ## What was built
 
@@ -94,9 +94,8 @@ Not checked: a real phone, Safari, a screen reader, and the reduced-motion setti
 
 ## Tasks for the owner
 
-1. Review the `v1-build` branch, then push it and open a pull request or merge it to `main`.
-2. Turn on GitHub Pages. The steps are in the README.
-3. Test an Arena import. Paste an export that has a sideboard, a transform card, a modal double-faced card, and a split card into MTG Arena. Confirm that Arena accepts the `Sideboard` header and the front-face names (for a split card, the export writes only the left half, for example `Fire`).
-4. Confirm in Arena that cards with a flavor name (for example Through the Omenpaths and Marvel printings) import by their oracle name.
-5. Choose an app name. Change it in the places that the README lists.
-6. Test on an iPhone: add the app to the Home Screen and confirm that lists stay.
+1. Turn on GitHub Pages. The steps are in the README.
+2. Test an Arena import. Paste an export that has a sideboard, a transform card, a modal double-faced card, and a split card into MTG Arena. Confirm that Arena accepts the `Sideboard` header and the front-face names (for a split card, the export writes only the left half, for example `Fire`).
+3. Confirm in Arena that cards with a flavor name (for example Through the Omenpaths and Marvel printings) import by their oracle name.
+4. Choose an app name. Change it in the places that the README lists.
+5. Test on an iPhone: add the app to the Home Screen and confirm that lists stay.

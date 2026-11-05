@@ -1,0 +1,8 @@
+{
+  "name": "card-discovery",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  }
+}

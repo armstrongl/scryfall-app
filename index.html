@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Card discovery</title>
+  <meta name="description" content="Find random Magic: The Gathering cards that match your criteria, and build Standard decks for MTG Arena.">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#f6f4ef" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#16181d" media="(prefers-color-scheme: dark)">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="./icons/icon-180.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link rel="stylesheet" href="./styles.css">
+  <script type="module" src="./src/main.js"></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="brand" href="#discover"><img src="./icons/icon.svg" alt="" width="28" height="28"><span data-app-name>Card discovery</span></a>
+      <nav aria-label="Views">
+        <a href="#discover" data-view="discover">Discover</a>
+        <a href="#lists" data-view="lists">Lists</a>
+        <a href="#data" data-view="data">Data</a>
+      </nav>
+    </div>
+    <p id="pause" class="pause" hidden></p>
+  </header>
+  <div id="toast" class="toast"></div>
+  <main id="main" tabindex="-1">
+    <p class="loading">Loading…</p>
+    <noscript><p>This app needs JavaScript.</p></noscript>
+  </main>
+  <footer class="site-footer">
+    <p>Card data and images from <a id="scryfall-link" href="https://scryfall.com">Scryfall</a>.</p>
+    <p id="fan-notice">Card discovery is unofficial Fan Content permitted under the Fan Content Policy. Not approved/endorsed by Wizards. Portions of the materials used are property of Wizards of the Coast. ©Wizards of the Coast LLC.</p>
+  </footer>
+  <div id="live" class="visually-hidden" aria-live="polite" aria-atomic="true"></div>
+</body>
+</html>

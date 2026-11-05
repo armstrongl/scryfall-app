@@ -1,0 +1,102 @@
+# Final report: Card discovery v1
+
+This report covers the v1 build described in `PLAN.md`. The work is on the `v1-build` branch. It has not been pushed, and no pull request exists, so the report is in this file.
+
+## What was built
+
+| Milestone | Result |
+| --- | --- |
+| 1. Project skeleton | `index.html`, `styles.css`, `manifest.webmanifest`, original icons (SVG and PNG, drawn by `scripts/make-icons.js`), `src/config.js` with the app name in one constant, three views with hash navigation, the footer with the Scryfall credit and Fan Content notice, and `node --test`. The page loads at `/` and at a subpath (tested at `http://127.0.0.1:8765/sub/`). |
+| 2. Scryfall client | `src/scryfall.js`: one queue for all API calls, one request at a time, at least 500 ms between starts, a 30-second pause and one retry after a 429, cancel through `AbortSignal`, and the error mapping from section 3.4. The interface shows a countdown during a pause. |
+| 3. Storage | `src/storage/index.js` implements the section 6 interface on top of a backend. `src/storage/indexeddb.js` uses versioned upgrades in `onupgradeneeded`. If IndexedDB fails, `src/storage/memory.js` takes over: discovery still works, and the app says that lists can't be saved. |
+| 4. Criteria and presets | `src/query.js` builds the query in the table order, with the parentheses, quote, and length rules. The form is in `src/ui/criteria-form.js`. Presets: the built-in "Arena Standard", plus save, apply, rename, and delete with a confirmation inside the page. The last criteria come back after a reload. |
+| 5. Pool size, draw, display, history | Pool size after 800 ms without changes, cached by query, never shown for an old query. Draws of 1 to 10 cards with duplicate removal by card key, at most 3 × count attempts, progress, and cancel. Card display follows the image rules, with "Show other face" for two-face cards and a text version when the image is missing or fails. History keeps 100 items. |
+| 6. Lists | `src/lists.js` (pure) and the Lists view: create, rename, delete, change kind, change quantity, section, and note, remove, sort, group by section with totals. The Add to list panel adds one card to several lists and can make a new list, without leaving Discover. |
+| 7. Deck checks | `src/deck-rules.js` (pure): main size, sideboard size, copies across main and sideboard by card key, basic lands with no limit, and legality from the snapshot with "Legality as of" and a refresh link. |
+| 8. Export, backup, refresh | Arena text export with a Copy button and a select-all fallback. JSON backup export and import with Merge and Replace, checks before any change, and the 14-day reminder. Refresh through `POST /cards/collection`, 75 IDs per request. The Data view shows the storage persistence status and the iPhone Home Screen advice. |
+| 9. Checks and report | Section 9 checks (below), browser tests (below), the README, and this report. |
+
+The work was written in one pass and then committed in eight milestone commits by file group. Some early commits import modules that arrive in later commits, so only the last commit is guaranteed to run.
+
+## Test results
+
+Unit tests: `node --test` runs 73 tests in 8 files. All pass.
+
+| File | Covers |
+| --- | --- |
+| `tests/query.test.js` | Every row of the criteria table, the empty form, the default criteria, order, parentheses, quotes, the length limit (counted in Unicode characters), and the format keys against a real Card object. |
+| `tests/cards.test.js` | Image selection and snapshots for a normal card, a transform card, a modal double-faced card, a split card, and an adventure card. Basic land detection (including a snow basic), the card key, and the text-version rule. |
+| `tests/lists.test.js` | Add, merge, change, remove, kind changes, sort, group, and refresh. |
+| `tests/deck-rules.test.js` | Each row of the deck table, the maybe section, a basic land with more than 4 copies, and the "Legality as of" date. |
+| `tests/export.test.js` | Exact Arena text, export then import with Replace gives the same data, Merge follows the `updatedAt` rule, and a wrong `schemaVersion` is rejected. |
+| `tests/scryfall.test.js` | With a fake clock and a fake `fetch`: 500 ms spacing, one request at a time, the 30-second pause, the single retry, rejection after a second 429, cancel, error mapping from real responses, and 100 IDs sent as 2 collection requests. |
+| `tests/draw.test.js` | Count limits, duplicate removal, the 3 × count limit, and cancel. |
+| `tests/storage.test.js` | History limit (item 101 removes the oldest), `updatedAt` and `lastChangeAt`, and default settings. |
+
+Browser tests: the Chrome extension was not connected, so I drove headless Chrome through the DevTools protocol with scripts. They used the real Scryfall API from `http://127.0.0.1:8765/sub/`. Results for the section 8 manual tests:
+
+| Test | Result |
+| --- | --- |
+| 1. Draw 1 and 10 cards with the default preset | Pass. 10 unique cards. By the browser's own request timestamps, the gaps were 501 to 2038 ms, never under 500. |
+| 2. No-match and invalid queries | Pass. `name:zzzzqqqxx` shows "0 cards match" and the draw shows the no-match message. A partly invalid query shows Scryfall's warning near the preview. |
+| 3. Both faces of a double-faced card | Pass. "Show other face" switches to the back face image. Computed styles on the image: no filter, no transform, no clip. |
+| 4. Add one card to two lists and make a third | Pass, without leaving Discover. |
+| 5. Deck with too many copies, sideboard over 15, main under 60 | Pass. All four results show (including a legality error), and a basic land over 4 copies has no result. |
+| 6. Arena export and copy | Pass for the text. The copy itself was not checked, because headless Chrome blocks clipboard access. |
+| 7. Backup, clear site data, Replace import | Pass. After `Storage.clearDataForOrigin` and a Replace import, the exported data was identical to the original. A file with `schemaVersion: 2` is rejected and no data changes. |
+| 8. Refresh a list | Pass. |
+| 9. Keyboard only | Partly checked. Tab reaches every control from the skip link to Draw, in order, each with a visible focus outline, and Enter on Draw draws a card. I did not check the full app by keyboard. |
+
+Also checked: no sideways scroll at 390 px and 1280 px in light and dark themes, data stays after a reload, and the app keeps working when IndexedDB throws an error.
+
+Not checked: a real phone, Safari, a screen reader, and the reduced-motion setting.
+
+## Section 9 checks
+
+`scripts/check-api.mjs` repeats these checks.
+
+| Item | Result | Decision |
+| --- | --- | --- |
+| CORS for browser calls | `curl` returned `access-control-allow-origin: *`. Real browser calls from `127.0.0.1` work for search, random, and collection (`POST` with `Content-Type: application/json` passes the preflight). | No change. |
+| Random weighting | Query `game:arena (!"Shock" or !"Shatterskull Smashing")`: Shock has 12 Arena printings, Shatterskull Smashing has 1. In 40 draws, Shock came up 17 times and Shatterskull Smashing 23 times. Every Shock result was the same printing (`msc`). | Not weighted by printing. The draw keeps `/cards/random`. |
+| Arena printings | 20 of 20 draws with the default query list `arena` in `games`. | No change. The app still shows a note on any result that lacks `arena` when the query has `game:arena`. |
+| Rebalanced cards | `f:standard game:arena` and `f:standard game:arena -is:rebalanced` both return 5,164 cards. `is:rebalanced` alone returns 404 (no cards), and no Standard Arena card name starts with `A-`. `-is:rebalanced` causes no warning. | `-is:rebalanced` stays in the default, as the plan says. It does not change the count today. |
+| Query syntax | One real search for each table row (19 searches). None returned `warnings`. | No change. |
+| Error responses | `mv>abc` returns status 404, code `not_found`, with the details "Your query didn't match any cards…" and no warnings. `c=q` returns status 400, code `bad_request`, details "All of your terms were ignored.", with one warning. | Mapping kept. Note that an invalid query like `mv>abc` gets the no-match message, because Scryfall reports it as a 404 `not_found`. |
+| Arena import (owner task) | Not tested. | Owner task. |
+| Names that differ on Arena (owner task) | No name field other than `name` appeared in 20 random draws. `game:arena has:flavorname` matches 134 cards with a `flavor_name`, for example Adeline, Resplendent Cathar with the flavor name "Hero of Light" (`fca`), and Marvel printings such as Arasta of the Endless Web. `printed_name` appears only on non-English printings. | The export uses `frontName` (the oracle name). The owner confirms in Arena that oracle names import for these cards. |
+
+## Changes from the plan
+
+1. **`CardSnapshot` has two more fields**: `oracleText` and `imageStatus`. Reason: list rows and history show a text version when an image is missing or fails, and the snapshot did not have the rules text. This also lets the app apply the `image_status` rule to saved cards.
+2. **New module `src/draw.js`**, not in the file layout. Reason: batch draw logic is testable without the DOM.
+3. **New module `src/storage/memory.js`**. Reason: the memory fallback when IndexedDB fails, and tests for the storage interface in Node.
+4. **New scripts**: `scripts/fetch-fixtures.sh`, `scripts/check-api.mjs`, and `scripts/make-icons.js`. These are development tools, not runtime dependencies.
+5. **A second 429 also pauses the queue.** The plan says to reject the request after a second 429. The queue does that and also pauses for another 30 seconds, so the requests behind it don't run into the block. This is the more conservative choice.
+6. **Free text is quoted for more than spaces.** The type line and keyword fields add quotes when the text has a space or one of `( ) : < > = !`. Rules text is always quoted, as in the table. Reason: these characters have meaning in Scryfall syntax.
+7. **Two more hints in the query builder**: "Choose at least one color" when the color mode is not Any but no color is selected, and "Choose a color mode" when colors are selected with mode Any. Also a hint when the minimum mana value is more than the maximum.
+8. **Empty query.** When all criteria are off, the app does not request a pool size (`/cards/search` needs a query) and shows "Add a criterion to see how many cards match." A draw with an empty query calls `/cards/random` with no `q`.
+9. **Criteria collapse on phones.** The criteria panel is a disclosure that starts closed below 1000 px, so the Draw button is near the top of the page. The query preview always shows the full query.
+10. **No sticky header.** I removed the sticky header and panel so that nothing can cover a card image while the page scrolls.
+11. **Readable format names.** `competitivebrawl` and `tlr` show only the key, because I could not confirm their names.
+12. **A rebalanced card fixture is missing.** Section 8 asks for a fixture of a rebalanced card. Scryfall returns no cards for `is:rebalanced` today, so the fixture `search-rebalanced.json` is the real 404 response. All other fixtures are real API responses. None is synthetic.
+13. **Extra fixtures**: an adventure card, a snow basic land, a 400 response with warnings, a 200 List with warnings, and a 404 from `/cards/search`.
+
+## Known problems
+
+- In history rows, a long query can wrap at the hyphen in `-is:rebalanced`. The query preview wraps between terms, but history rows do not yet.
+- Removing an entry from a list happens at once, with no confirmation and no undo. The plan asks for confirmations only for deleting lists and presets and clearing history.
+- After the Lists view re-renders (for example after a quantity change), the app tries to keep focus on the same control. If a row moves because of sorting, focus can land on a different row.
+- The refresh shows "Not found on Scryfall" only for the current session. After a reload, that marker is gone, but the old snapshots stay.
+- Pool size requests for old queries are cancelled. If the debounce fires during a 30-second pause, the count waits until the pause ends.
+- A batch draw with a small pool can stop early and say so. This is expected behavior, but the attempts still count against the rate limit.
+- The repository is named `scryfall-app`. The app name rule in section 2 is about the app, but a GitHub Pages URL such as `https://<user>.github.io/scryfall-app/` contains "Scryfall". Consider renaming the repository before you turn on Pages.
+
+## Tasks for the owner
+
+1. Review the `v1-build` branch, then push it and open a pull request or merge it to `main`.
+2. Turn on GitHub Pages. The steps are in the README.
+3. Test an Arena import. Paste an export that has a sideboard, a transform card, a modal double-faced card, and a split card into MTG Arena. Confirm that Arena accepts the `Sideboard` header and the front-face names (for a split card, the export writes only the left half, for example `Fire`).
+4. Confirm in Arena that cards with a flavor name (for example Through the Omenpaths and Marvel printings) import by their oracle name.
+5. Choose an app name. Change it in the places that the README lists.
+6. Test on an iPhone: add the app to the Home Screen and confirm that lists stay.

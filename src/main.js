@@ -1,0 +1,257 @@
+// Starts the app and switches between views.
+
+import { APP_NAME, FAN_CONTENT_NOTICE, SCRYFALL_SITE } from "./config.js";
+import { createClient } from "./scryfall.js";
+import { openStorage, persistenceStatus, requestPersistence } from "./storage/index.js";
+import { defaultSettings } from "./export.js";
+import { createDiscoverView } from "./ui/discover.js";
+import { createListsView } from "./ui/lists-view.js";
+import { createDataView } from "./ui/data-view.js";
+import { announce, h, message, replace } from "./ui/dom.js";
+
+/**
+ * Shared app state. Views read the cached data here and change it only
+ * through these methods, which save through the storage interface.
+ * @typedef {Awaited<ReturnType<typeof createApp>>} App
+ */
+
+async function createApp() {
+  const { storage, error } = await openStorage();
+  const listeners = new Set();
+
+  const app = {
+    storage,
+    storageOk: !error,
+    storageError: error ? String(error.message ?? error) : null,
+    persistence: "unknown",
+    persistRequested: false,
+    client: createClient({ onPauseChange: (until) => showPause(until) }),
+    /** @type {import("./lists.js").CardList[]} */
+    lists: [],
+    /** @type {import("./export.js").Preset[]} */
+    presets: [],
+    /** @type {import("./export.js").HistoryItem[]} */
+    history: [],
+    /** @type {import("./export.js").Settings} */
+    settings: defaultSettings(),
+
+    onChange(fn) {
+      listeners.add(fn);
+    },
+    emit(what) {
+      for (const fn of listeners) fn(what);
+    },
+
+    /** Shows a short status message and announces it. */
+    notify(text, kind = "ok") {
+      const slot = document.getElementById("toast");
+      if (slot) {
+        replace(slot, message(kind, text));
+        clearTimeout(app._toastTimer);
+        app._toastTimer = setTimeout(() => slot.replaceChildren(), 6000);
+      }
+      announce(text);
+    },
+
+    /** Runs a storage call. On failure, tells the user and returns false. */
+    async guard(fn, failText) {
+      try {
+        await fn();
+        return true;
+      } catch (e) {
+        app.notify(`${failText} ${e?.message ?? ""}`.trim(), "error");
+        return false;
+      }
+    },
+
+    async afterSave() {
+      if (app.persistRequested || !app.storageOk) return;
+      app.persistRequested = true;
+      app.persistence = await requestPersistence();
+      app.emit("settings");
+    },
+
+    async reload() {
+      const [lists, presets, history, settings] = await Promise.all([
+        storage.getLists(), storage.getPresets(), storage.getHistory(), storage.getSettings(),
+      ]);
+      Object.assign(app, { lists, presets, history, settings });
+      app.emit("all");
+    },
+
+    async saveList(list) {
+      const ok = await app.guard(async () => {
+        await storage.saveList(list);
+        const saved = (await storage.getList(list.id)) ?? list;
+        app.lists = [...app.lists.filter((l) => l.id !== list.id), saved];
+        app.settings = await storage.getSettings();
+      }, "The list was not saved.");
+      if (ok) {
+        app.afterSave();
+        app.emit("lists");
+      }
+      return ok;
+    },
+    async deleteList(id) {
+      const ok = await app.guard(async () => {
+        await storage.deleteList(id);
+        app.lists = app.lists.filter((l) => l.id !== id);
+        app.settings = await storage.getSettings();
+      }, "The list was not deleted.");
+      if (ok) app.emit("lists");
+      return ok;
+    },
+    async savePreset(preset) {
+      const ok = await app.guard(async () => {
+        await storage.savePreset(preset);
+        app.presets = await storage.getPresets();
+        app.settings = await storage.getSettings();
+      }, "The preset was not saved.");
+      if (ok) {
+        app.afterSave();
+        app.emit("presets");
+      }
+      return ok;
+    },
+    async deletePreset(id) {
+      const ok = await app.guard(async () => {
+        await storage.deletePreset(id);
+        app.presets = app.presets.filter((p) => p.id !== id);
+        app.settings = await storage.getSettings();
+      }, "The preset was not deleted.");
+      if (ok) app.emit("presets");
+      return ok;
+    },
+    async addHistory(item) {
+      app.history = [item, ...app.history].slice(0, 100);
+      try {
+        await storage.addHistory(item);
+      } catch {
+        // History is a convenience. Discovery keeps working without it.
+      }
+    },
+    async clearHistory() {
+      return app.guard(async () => {
+        await storage.clearHistory();
+        app.history = [];
+      }, "The history was not cleared.");
+    },
+    /**
+     * Merges changes into the settings and saves them.
+     * @param {Partial<import("./export.js").Settings>} changes
+     * @param {{quiet?: boolean}} [opts] quiet: do not re-render views.
+     */
+    async saveSettings(changes, opts = {}) {
+      app.settings = { ...app.settings, ...changes };
+      try {
+        await storage.saveSettings(app.settings);
+      } catch {
+        // Settings are a convenience. Discovery keeps working without them.
+      }
+      if (!opts.quiet) app.emit("settings");
+    },
+  };
+
+  try {
+    await app.reload();
+  } catch (e) {
+    app.storageOk = false;
+    app.storageError = String(e?.message ?? e);
+  }
+  app.persistence = await persistenceStatus();
+  return app;
+}
+
+// Rate-limit pause banner -------------------------------------------------------
+let pauseTimer = null;
+function showPause(until) {
+  const banner = document.getElementById("pause");
+  if (!banner) return;
+  clearInterval(pauseTimer);
+  if (!until) {
+    banner.hidden = true;
+    announce("Requests to Scryfall started again.");
+    return;
+  }
+  const tick = () => {
+    const left = Math.max(0, Math.ceil((until - Date.now()) / 1000));
+    banner.textContent = `Scryfall paused requests. The app tries again in ${left} seconds.`;
+    if (left <= 0) {
+      clearInterval(pauseTimer);
+      banner.hidden = true;
+    }
+  };
+  banner.hidden = false;
+  tick();
+  announce(`Scryfall paused requests. The app tries again in ${Math.ceil((until - Date.now()) / 1000)} seconds.`);
+  pauseTimer = setInterval(tick, 1000);
+}
+
+// Views and navigation -----------------------------------------------------------
+function parseHash() {
+  const [view, id] = location.hash.replace(/^#/, "").split("/");
+  if (view === "lists") return { view: "lists", id: id ?? null };
+  if (view === "data") return { view: "data", id: null };
+  return { view: "discover", id: null };
+}
+
+async function start() {
+  document.title = APP_NAME;
+  for (const el of document.querySelectorAll("[data-app-name]")) el.textContent = APP_NAME;
+  const notice = document.getElementById("fan-notice");
+  if (notice) notice.textContent = FAN_CONTENT_NOTICE;
+  const scryfallLink = document.getElementById("scryfall-link");
+  if (scryfallLink) scryfallLink.href = SCRYFALL_SITE;
+
+  const main = document.getElementById("main");
+  const app = await createApp();
+  if (!app.storageOk) {
+    document.getElementById("toast")?.append(message("warn", "Storage is not available in this browser window. Discovery works, but lists can't be saved."));
+  }
+
+  const views = {
+    discover: createDiscoverView(app),
+    lists: createListsView(app),
+    data: createDataView(app),
+  };
+  replace(main, views.discover.el, views.lists.el, views.data.el);
+
+  let active = null;
+  function route(focus) {
+    const { view, id } = parseHash();
+    for (const [name, v] of Object.entries(views)) v.el.hidden = name !== view;
+    for (const link of document.querySelectorAll("nav a[data-view]")) {
+      if (link.dataset.view === view) link.setAttribute("aria-current", "page");
+      else link.removeAttribute("aria-current");
+    }
+    if (view === "lists") views.lists.show(id);
+    if (view === "data") views.data.show();
+    const changed = active !== `${view}/${id}`;
+    active = `${view}/${id}`;
+    if (focus && changed) {
+      const title = views[view].el.querySelector("h1");
+      if (title) {
+        title.tabIndex = -1;
+        title.focus();
+      }
+    }
+  }
+
+  app.onChange((what) => {
+    const { view } = parseHash();
+    if (what === "all") views.discover.refresh();
+    if (what === "presets") views.discover.refresh();
+    if (view === "lists" && what !== "presets") views.lists.refresh();
+    if (view === "data") views.data.refresh();
+  });
+
+  window.addEventListener("hashchange", () => route(true));
+  route(false);
+}
+
+start().catch((e) => {
+  const main = document.getElementById("main");
+  if (main) {
+    replace(main, h("p", { class: "msg msg-error", role: "alert", text: `The app did not start. Reload the page. (${e?.message ?? e})` }));
+  }
+});

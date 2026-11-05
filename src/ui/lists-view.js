@@ -11,6 +11,7 @@ import {
 } from "../lists.js";
 import { errorMessage } from "../scryfall.js";
 import { cardMedia } from "./card-view.js";
+import { openSynergyPanel } from "./synergy-panel.js";
 import { announce, confirmBox, copyText, field, formatDate, h, message, plural, replace } from "./dom.js";
 
 /** @param {import("../main.js").App} app */
@@ -277,7 +278,9 @@ export function createListsView(app) {
           field("Quantity", qty),
           field("Section", section),
           field("Note", note)),
-        remove));
+        h("div", { class: "row wrap" },
+          h("button", { type: "button", text: "Find synergies", "aria-label": `Find synergies for ${entry.card.name}`, onclick: () => openSynergyPanel(app, entry.card) }),
+          remove)));
   }
 
   function focusById(id) {

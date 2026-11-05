@@ -19,6 +19,56 @@ The app is a static site with no build step. Browsers don't load ES modules from
 
 The app uses relative URLs, so it also works from a subpath, for example `http://localhost:8000/some/folder/`.
 
+## Use the app
+
+The app has three views. Select them at the top of the page.
+
+### Find cards
+
+1. Open **Discover**.
+2. Under **Criteria**, choose what the cards must match, for example colors, mana value, or card type. The query preview shows the Scryfall search that the criteria make, and the app shows how many cards match. On a phone, select **Criteria** to open the panel.
+3. Choose how many cards to draw, from 1 to 10, then select **Draw**.
+
+The built-in **Arena Standard** preset finds cards that are legal in Standard and available on MTG Arena. To keep a set of criteria, select **Save as new preset**. Your draws are kept under **History**.
+
+### Save cards to a list
+
+1. On a drawn card, select **Add to list**.
+2. Choose one or more lists, or make a new one. Set the quantity and the section: **Main deck**, **Sideboard**, or **Maybe**.
+3. Select **Add**.
+
+A list is a **Collection** or a **Deck (Standard)**. You can change the kind at any time in the **Lists** view, and the cards stay.
+
+### Build and export a deck
+
+1. Open **Lists**, then open a list with the kind **Deck (Standard)**.
+2. Read the **Standard deck checks**. They show problems such as a main deck under 60 cards, a sideboard over 15 cards, more than 4 copies of a card, or a card that is not legal in Standard. Legality comes from the card data saved with the list. To get current data, select **Refresh card data**.
+3. Select **Export for Arena**, then select **Copy**.
+4. In MTG Arena, open **Decks**, then select **Import**.
+
+## Where your data is stored
+
+Your lists, presets, history, and settings are stored only in your browser, on your device. The app has no server and no accounts, so your data doesn't sync between devices or browsers.
+
+If you clear your browser's site data for the app, your data is deleted. To keep a copy, open **Data** and select **Export backup**. To restore it, select a backup file under **Import backup**. You can also use a backup to move your data to another device.
+
+The app sends Scryfall your card searches and, when you refresh a list, the Scryfall IDs of its cards. It doesn't send list names, notes, or anything else about you.
+
+## Project layout
+
+| Path | Contents |
+| --- | --- |
+| `index.html`, `styles.css` | The page and its styles. |
+| `src/main.js` | App startup and navigation between views. |
+| `src/config.js` | The app name, API settings, and other constants. |
+| `src/scryfall.js` | The Scryfall API client. All API requests go through its queue, which spaces requests at least 500 ms apart. |
+| `src/query.js`, `src/cards.js`, `src/lists.js`, `src/deck-rules.js`, `src/export.js`, `src/draw.js` | App logic with no DOM code. The tests cover these modules. |
+| `src/storage/` | Data storage in IndexedDB, with a memory fallback. |
+| `src/ui/` | The views and the DOM helpers. |
+| `tests/` | Unit tests and saved Scryfall responses (`tests/fixtures/`). |
+| `scripts/` | Development tools: fixture download, live API checks, and icon drawing. |
+| `PLAN.md`, `REPORT.md` | The v1 plan and the report on what was built. |
+
 ## Run the tests
 
 The tests use the [Node.js built-in test runner](https://nodejs.org/api/test.html). You need Node.js 20 or later. There are no packages to install.

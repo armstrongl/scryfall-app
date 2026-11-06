@@ -91,7 +91,6 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  padding-bottom: calc(68px + env(safe-area-inset-bottom, 0px));
 }
 
 main {
@@ -122,8 +121,6 @@ code, .mono { font-family: var(--mono); font-size: 0.88em; }
 :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 
 /* Header and navigation ------------------------------------------------------ */
-/* No backdrop-filter on the header on phones: it would make the header the
-   containing block for the fixed tab bar inside it. */
 .site-header {
   background: color-mix(in srgb, var(--surface) 82%, var(--bg));
   border-bottom: 1px solid var(--border);
@@ -139,20 +136,20 @@ code, .mono { font-family: var(--mono); font-size: 0.88em; }
 }
 .brand img { display: block; border-radius: 9px; }
 
+/* On phones the view tabs are a full-width row in the header. Nothing is
+   fixed or sticky over the page, so nothing can cover a card image. */
+.header-inner { flex-wrap: wrap; }
 nav.views {
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
-  display: flex; justify-content: space-around;
-  background: color-mix(in srgb, var(--surface) 92%, transparent);
-  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-  border-top: 1px solid var(--border);
-  padding: 4px max(8px, env(safe-area-inset-right, 0px)) calc(4px + env(safe-area-inset-bottom, 0px)) max(8px, env(safe-area-inset-left, 0px));
+  order: 3; flex: 1 0 100%;
+  display: flex; gap: 4px; padding: 4px; border-radius: 999px;
+  background: var(--surface-2); border: 1px solid var(--border);
 }
 nav.views a {
-  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
-  min-height: 56px; border-radius: 12px; color: var(--muted); text-decoration: none; font-size: 0.8rem; font-weight: 700;
+  flex: 1; display: flex; align-items: center; justify-content: center; gap: 0.35rem;
+  min-height: 44px; border-radius: 999px; color: var(--muted); text-decoration: none; font-size: 0.9rem; font-weight: 750;
 }
-nav.views .nav-icon { font-size: 1.25rem; line-height: 1; }
-nav.views a[aria-current="page"] { color: var(--accent); background: var(--accent-soft); }
+nav.views .nav-icon { font-size: 1rem; line-height: 1; }
+nav.views a[aria-current="page"] { color: var(--accent); background: var(--surface); box-shadow: var(--shadow); }
 
 .density-toggle {
   display: inline-flex; align-items: center; gap: 0.5rem; min-height: 40px;
@@ -177,32 +174,20 @@ nav.views a[aria-current="page"] { color: var(--accent); background: var(--accen
 }
 
 @media (min-width: 760px) {
-  body { padding-bottom: 0; }
-  .site-header {
-    background: color-mix(in srgb, var(--surface) 82%, transparent);
-    backdrop-filter: saturate(1.4) blur(10px);
-    -webkit-backdrop-filter: saturate(1.4) blur(10px);
-  }
-  nav.views {
-    position: static; background: none; border: 0; padding: 0; backdrop-filter: none; -webkit-backdrop-filter: none;
-    justify-content: flex-start; gap: 0.25rem;
-  }
-  nav.views a { flex: none; flex-direction: row; gap: 0.4rem; min-height: 40px; padding: 0 0.9rem; font-size: 0.95rem; border-radius: 999px; }
+  .header-inner { flex-wrap: nowrap; }
+  nav.views { order: 0; flex: none; background: none; border: 0; padding: 0; justify-content: flex-start; gap: 0.25rem; }
+  nav.views a { flex: none; min-height: 40px; padding: 0 0.9rem; font-size: 0.95rem; }
+  nav.views a[aria-current="page"] { background: var(--accent-soft); box-shadow: none; }
   nav.views .nav-icon { font-size: 1rem; }
   .brand { margin-right: 1rem; }
   .density-toggle { margin-left: auto; }
 }
 
-/* Toast: a short message above the bottom bar, with an optional action. */
-.toast {
-  position: fixed; left: 50%; translate: -50% 0; z-index: 25;
-  bottom: calc(76px + env(safe-area-inset-bottom, 0px));
-  width: min(560px, calc(100% - 2 * var(--gutter)));
-  pointer-events: none;
-}
-.toast .msg { pointer-events: auto; margin: 0; box-shadow: var(--shadow); display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+/* Toast: a short message under the header, in the page flow. It never
+   floats over the page. */
+.toast { max-width: 1440px; margin: 0 auto; padding: 0 var(--gutter); }
+.toast .msg { margin: 0.75rem 0 0; display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
 .toast-action { margin-left: auto; min-height: 36px; }
-@media (min-width: 760px) { .toast { bottom: 24px; } }
 
 /* Footer -------------------------------------------------------------------- */
 .site-footer {
@@ -603,6 +588,11 @@ dialog.sheet {
 .pip-list, .type-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.2rem; font-size: 0.92rem; font-variant-numeric: tabular-nums; }
 
 .entries { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.6rem; }
+.removed {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem; padding: 0.6rem 0.8rem;
+  border: 1px dashed var(--border); border-radius: var(--radius-sm); color: var(--muted);
+}
+.removed p { margin: 0; flex: 1 1 200px; }
 .entry { border-left: 4px solid var(--glow, var(--mana-c)); --glow: var(--mana-c); }
 .entry.glow-w { --glow: var(--mana-w); }
 .entry.glow-u { --glow: var(--mana-u); }

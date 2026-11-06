@@ -29,6 +29,9 @@ export function createListsView(app) {
   const notFoundByList = new Map();
   let sortBy = "name";
   let refreshing = null;
+  /** The last removed entry of a list, shown as an Undo row where it was. */
+  const removedByList = new Map();
+  let focusUndo = false;
 
   function reminder() {
     return needsBackupReminder(app.settings, Date.now(), BACKUP_REMINDER_DAYS)
@@ -244,14 +247,22 @@ export function createListsView(app) {
         statsPanel(list));
     }
 
-    // Entries.
+    // Entries. A just-removed entry stays in its sorted place as an Undo row.
     const sections = sectionsFor(list);
-    const groups = groupBySection(list.entries, sortBy, sections);
-    const sectionEls = groups.map((g) => h("section", { class: "panel-box", "aria-labelledby": `sec-${g.section}` },
-      h("h2", { id: `sec-${g.section}`, text: `${SECTION_NAMES[g.section]} (${g.total})` }),
-      g.entries.length === 0
-        ? h("p", { class: "empty", text: g.section === "commander" ? "No commander yet. Move a legendary creature or planeswalker here with its Section menu." : "No cards." })
-        : h("ul", { class: "entries" }, g.entries.map((e) => entryRow(list, e, sections, notFound.has(e.card.scryfallId), save)))));
+    const pending = removedByList.get(list.id);
+    const shown = pending && !list.entries.some((e) => e.id === pending.entry.id)
+      ? [...list.entries, { ...pending.entry, removed: true }] : list.entries;
+    const groups = groupBySection(shown, sortBy, sections);
+    const sectionEls = groups.map((g) => {
+      const total = totalQuantity(g.entries.filter((e) => !e.removed));
+      return h("section", { class: "panel-box", "aria-labelledby": `sec-${g.section}` },
+        h("h2", { id: `sec-${g.section}`, text: `${SECTION_NAMES[g.section]} (${total})` }),
+        g.entries.length === 0
+          ? h("p", { class: "empty", text: g.section === "commander" ? "No commander yet. Move a legendary creature or planeswalker here with its Section menu." : "No cards." })
+          : h("ul", { class: "entries" }, g.entries.map((e) => (e.removed
+            ? removedRow(list, pending)
+            : entryRow(list, e, sections, notFound.has(e.card.scryfallId), save)))));
+    });
 
     replace(el,
       h("p", { class: "crumb" }, h("a", { href: "#lists", text: "← All lists" })),
@@ -361,14 +372,13 @@ export function createListsView(app) {
       "aria-label": `Remove ${card.name}`,
       onclick: async () => {
         const index = list.entries.findIndex((e) => e.id === entry.id);
+        removedByList.set(list.id, { entry, index });
+        focusUndo = true;
         if (await save(removeEntry(list, entry.id))) {
-          app.notify(`Removed ${card.name} from ${list.name}.`, "ok", {
-            label: "Undo",
-            run: async () => {
-              const latest = app.lists.find((l) => l.id === list.id);
-              if (latest && await app.saveList(restoreEntry(latest, entry, index))) announce(`Put ${card.name} back.`);
-            },
-          });
+          announce(`Removed ${card.name}. Undo is available where the card was.`);
+        } else {
+          removedByList.delete(list.id);
+          focusUndo = false;
         }
       },
     });
@@ -390,6 +400,39 @@ export function createListsView(app) {
           remove)));
   }
 
+  /** The row left behind by Remove, with Undo. */
+  function removedRow(list, pending) {
+    const { entry, index } = pending;
+    return h("li", { class: "removed", dataset: { entryId: `removed-${entry.id}` } },
+      h("p", { text: `Removed ${entry.quantity} × ${entry.card.name}.` }),
+      h("button", {
+        type: "button",
+        class: "undo",
+        text: "Undo",
+        "aria-label": "Undo",
+        onclick: async () => {
+          const latest = app.lists.find((l) => l.id === list.id);
+          removedByList.delete(list.id);
+          if (latest && await app.saveList(restoreEntry(latest, entry, index))) {
+            announce(`Put ${entry.card.name} back.`);
+            const row = el.querySelector(`li[data-entry-id="${CSS.escape(entry.id)}"]`);
+            row?.querySelector("button, input, select")?.focus();
+          }
+        },
+      }),
+      h("button", {
+        type: "button",
+        class: "ghost",
+        text: "Dismiss",
+        "aria-label": `Dismiss: removed ${entry.card.name}`,
+        onclick: () => {
+          removedByList.delete(list.id);
+          render();
+          el.querySelector("h1")?.focus();
+        },
+      }));
+  }
+
   let currentId = null;
   function render() {
     // Keep focus on the same control when a change re-renders the view. Rows
@@ -398,6 +441,11 @@ export function createListsView(app) {
     const activeKey = active && el.contains(active) ? describe(active) : null;
     if (currentId) renderDetail(currentId);
     else renderIndex();
+    if (focusUndo) {
+      focusUndo = false;
+      const undo = el.querySelector(".removed .undo");
+      if (undo) return undo.focus();
+    }
     if (activeKey) restore(activeKey);
   }
 
@@ -418,6 +466,7 @@ export function createListsView(app) {
     el,
     /** @param {string|null} listId */
     show(listId) {
+      if (listId !== currentId) removedByList.clear();
       currentId = listId;
       render();
     },

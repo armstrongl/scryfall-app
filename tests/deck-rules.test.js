@@ -133,3 +133,23 @@ test("Brawl: a sideboard gives a warning", () => {
   const r = checkDeck(brawl([[krenko, 1, "commander"], [elves, 1], [forest, 98], [snap("card-flyer"), 1, "sideboard"]]));
   assert.ok(codes(r).includes("sideboard"));
 });
+
+test("Standard: a leftover commander entry gives a warning", () => {
+  const r = checkDeck(deck([[elves, 4], [forest, 56], [snap("card-legendary"), 1, "commander"]]));
+  assert.ok(r.results.some((x) => x.code === "commander" && x.level === "warning"));
+});
+
+test("Brawl: a colorless commander allows basic lands of one type", () => {
+  const colorless = snap("card-legendary", { colorIdentity: [] });
+  const ok = checkDeck(brawl([[colorless, 1, "commander"], [forest, 99]]));
+  assert.ok(!ok.results.some((x) => x.code === "identity"), ok.results.map((x) => x.message).join(" | "));
+  const plains = snap("card-basic-land", { name: "Plains", frontName: "Plains", oracleId: "plains", scryfallId: "p", colorIdentity: ["W"], typeLine: "Basic Land — Plains" });
+  const two = checkDeck(brawl([[colorless, 1, "commander"], [forest, 49], [plains, 50]]));
+  assert.ok(two.results.some((x) => x.code === "identity"));
+});
+
+test("cards that allow up to seven copies are checked against seven", () => {
+  const dwarf = snap("card-normal", { name: "Seven Dwarves", frontName: "Seven Dwarves", oracleId: "dw", scryfallId: "dw", oracleText: "Seven Dwarves gets +1/+1 for each other creature named Seven Dwarves you control.\nA deck can have up to seven cards named Seven Dwarves." });
+  assert.ok(!codes(checkDeck(deck([[dwarf, 7], [forest, 53]]))).includes("copies"));
+  assert.ok(codes(checkDeck(deck([[dwarf, 8], [forest, 52]]))).includes("copies"));
+});

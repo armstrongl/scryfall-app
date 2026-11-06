@@ -39,9 +39,20 @@ function oldestFetch(entries) {
   return entries.map((e) => e.card.fetchedAt).filter(Boolean).sort()[0] ?? null;
 }
 
-/** Text of a card that allows any number of copies, such as Relentless Rats. */
-function anyNumberAllowed(card) {
-  return /\bA deck can have any number of cards named\b/i.test(card.oracleText ?? "");
+const NUMBER_WORDS = { two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10 };
+
+/**
+ * The most copies the card's own text allows, or null if it doesn't say.
+ * "A deck can have any number of cards named …" (Relentless Rats) gives
+ * Infinity. "A deck can have up to seven cards named …" (Seven Dwarves)
+ * gives 7.
+ */
+export function copyLimit(card) {
+  const text = card.oracleText ?? "";
+  if (/\bA deck can have any number of cards named\b/i.test(text)) return Infinity;
+  const m = text.match(/\bA deck can have up to (\w+) cards named\b/i);
+  if (m) return NUMBER_WORDS[m[1].toLowerCase()] ?? (Number(m[1]) || null);
+  return null;
 }
 
 function checkStandard(list) {
@@ -69,23 +80,32 @@ function checkStandard(list) {
     });
   }
 
-  /** @type {Map<string, {name: string, count: number, basic: boolean, any: boolean}>} */
+  /** @type {Map<string, {name: string, count: number, basic: boolean, limit: number}>} */
   const copies = new Map();
   for (const e of counted) {
     const key = cardKey(e.card);
-    const item = copies.get(key) ?? { name: e.card.name, count: 0, basic: e.card.isBasicLand, any: anyNumberAllowed(e.card) };
+    const item = copies.get(key) ?? { name: e.card.name, count: 0, basic: e.card.isBasicLand, limit: copyLimit(e.card) ?? MAX_COPIES };
     item.count += e.quantity;
     copies.set(key, item);
   }
   for (const item of copies.values()) {
-    if (!item.basic && !item.any && item.count > MAX_COPIES) {
+    if (!item.basic && item.count > item.limit) {
       results.push({
         level: "error",
         code: "copies",
         card: item.name,
-        message: `${item.name}: ${item.count} copies. A deck can have at most ${MAX_COPIES}.`,
+        message: `${item.name}: ${item.count} copies. A deck can have at most ${item.limit}.`,
       });
     }
+  }
+
+  const commanders = list.entries.filter((e) => e.section === "commander");
+  if (commanders.length > 0) {
+    results.push({
+      level: "warning",
+      code: "commander",
+      message: `Standard decks have no commander. These cards aren't checked or exported: ${[...new Set(commanders.map((e) => e.card.name))].join(", ")}. Move them to the main deck or sideboard.`,
+    });
   }
 
   const reported = new Set();
@@ -146,26 +166,31 @@ function checkBrawl(list) {
   }
 
   // Singleton.
-  /** @type {Map<string, {name: string, count: number, exempt: boolean}>} */
+  /** @type {Map<string, {name: string, count: number, limit: number}>} */
   const copies = new Map();
   for (const e of deck) {
     const key = cardKey(e.card);
-    const item = copies.get(key) ?? { name: e.card.name, count: 0, exempt: e.card.isBasicLand || anyNumberAllowed(e.card) };
+    const item = copies.get(key) ?? { name: e.card.name, count: 0, limit: e.card.isBasicLand ? Infinity : (copyLimit(e.card) ?? 1) };
     item.count += e.quantity;
     copies.set(key, item);
   }
   for (const item of copies.values()) {
-    if (!item.exempt && item.count > 1) {
-      results.push({ level: "error", code: "singleton", card: item.name, message: `${item.name}: ${item.count} copies. A ${formatName} deck can have 1 copy of each card except basic lands.` });
+    if (item.count > item.limit) {
+      const allowed = item.limit === 1 ? `1 copy of each card except basic lands` : `${item.limit} copies of ${item.name}`;
+      results.push({ level: "error", code: "singleton", card: item.name, message: `${item.name}: ${item.count} copies. A ${formatName} deck can have ${allowed}.` });
     }
   }
 
-  // Color identity.
+  // Color identity. With a colorless commander, the deck may have any
+  // number of basic lands of one basic land type (Brawl rules).
   if (commanders.length > 0) {
     const identity = new Set(commanders.flatMap((e) => e.card.colorIdentity ?? []));
+    const basicTypes = new Set(deck.filter((e) => e.section !== "commander" && e.card.isBasicLand).map((e) => cardKey(e.card)));
+    const colorlessBasicsOk = identity.size === 0 && basicTypes.size <= 1;
     const reported = new Set();
     for (const e of deck) {
       if (e.section === "commander") continue;
+      if (colorlessBasicsOk && e.card.isBasicLand) continue;
       const outside = (e.card.colorIdentity ?? []).filter((c) => !identity.has(c));
       const key = cardKey(e.card);
       if (outside.length && !reported.has(key)) {

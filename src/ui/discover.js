@@ -274,7 +274,7 @@ export function createDiscoverView(app) {
       const list = await app.client.search(query, params, controller.signal);
       poolCache.set(query, { total: list.total_cards, warnings: list.warnings ?? [] });
       // The count's first page is also Browse's first page in name order.
-      pageCache.set(pageKey(query, { order: "name", dir: "auto" }, 1), list);
+      cachePage(pageKey(query, { order: "name", dir: "auto" }, 1), list);
     } catch (e) {
       if (e.kind === "cancelled") return;
       if (e.kind === "notFound") poolCache.set(query, { total: 0, warnings: [] });
@@ -300,6 +300,19 @@ export function createDiscoverView(app) {
   const drawControls = h("div", { class: "control-row" });
   const browseControls = h("div", { class: "control-row" });
 
+  /** Stops any draw or Browse load that is still running. */
+  function cancelAll() {
+    drawController?.abort();
+    browseController?.abort();
+    drawController = null;
+    browseController = null;
+    drawBtn.disabled = false;
+    showBtn.disabled = false;
+    loadMoreBtn.disabled = false;
+    cancelBtn.hidden = true;
+    progress.textContent = "";
+  }
+
   function setMode(next, user) {
     mode = next;
     modeDraw.setAttribute("aria-pressed", String(mode === "draw"));
@@ -308,8 +321,10 @@ export function createDiscoverView(app) {
     browseControls.hidden = mode !== "browse";
     loadMoreBtn.hidden = mode !== "browse" || !browse.hasMore;
     if (user) {
+      cancelAll();
       app.saveSettings({ discoverMode: mode }, { quiet: true });
       results.replaceChildren();
+      inspector.clear();
       browse = emptyBrowse("");
       replace(browseStatus, mode === "browse" ? "Choose a sort, then select Show cards." : "");
       drawNotes.replaceChildren();
@@ -324,7 +339,7 @@ export function createDiscoverView(app) {
   const progress = h("p", { class: "progress", "aria-live": "polite" });
   const drawNotes = h("div", { class: "draw-notes" });
   const browseStatus = h("p", { class: "browse-status", tabindex: "-1", "aria-live": "polite" });
-  const results = h("div", { class: "results", "aria-label": "Cards" });
+  const results = h("div", { class: "results", role: "region", "aria-label": "Cards" });
   const loadMoreBtn = h("button", { type: "button", class: "load-more", hidden: true, text: "Load more", onclick: () => loadPage(false) });
 
   replace(drawControls, field(`Cards (${MIN_DRAW} to ${MAX_DRAW})`, countInput), drawBtn);
@@ -368,6 +383,7 @@ export function createDiscoverView(app) {
           progress.textContent = count > 1 ? `Drawing ${Math.min(n + 1, count)} of ${count}…` : "Drawing…";
         },
         onCard: (card) => {
+          if (drawController !== controller) return;
           const snapshot = makeSnapshot(card, new Date().toISOString());
           const extra = [];
           if (query.includes("game:arena") && Array.isArray(card.games) && !card.games.includes("arena")) {
@@ -378,6 +394,8 @@ export function createDiscoverView(app) {
           app.addHistory({ id: crypto.randomUUID(), card: snapshot, query, drawnAt: snapshot.fetchedAt });
         },
       });
+      // A draw replaced by a mode switch or a new search says nothing.
+      if (drawController !== controller) return;
       if (controller.signal.aborted) {
         drawNotes.append(message("info", `Draw cancelled. ${plural(found.length, "card")} drawn.`));
         announce(`Draw cancelled. ${plural(found.length, "card")} drawn.`);
@@ -388,6 +406,7 @@ export function createDiscoverView(app) {
         announce(found.length === 1 ? `Drew ${found[0].name}.` : `Drew ${found.length} cards: ${found.map((s) => s.name).join(", ")}.`);
       }
     } catch (e) {
+      if (drawController !== controller) return;
       if (e.kind === "cancelled") {
         drawNotes.append(message("info", `Draw cancelled. ${plural(found.length, "card")} drawn.`));
         announce("Draw cancelled.");
@@ -397,10 +416,12 @@ export function createDiscoverView(app) {
         announce(text);
       }
     } finally {
-      drawController = null;
-      drawBtn.disabled = false;
-      cancelBtn.hidden = true;
-      progress.textContent = "";
+      if (drawController === controller) {
+        drawController = null;
+        drawBtn.disabled = false;
+        cancelBtn.hidden = true;
+        progress.textContent = "";
+      }
       renderHistory();
     }
   }
@@ -417,12 +438,24 @@ export function createDiscoverView(app) {
   const showBtn = h("button", { type: "button", class: "primary big", text: "Show cards", onclick: () => loadPage(true) });
   replace(browseControls, field("Sort by", sortSelect), field("Order", dirSelect), showBtn);
 
+  /**
+   * @param {any} next
+   * @param {{quiet?: boolean, persist?: boolean}} [opts] quiet: don't reload.
+   *   persist: false keeps the user's saved sort, for example for Explore.
+   */
   function setSort(next, opts = {}) {
     sort = normalizeSort(next);
     sortSelect.value = sort.order;
     dirSelect.value = sort.dir;
-    app.saveSettings({ browseSort: sort }, { quiet: true });
-    if (!opts.quiet && browse.cards.length) loadPage(true);
+    if (opts.persist !== false) app.saveSettings({ browseSort: sort }, { quiet: true });
+    // Reload when cards are shown or a load is running, so pages never mix sorts.
+    if (!opts.quiet && (browse.cards.length || browseController)) loadPage(true);
+  }
+
+  /** Keeps the session page cache small. */
+  function cachePage(key, list) {
+    pageCache.set(key, list);
+    while (pageCache.size > 20) pageCache.delete(pageCache.keys().next().value);
   }
 
   /**
@@ -438,29 +471,33 @@ export function createDiscoverView(app) {
     const controller = new AbortController();
     browseController = controller;
     if (fresh) {
-      browse = emptyBrowse(current.query);
+      browse = emptyBrowse(current.query, sort);
       results.replaceChildren();
       inspector.clear();
       results.classList.add("revealing");
     }
     const page = browse.nextPage;
-    const key = pageKey(browse.query, sort, page);
+    // Every page of one list uses the sort the list started with.
+    const key = pageKey(browse.query, browse.sort, page);
     showBtn.disabled = true;
     loadMoreBtn.disabled = true;
     cancelBtn.hidden = false;
     replace(browseStatus, page === 1 ? "Loading cards…" : `Loading page ${page}…`);
     try {
-      const list = pageCache.get(key) ?? await app.client.search(browse.query, browseParams(sort, page), controller.signal);
-      if (page === 1) pageCache.set(key, list);
+      const list = pageCache.get(key) ?? await app.client.search(browse.query, browseParams(browse.sort, page), controller.signal);
+      // A load replaced by a newer one, a mode switch, or a new search does nothing.
+      if (browseController !== controller) return;
+      if (page === 1) cachePage(key, list);
       const start = browse.cards.length;
       browse = mergePage(browse, list);
       const now = new Date().toISOString();
       browse.cards.slice(start).forEach((card, i) => results.append(tile(makeSnapshot(card, now), [], fresh ? i : 99)));
-      const name = SORT_OPTIONS.find((o) => o.value === sort.order)?.label ?? sort.order;
+      const name = SORT_OPTIONS.find((o) => o.value === browse.sort.order)?.label ?? browse.sort.order;
       const label = name[0].toLowerCase() + name.slice(1);
       replace(browseStatus, `Showing ${formatNumber(browse.cards.length)} of ${formatNumber(browse.total ?? browse.cards.length)} cards, sorted by ${label}.`);
       announce(`Showing ${browse.cards.length} of ${browse.total} cards.`);
     } catch (e) {
+      if (browseController !== controller) return;
       if (e.kind === "cancelled") {
         replace(browseStatus, browse.cards.length ? `Showing ${formatNumber(browse.cards.length)} cards.` : "Cancelled.");
       } else if (e.kind === "notFound") {
@@ -471,14 +508,21 @@ export function createDiscoverView(app) {
       }
       announce(browseStatus.textContent);
     } finally {
-      if (browseController === controller) browseController = null;
-      showBtn.disabled = false;
-      loadMoreBtn.disabled = false;
-      cancelBtn.hidden = true;
-      loadMoreBtn.hidden = mode !== "browse" || !browse.hasMore;
-      if (browse.hasMore && browse.total) {
-        loadMoreBtn.textContent = `Load more (${formatNumber(browse.total - browse.cards.length)} left)`;
+      if (browseController === controller) {
+        browseController = null;
+        finishLoad();
       }
+    }
+  }
+
+  /** Puts the Browse controls back after a load ends. */
+  function finishLoad() {
+    showBtn.disabled = false;
+    loadMoreBtn.disabled = false;
+    cancelBtn.hidden = true;
+    loadMoreBtn.hidden = mode !== "browse" || !browse.hasMore;
+    if (browse.hasMore && browse.total) {
+      loadMoreBtn.textContent = `Load more (${formatNumber(browse.total - browse.cards.length)} left)`;
     }
   }
 
@@ -609,13 +653,14 @@ export function createDiscoverView(app) {
      * @param {{mode?: "draw"|"browse", sort?: {order: string, dir: string}}} [opts]
      */
     load(criteria, note, opts = {}) {
+      cancelAll();
       form.set(criteria);
       onCriteria(form.get());
       results.replaceChildren();
       browse = emptyBrowse("");
       replace(drawNotes, message("info", note));
       if (opts.mode) setMode(opts.mode, false);
-      if (opts.sort) setSort(opts.sort, { quiet: true });
+      if (opts.sort) setSort(opts.sort, { quiet: true, persist: false });
       app.saveSettings({ discoverMode: mode }, { quiet: true });
       if (mode === "browse") {
         loadPage(true);

@@ -145,7 +145,9 @@ export function openDetails(app, snapshot, opts = {}) {
     if (restore && returnFocus instanceof HTMLElement) returnFocus.focus();
   };
   const closeBtn = h("button", { type: "button", class: "sheet-close", text: "Close", onclick: () => close() });
-  const wrap = (fn) => (fn ? () => { close(false); fn(); } : undefined);
+  // Close first and put focus back, so the next panel returns focus to the
+  // control that opened the details.
+  const wrap = (fn) => (fn ? () => { close(true); fn(); } : undefined);
   dialog.append(
     h("div", { class: "sheet-bar" }, closeBtn),
     cardDetails(app, snapshot, { titleId: "details-title", image: true, onAdd: wrap(opts.onAdd), onExplore: wrap(opts.onExplore) }));
@@ -173,7 +175,13 @@ export function createInspector(app) {
   const body = h("div", { class: "inspector-body" }, placeholder());
   const el = h("aside", { id: "inspector", class: "inspector", "aria-label": "Card inspector" }, body);
   let current = null;
+  let last = null;
   let timer = null;
+  const render = (snapshot, opts) => {
+    current = snapshot.scryfallId;
+    last = { snapshot, opts };
+    replace(body, cardDetails(app, snapshot, { headingLevel: "h2", onAdd: opts.onAdd, onExplore: opts.onExplore }));
+  };
   return {
     el,
     /** @param {import("../cards.js").CardSnapshot} snapshot */
@@ -181,17 +189,20 @@ export function createInspector(app) {
       clearTimeout(timer);
       timer = setTimeout(() => {
         if (current === snapshot.scryfallId && !opts.force) return;
-        current = snapshot.scryfallId;
-        replace(body, cardDetails(app, snapshot, { headingLevel: "h2", onAdd: opts.onAdd, onExplore: opts.onExplore }));
+        // Don't pull the panel out from under a control the user is using.
+        if (el.contains(document.activeElement) && !opts.force) return;
+        render(snapshot, opts);
       }, opts.now ? 0 : 120);
     },
+    /** Shows the current card again, for example after its lists change. */
     refresh() {
-      current = null;
+      if (last && !el.contains(document.activeElement)) render(last.snapshot, last.opts);
     },
     /** Shows the placeholder again, for example when new results load. */
     clear() {
       clearTimeout(timer);
       current = null;
+      last = null;
       replace(body, placeholder());
     },
   };

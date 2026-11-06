@@ -407,12 +407,19 @@ code.query .term.long { white-space: normal; overflow-wrap: anywhere; }
 [data-density="nerd"] .tile { padding: 0.45rem; }
 [data-density="nerd"] .tile-actions button { min-height: 36px; font-size: 0.8rem; }
 
-/* Reveal: tiles fade in one after another. Only opacity changes, on the whole
-   tile; the image itself is never moved, scaled, or filtered. */
+/* Reveal: as cards arrive, each frame glows in its colors and the caption
+   fades in, one card after another. The image itself never moves, scales,
+   fades, or changes. */
 @media (prefers-reduced-motion: no-preference) {
-  .results.revealing .tile { animation: reveal 0.45s ease-out both; animation-delay: calc(var(--i, 0) * 70ms); }
+  .results.revealing .tile { animation: reveal-glow 1.2s ease-out both; animation-delay: calc(var(--i, 0) * 90ms); }
+  .results.revealing .tile-info, .results.revealing .tile-actions { animation: reveal-fade 0.5s ease-out both; animation-delay: calc(var(--i, 0) * 90ms); }
 }
-@keyframes reveal { from { opacity: 0; } to { opacity: 1; } }
+@keyframes reveal-glow {
+  0% { box-shadow: 0 0 0 0 transparent; }
+  35% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--glow) 70%, transparent), 0 0 36px color-mix(in srgb, var(--glow) 60%, transparent); }
+  100% { box-shadow: var(--shadow); }
+}
+@keyframes reveal-fade { from { opacity: 0; } to { opacity: 1; } }
 
 /* Card media ------------------------------------------------------------------- */
 .card-media-wrap { display: flex; flex-direction: column; gap: 0.4rem; align-items: center; }

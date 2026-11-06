@@ -107,3 +107,11 @@ test("open a list on Scryfall: long lists split into queries under the limit, no
 test("open a list on Scryfall: no names gives no links", () => {
   assert.deepEqual(scryfallListUrls([]), []);
 });
+
+test("browse state keeps the sort it started with", async () => {
+  const { emptyBrowse: eb, mergePage: mp } = await import("../src/browse.js");
+  const s = eb("t:goblin", { order: "cmc", dir: "desc" });
+  assert.deepEqual(s.sort, { order: "cmc", dir: "desc" });
+  assert.deepEqual(mp(s, fixture("search-page")).sort, { order: "cmc", dir: "desc" });
+  assert.deepEqual(eb("q").sort, { order: "name", dir: "auto" });
+});

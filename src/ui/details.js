@@ -169,8 +169,8 @@ export function openDetails(app, snapshot, opts = {}) {
  * @param {import("../main.js").App} app
  */
 export function createInspector(app) {
-  const body = h("div", { class: "inspector-body" },
-    h("p", { class: "hint", text: "Point at a card, or move the keyboard focus to it, to see everything about it here." }));
+  const placeholder = () => h("p", { class: "hint", text: "Point at a card, or move the keyboard focus to it, to see everything about it here." });
+  const body = h("div", { class: "inspector-body" }, placeholder());
   const el = h("aside", { id: "inspector", class: "inspector", "aria-label": "Card inspector" }, body);
   let current = null;
   let timer = null;
@@ -187,6 +187,12 @@ export function createInspector(app) {
     },
     refresh() {
       current = null;
+    },
+    /** Shows the placeholder again, for example when new results load. */
+    clear() {
+      clearTimeout(timer);
+      current = null;
+      replace(body, placeholder());
     },
   };
 }

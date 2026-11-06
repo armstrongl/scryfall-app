@@ -25,6 +25,21 @@ export const BUILT_IN_PRESET = Object.freeze({
   updatedAt: "2026-01-01T00:00:00.000Z",
 });
 
+/**
+ * Arena's 100-card Brawl, with colors read as color identity. On 2026-11-05
+ * the API listed no rebalanced card as legal in Brawl (is:rebalanced
+ * f:brawl found nothing), so leaving them out changes nothing.
+ */
+export const BRAWL_PRESET = Object.freeze({
+  id: "builtin-arena-brawl",
+  name: "Arena Brawl",
+  builtIn: true,
+  criteria: { ...defaultCriteria(), format: "brawl", useIdentity: true },
+  createdAt: "2026-01-01T00:00:00.000Z",
+  updatedAt: "2026-01-01T00:00:00.000Z",
+});
+const BUILT_INS = [BUILT_IN_PRESET, BRAWL_PRESET];
+
 /** @param {import("../main.js").App} app */
 export function createDiscoverView(app) {
   /** Pool results for this session, by query string. */
@@ -67,7 +82,7 @@ export function createDiscoverView(app) {
   const deleteBtn = h("button", { type: "button", class: "ghost", text: "Delete", onclick: confirmDelete });
 
   function allPresets() {
-    return [BUILT_IN_PRESET, ...app.presets.slice().sort((a, b) => a.name.localeCompare(b.name))];
+    return [...BUILT_INS, ...app.presets.slice().sort((a, b) => a.name.localeCompare(b.name))];
   }
   function selectedPreset() {
     return allPresets().find((p) => p.id === presetSelect.value) ?? BUILT_IN_PRESET;
@@ -79,8 +94,9 @@ export function createDiscoverView(app) {
   }
   function syncPresetButtons() {
     const builtIn = selectedPreset().builtIn;
-    renameBtn.disabled = builtIn;
-    deleteBtn.disabled = builtIn;
+    // The built-in preset can't be renamed or deleted, so hide those buttons.
+    renameBtn.hidden = builtIn;
+    deleteBtn.hidden = builtIn;
   }
   function applyPreset() {
     const p = selectedPreset();
@@ -331,6 +347,7 @@ export function createDiscoverView(app) {
     if (plan.reduced) notes.push(message("info", `Only ${plan.count} ${plan.count === 1 ? "card matches" : "cards match"}, so the app draws ${plan.count}.`));
     replace(drawNotes, notes);
     results.replaceChildren();
+    inspector.clear();
     browseStatus.textContent = "";
 
     const query = current.query;
@@ -423,6 +440,7 @@ export function createDiscoverView(app) {
     if (fresh) {
       browse = emptyBrowse(current.query);
       results.replaceChildren();
+      inspector.clear();
       results.classList.add("revealing");
     }
     const page = browse.nextPage;
@@ -438,8 +456,9 @@ export function createDiscoverView(app) {
       browse = mergePage(browse, list);
       const now = new Date().toISOString();
       browse.cards.slice(start).forEach((card, i) => results.append(tile(makeSnapshot(card, now), [], fresh ? i : 99)));
-      const label = SORT_OPTIONS.find((o) => o.value === sort.order)?.label.toLowerCase() ?? sort.order;
-      replace(browseStatus, `Showing ${formatNumber(browse.cards.length)} of ${formatNumber(browse.total ?? browse.cards.length)} cards, by ${label}.`);
+      const name = SORT_OPTIONS.find((o) => o.value === sort.order)?.label ?? sort.order;
+      const label = name[0].toLowerCase() + name.slice(1);
+      replace(browseStatus, `Showing ${formatNumber(browse.cards.length)} of ${formatNumber(browse.total ?? browse.cards.length)} cards, sorted by ${label}.`);
       announce(`Showing ${browse.cards.length} of ${browse.total} cards.`);
     } catch (e) {
       if (e.kind === "cancelled") {

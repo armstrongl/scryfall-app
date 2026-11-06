@@ -233,6 +233,18 @@ async function details(b, width, name, check) {
   })()`));
   check("details sheet has a Show rulings button", await ev(`[...document.querySelectorAll("dialog[open] button")].some((x) => x.textContent.trim() === "Show rulings")`));
   check("focus starts inside the sheet", await ev(`document.querySelector("dialog[open]")?.contains(document.activeElement) ?? false`));
+  // Rulings: one request per card, even if the sheet is reopened while it runs.
+  await ev(clickText("dialog[open] button", "Show rulings"));
+  await ev(clickText("dialog[open] button", "Close"));
+  await ev(`document.querySelector(".results .tile button[aria-label^='Details for']").click()`);
+  await until(`!document.querySelector("dialog[open] .rulings button")`, 10000);
+  check("rulings are requested once per card", (await ev(`performance.getEntriesByType("resource").filter((r) => r.name.includes("/rulings")).length`)) === 1,
+    await ev(`performance.getEntriesByType("resource").filter((r) => r.name.includes("/rulings")).length`));
+  check("rulings show after reopening", await ev(`!!document.querySelector("dialog[open] .rulings ul, dialog[open] .rulings .hint")`));
+  await ev(`document.querySelector(".results .tile button[aria-label^='Details for']").focus()`);
+  await ev(clickText("dialog[open] button", "Close"));
+  await ev("document.activeElement.click()");
+  await sleep(300);
   await key("Escape", 27);
   await sleep(300);
   check("Escape closes the sheet and returns focus", (await ev(`document.querySelectorAll("dialog").length === 0`)) && (await ev(FOCUS)) === opener, await ev(FOCUS));
@@ -319,6 +331,11 @@ async function lists(b, check) {
   await ev(clickText("#view-lists button", "Export for Arena"));
   await sleep(300);
   check("export text has the card", /^1 \S/.test(await ev(`document.querySelector("textarea[aria-label='Arena deck text']")?.value ?? ""`)));
+  await ev(clickText("#view-lists button", "More"));
+  await ev(clickText("#list-more button", "Refresh card data"));
+  await until(`!/Refreshing/.test(document.querySelector("#view-lists").textContent)`, 15000);
+  await sleep(300);
+  check("after More, then Refresh, focus goes back to More", await ev(`document.activeElement?.id === "list-more-btn"`), await ev(FOCUS));
   await ev(setValue("#kind-select", "deck", "change"));
   await sleep(500);
   check("deck stats show for a deck", await ev(`!!document.querySelector(".deck-stats .curve")`));

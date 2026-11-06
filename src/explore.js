@@ -69,7 +69,7 @@ const isType = (re) => (f) => re.test(f.types);
 
 /**
  * @typedef {{phrase: string, query: string}} Side
- * @typedef {{id: string, why: string, noMore?: boolean, payoffReason?: string, payoff: Side, enabler: Side, isPayoff: (f: any) => boolean, isEnabler: (f: any) => boolean}} Theme
+ * @typedef {{id: string, why: string, noMore?: boolean, payoffReason?: string, enablerReason?: string, payoff: Side, enabler: Side, isPayoff: (f: any) => boolean, isEnabler: (f: any) => boolean}} Theme
  * @type {Theme[]}
  */
 const THEMES = [
@@ -155,6 +155,7 @@ const THEMES = [
     // with enter abilities aren't a synergy on their own.
     noMore: true,
     payoffReason: "This creature has an enter ability. Blinking it uses that ability again.",
+    enablerReason: "This card blinks creatures. These creatures have enter abilities to use again.",
     payoff: { phrase: "have enter abilities", query: 't:creature o:"when ~ enters"' },
     enabler: { phrase: "blink your creatures to use enter abilities again", query: "(otag:blink or otag:flicker)" },
     isPayoff: (f) => /\bcreature\b/.test(f.types) && /\bwhen(?:ever)? ~ enters\b/.test(f.lower),
@@ -215,6 +216,7 @@ const THEMES = [
     // for mana aren't ramp.
     noMore: true,
     payoffReason: "This is a big spell. Ramp helps you cast it sooner.",
+    enablerReason: "This card ramps your mana. These big spells make the most of it.",
     payoff: { phrase: "are big spells to ramp into", query: "mv>=6 -t:land" },
     enabler: { phrase: "help you cast big spells sooner (ramp)", query: "otag:ramp" },
     isPayoff: (f) => f.manaValue >= 6 && !/\bland\b/.test(f.types),
@@ -326,7 +328,7 @@ export function explore(snapshot) {
       addSyn({ id: `${t.id}-more`, label: cardsThat(colors, t.payoff.phrase), reason: `This card cares about ${t.why}. These cards care about it too.${inColors}`, query: t.payoff.query, colors: "card" });
       addSyn({ id: `${t.id}-enablers`, label: cardsThat(colors, t.enabler.phrase), reason: `This card cares about ${t.why}. These cards feed it.${inColors}`, query: t.enabler.query, colors: "card" });
     } else if (enabler) {
-      addSyn({ id: `${t.id}-payoffs`, label: cardsThat(colors, t.payoff.phrase), reason: `This card gives you ${t.why}. These cards reward that.${inColors}`, query: t.payoff.query, colors: "card" });
+      addSyn({ id: `${t.id}-payoffs`, label: cardsThat(colors, t.payoff.phrase), reason: `${t.enablerReason ?? `This card gives you ${t.why}. These cards reward that.`}${inColors}`, query: t.payoff.query, colors: "card" });
     }
   }
   for (const sub of mentionedSubtypes(f.text)) {

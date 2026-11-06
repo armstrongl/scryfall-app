@@ -130,7 +130,7 @@ The app was renamed Brewmancer and rebuilt around its owner. The process: an int
 
 ## Tests
 
-- Unit tests: `npm test` runs 151 tests. All pass. New test files: `tests/explore.test.js`, `tests/glossary.test.js`, and `tests/overhaul.test.js` (saved index, deck stats, browse, and links). There are also new tests in the existing files: card snapshots, Brawl deck checks, formats and the commander section, backup schema 2, Brawl export, color identity, filter chips, settings, and the client's sort direction and rulings.
+- Unit tests: `npm test` runs 153 tests. All pass. New test files: `tests/explore.test.js`, `tests/glossary.test.js`, and `tests/overhaul.test.js` (saved index, deck stats, browse, and links). There are also new tests in the existing files: card snapshots, Brawl deck checks, formats and the commander section, backup schema 2, Brawl export, color identity, filter chips, settings, and the client's sort direction and rulings.
 - New fixtures, all real API responses: a search page with more pages (`search-page.json`), rulings, a legendary creature, a planeswalker, a landfall creature, an enchantment payoff, and a flier.
 - Browser checks: `node scripts/check-ui.mjs`. They cover the name, nerd mode, the header at phone width, filters and chips, the Arena Brawl preset, draw, the card image rules, the saved marker, the details sheet and its focus, the inspector, Explore tabs and keyboard use, the trip to Browse, Browse sort order and status, Export for Arena, Open on Scryfall, deck stats, Brawl checks and the Commander section, Remove and Undo, and that nothing floats over the page. All checks pass at 390 px and 1280 px, in light and dark mode.
 - Review: an independent reviewer (Opus) read the branch and found 16 problems and 5 glossary errors. There were no hard-rule violations. Each fix started with a failing test:
@@ -147,7 +147,15 @@ The app was renamed Brewmancer and rebuilt around its owner. The process: an int
   - No limit on the page cache.
 
   The reveal animation now leaves the image alone. Only the frame's glow and the caption animate.
-- Written first: the unit tests for every new pure module and logic change, and the browser checks for the new interface. Each of them was run and failed before the code existed. Written after the code: the Arena Brawl preset check, and the check that Dismiss moves focus to the heading. I broke each of them on purpose to see the check fail, then restored the code. The check that nothing floats over the page was written before the fix, but the first run stopped before reaching it. To see it fail, I made the toast fixed again, then restored it. The tab bar checks were tightened after a bug: the first check tested only `position: fixed`, and the bar sat at the top of the screen. The stricter checks failed before the fix.
+
+  A second review pass confirmed the fixes and found four small problems the fixes introduced:
+  - Focus after More, then Refresh.
+  - The reason text for blink and ramp cards.
+  - Basic land types with a colorless commander.
+  - A rulings request that could be sent twice.
+
+  Each of them is now fixed and tested.
+- Written first: the unit tests for every new pure module and logic change, and the browser checks for the new interface. Each of them was run and failed before the code existed. Written after the code: the Arena Brawl preset check, the check that Dismiss moves focus to the heading, and the check that rulings are requested once per card. I broke each of them on purpose to see the check fail, then restored the code. The check that nothing floats over the page was written before the fix, but the first run stopped before reaching it. To see it fail, I made the toast fixed again, then restored it. The tab bar checks were tightened after a bug: the first check tested only `position: fixed`, and the bar sat at the top of the screen. The stricter checks failed before the fix.
 
 ## Known problems after the overhaul
 

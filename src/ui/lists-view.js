@@ -199,6 +199,7 @@ export function createListsView(app) {
     const moreMenu = h("div", { id: "list-more", class: "more-menu", hidden: true }, renameBtn, refreshBtn, deleteBtn);
     const moreBtn = h("button", {
       type: "button",
+      id: "list-more-btn",
       class: "ghost",
       "aria-expanded": "false",
       "aria-controls": "list-more",
@@ -456,6 +457,8 @@ export function createListsView(app) {
       .filter((c) => !c.disabled && c.getClientRects().length > 0);
   }
   function describe(node) {
+    // The More menu closes on re-render, so its buttons go back to More.
+    if (node.closest("#list-more")) return { rowId: null, id: "list-more-btn", controlIndex: -1 };
     const row = node.closest("li");
     const rowId = row?.dataset.entryId ?? null;
     return { rowId, id: node.id || null, controlIndex: focusable(row ?? el).indexOf(node) };

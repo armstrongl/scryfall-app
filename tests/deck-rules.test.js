@@ -153,3 +153,10 @@ test("cards that allow up to seven copies are checked against seven", () => {
   assert.ok(!codes(checkDeck(deck([[dwarf, 7], [forest, 53]]))).includes("copies"));
   assert.ok(codes(checkDeck(deck([[dwarf, 8], [forest, 52]]))).includes("copies"));
 });
+
+test("Brawl: a colorless commander allows Wastes, and snow and regular basics of one type", () => {
+  const colorless = snap("card-legendary", { colorIdentity: [] });
+  const wastes = snap("card-basic-land", { name: "Wastes", frontName: "Wastes", oracleId: "wastes", scryfallId: "w", colorIdentity: [], typeLine: "Basic Land" });
+  const r = checkDeck(brawl([[colorless, 1, "commander"], [forest, 49], [snap("card-snow-basic"), 40], [wastes, 10]]));
+  assert.ok(!r.results.some((x) => x.code === "identity"), r.results.map((x) => x.message).join(" | "));
+});

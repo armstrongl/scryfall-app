@@ -185,7 +185,12 @@ function checkBrawl(list) {
   // number of basic lands of one basic land type (Brawl rules).
   if (commanders.length > 0) {
     const identity = new Set(commanders.flatMap((e) => e.card.colorIdentity ?? []));
-    const basicTypes = new Set(deck.filter((e) => e.section !== "commander" && e.card.isBasicLand).map((e) => cardKey(e.card)));
+    // Count basic land types (Forest, Plains, …), so a Forest and a
+    // Snow-Covered Forest are one type. Wastes has no type and no color, so
+    // it never needs this exception.
+    const basicTypes = new Set(deck
+      .filter((e) => e.section !== "commander" && e.card.isBasicLand && (e.card.colorIdentity ?? []).length > 0)
+      .map((e) => (e.card.typeLine ?? "").split("—")[1]?.trim() ?? cardKey(e.card)));
     const colorlessBasicsOk = identity.size === 0 && basicTypes.size <= 1;
     const reported = new Set();
     for (const e of deck) {

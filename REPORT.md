@@ -99,3 +99,77 @@ Not checked: a real phone, Safari, a screen reader, and the reduced-motion setti
 3. Confirm in Arena that cards with a flavor name (for example Through the Omenpaths and Marvel printings) import by their oracle name.
 4. Choose an app name. Change it in the places that the README lists.
 5. Test on an iPhone: add the app to the Home Screen and confirm that lists stay.
+
+# Design overhaul: Brewmancer (November 2026)
+
+The app was renamed Brewmancer and rebuilt around its owner. The process: an interview and a use session with the owner, six research agents, and an independent review. The research covered the tools she uses, what she might want, UI and UX practice, platform needs, an audit of v1, and the Scryfall API. `docs/owner-profile.md` records what she asked for and where each request is in the app. The working files (research, screenshots, and the plan) are in `.artifacts/design-overhaul/`, which git ignores.
+
+## What changed
+
+| Area | Change |
+| --- | --- |
+| Name and look | New name, icon colors, and a playful violet and teal look with rounded type. Card frames glow in the card's colors. The glow is on the frame around the image, never on the image. |
+| Nerd mode | A switch in the header. Cards show mana value, stats, set, release date, price, EDHREC rank, and legality in Standard and Brawl. Explore shows its Scryfall queries. |
+| Discover | Filter chips with remove buttons, and filters behind a Filters button. **Draw random** or **Browse all**: Browse lists every match in one of 11 orders, 175 cards at a time, with Load more. The first page in name order comes from the pool count, so that page costs no extra request. |
+| Card details | A details sheet, and on screens 1200 px and wider, an inspector beside the results that follows the pointer or keyboard focus. They show rules text, a keyword glossary with MTG Wiki links, rulings on request, legality, printing, prices, buy links, and related links. Pointing at a card sends no request. |
+| Explore | Replaces Find synergies. Three tabs: Synergies (for example "Green cards that leverage landfall"), Similar, and Counters. Searches combine Scryfall Tagger tags with keyword and rules-text terms. Search opens the results in Browse, most popular first. |
+| Saved marker | Every card shows "Saved in" and the list name when one of the owner's lists holds it, in any printing. |
+| Lists | Export for Arena is the main button. Open on Scryfall opens a list (in parts for long lists). Rename, Refresh, and Delete are under More. Lists are collections or decks, and decks have a format: Standard, Standard Brawl, or Brawl. Brawl checks cover the commander, size, singleton, color identity, and legality. The Arena export for Brawl writes Commander and Deck blocks. Deck stats show the curve, colored mana symbols, and types. Remove leaves an Undo row where the card was. |
+| Presets | A second built-in preset: Arena Brawl, with color identity. |
+| Data | Snapshots keep detail fields (legalities, keywords, prices, buy links, and more). Backups are schema 2, and schema 1 backups still import. The IndexedDB schema didn't change. |
+
+## Decisions
+
+1. **Nothing floats over the page.** The research recommended a bottom tab bar on phones and a floating toast. Both would cover card images while the page scrolls, which v1 ruled out (item 10 above). The phone tabs are a row in the header, and the toast is in the page flow. The only sticky element is the inspector, which sits in its own column beside the cards. A browser check fails if anything else is fixed or sticky.
+2. **Tagger tags with fallbacks.** Scryfall Tagger tags make synergy searches much tighter. For example, `otag:landfall c:g` found 46 cards in Standard on Arena, against 37 for `kw:landfall`. Tags are community data, so each search ORs the tag with keyword or rules-text terms, and every tag the app uses was checked live. `scripts/check-api.mjs` checks them again.
+3. **Explore results open in Browse, sorted by EDHREC rank.** A synergy search is a list to look through, not a lottery. EDHREC rank measures paper Commander popularity, which is a rough guide for Arena.
+4. **Counters ignore color.** Answers can come from any color, and the owner can add a color filter.
+5. **Rulings load on request.** One request per card, cached for the session, so pointing at cards never sends requests.
+6. **Brawl rules.** Brawl is Arena's 100-card format (Scryfall key `brawl`), and Standard Brawl is 60 cards (`standardbrawl`). The commander must be a legendary creature or planeswalker, or a card that says it can be a commander. The sideboard isn't exported for Brawl. On 2026-11-05 the API listed no rebalanced card as legal in Brawl.
+7. **The glossary is short text, with links.** Each entry follows reminder text or the Comprehensive Rules, shortened. The details also link to the MTG Wiki and show the card's official rulings.
+
+## Tests
+
+- Unit tests: `npm test` runs 153 tests. All pass. New test files: `tests/explore.test.js`, `tests/glossary.test.js`, and `tests/overhaul.test.js` (saved index, deck stats, browse, and links). There are also new tests in the existing files: card snapshots, Brawl deck checks, formats and the commander section, backup schema 2, Brawl export, color identity, filter chips, settings, and the client's sort direction and rulings.
+- New fixtures, all real API responses: a search page with more pages (`search-page.json`), rulings, a legendary creature, a planeswalker, a landfall creature, an enchantment payoff, and a flier.
+- Browser checks: `node scripts/check-ui.mjs`. They cover the name, nerd mode, the header at phone width, filters and chips, the Arena Brawl preset, draw, the card image rules, the saved marker, the details sheet and its focus, the inspector, Explore tabs and keyboard use, the trip to Browse, Browse sort order and status, Export for Arena, Open on Scryfall, deck stats, Brawl checks and the Commander section, Remove and Undo, and that nothing floats over the page. All checks pass at 390 px and 1280 px, in light and dark mode.
+- Review: an independent reviewer (Opus) read the branch and found 16 problems and 5 glossary errors. There were no hard-rule violations. Each fix started with a failing test:
+  - Settings lost on every storage round trip.
+  - Draws and Browse loads not cancelled on a mode switch.
+  - Sorts mixed while a page was loading.
+  - Cancelled requests overwriting newer ones.
+  - Standard decks exporting in Brawl shape.
+  - Focus lost after re-renders.
+  - Wrong blink and ramp suggestions, and loose patterns for spells, removal, mana lands, and indestructible.
+  - Missing Brawl rules: colorless commanders and "up to seven" cards.
+  - Inspector and details focus.
+  - Explore overwriting the saved sort.
+  - No limit on the page cache.
+
+  The reveal animation now leaves the image alone. Only the frame's glow and the caption animate.
+
+  A second review pass confirmed the fixes and found four small problems the fixes introduced:
+  - Focus after More, then Refresh.
+  - The reason text for blink and ramp cards.
+  - Basic land types with a colorless commander.
+  - A rulings request that could be sent twice.
+
+  Each of them is now fixed and tested.
+- Written first: the unit tests for every new pure module and logic change, and the browser checks for the new interface. Each of them was run and failed before the code existed. Written after the code: the Arena Brawl preset check, the check that Dismiss moves focus to the heading, and the check that rulings are requested once per card. I broke each of them on purpose to see the check fail, then restored the code. The check that nothing floats over the page was written before the fix, but the first run stopped before reaching it. To see it fail, I made the toast fixed again, then restored it. The tab bar checks were tightened after a bug: the first check tested only `position: fixed`, and the bar sat at the top of the screen. The stricter checks failed before the fix.
+
+## Known problems after the overhaul
+
+- Explore suggestions come from patterns in rules text plus community tags. Some are loose, and new mechanics may have no pattern yet. Each search shows its query in nerd mode, so the owner can adjust it.
+- Similar cards uses role, keywords, and type plus cost. It doesn't know a card's own Tagger tags, because those are only in a 6 MB bulk file. Loading that file could make Similar and Synergies much better. See `.artifacts/design-overhaul/research/R6-api.md`.
+- Browse loads 175 cards a page, one request a page, so a big pool takes several Load more steps. Changing the sort reloads from page 1.
+- Saved cards from v1 lack the detail fields. Their details show a note, and the Brawl checks say so, until the owner selects Refresh card data.
+- The inspector appears only at 1200 px and wider. On an iPad in portrait, use Details.
+- Prices are as of the moment the card was fetched. Saved cards keep old prices until a refresh.
+- The repository name still contains "Scryfall". See the v1 problem above.
+
+## Tasks for the owner (overhaul)
+
+1. Import a Brawl export into MTG Arena, and confirm that Arena accepts the `Commander` and `Deck` headers.
+2. Try the app on the iPhone and iPad, with the app on the Home Screen.
+3. Answer the open questions at the end of `docs/owner-profile.md`.
+4. Consider renaming the repository, for example to `brewmancer`, before turning on GitHub Pages. The README's Pages steps are unchanged.

@@ -132,6 +132,8 @@ export function createClient(options = {}) {
     try {
       body = await res.json();
     } catch {
+      // A cancel can land while the body is being read.
+      if (item.signal?.aborted) return { error: cancelled() };
       body = null;
     }
     if (res.ok && body) return { body };
@@ -217,15 +219,24 @@ export function createClient(options = {}) {
     },
     /**
      * @param {string} q
-     * @param {{unique?: string, order?: string, page?: number}} [params]
+     * @param {{unique?: string, order?: string, dir?: string, page?: number}} [params]
      * @param {AbortSignal} [signal]
      */
     search(q, params = {}, signal) {
       const sp = new URLSearchParams({ q });
       if (params.unique) sp.set("unique", params.unique);
       if (params.order) sp.set("order", params.order);
+      if (params.dir && params.dir !== "auto") sp.set("dir", params.dir);
       if (params.page) sp.set("page", String(params.page));
       return request(`/cards/search?${sp.toString()}`, { signal });
+    },
+    /**
+     * Official rulings for a card.
+     * @param {string} scryfallId
+     * @param {AbortSignal} [signal]
+     */
+    rulings(scryfallId, signal) {
+      return request(`/cards/${encodeURIComponent(scryfallId)}/rulings`, { signal });
     },
     /**
      * Gets cards by Scryfall ID, COLLECTION_BATCH_SIZE IDs per request.

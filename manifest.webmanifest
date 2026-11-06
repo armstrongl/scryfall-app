@@ -1,16 +1,33 @@
 {
-  "name": "Card discovery",
-  "short_name": "Cards",
-  "description": "Find random Magic: The Gathering cards and build Standard decks for MTG Arena.",
+  "name": "Brewmancer",
+  "short_name": "Brewmancer",
+  "description": "Discover Magic: The Gathering cards, see how they work together, and build Standard and Brawl decks for MTG Arena.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#16181d",
-  "theme_color": "#16181d",
+  "background_color": "#13101c",
+  "theme_color": "#13101c",
   "icons": [
-    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
-    { "src": "icons/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
-    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml" }
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
   ]
 }

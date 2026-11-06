@@ -1,6 +1,6 @@
 // Turns a Criteria object into a Scryfall query string. Pure module.
 
-import { CARD_TYPES, COLORS, FORMAT_KEYS, MAX_QUERY_LENGTH, RARITIES } from "./config.js";
+import { CARD_TYPES, COLORS, COLOR_NAMES, FORMAT_KEYS, FORMAT_NAMES, MAX_QUERY_LENGTH, RARITIES } from "./config.js";
 
 /**
  * @typedef {Object} Criteria
@@ -10,6 +10,7 @@ import { CARD_TYPES, COLORS, FORMAT_KEYS, MAX_QUERY_LENGTH, RARITIES } from "./c
  * @property {"any"|"exactly"|"atLeast"|"atMost"} colorMode
  * @property {("w"|"u"|"b"|"r"|"g")[]} colors
  * @property {boolean} colorless
+ * @property {boolean} useIdentity Filter by color identity (id) instead of color (c), for Commander and Brawl.
  * @property {string[]} types
  * @property {string} typeText
  * @property {number|null} mvMin
@@ -29,6 +30,7 @@ export function defaultCriteria() {
     colorMode: "any",
     colors: [],
     colorless: false,
+    useIdentity: false,
     types: [],
     typeText: "",
     mvMin: null,
@@ -75,6 +77,7 @@ export function normalizeCriteria(input) {
     colorMode: COLOR_MODES.includes(input.colorMode) ? input.colorMode : d.colorMode,
     colors: pick(input.colors, COLORS),
     colorless: input.colorless === true,
+    useIdentity: input.useIdentity === true,
     types: pick(input.types, CARD_TYPES),
     typeText: str(input.typeText),
     mvMin: toWholeNumber(input.mvMin),
@@ -146,11 +149,12 @@ export function buildQuery(input) {
   if (c.game) parts.push(`game:${c.game}`);
   if (c.excludeRebalanced) parts.push("-is:rebalanced");
 
+  const colorKey = c.useIdentity ? "id" : "c";
   if (c.colorless) {
-    parts.push("c=c");
+    parts.push(`${colorKey}=c`);
   } else if (c.colorMode !== "any" && c.colors.length > 0) {
     const letters = COLORS.filter((x) => c.colors.includes(x)).join("");
-    parts.push(`c${OPERATORS[c.colorMode]}${letters}`);
+    parts.push(`${colorKey}${OPERATORS[c.colorMode]}${letters}`);
   } else if (c.colorMode !== "any" && c.colors.length === 0) {
     hints.push({ field: "colors", message: "Choose at least one color, or set the color mode to Any." });
   } else if (c.colorMode === "any" && c.colors.length > 0) {
@@ -188,6 +192,56 @@ export function buildQuery(input) {
     error = `The query has ${length} characters. Scryfall accepts at most ${MAX_QUERY_LENGTH}. Remove some criteria and try again.`;
   }
   return { query, hints, error };
+}
+
+const GAME_LABELS = { arena: "On Arena", mtgo: "On MTGO", paper: "In paper" };
+const MODE_LABELS = { exactly: "Exactly", atLeast: "At least", atMost: "At most" };
+
+function joinOr(words) {
+  if (words.length <= 1) return words.join("");
+  return `${words.slice(0, -1).join(", ")} or ${words.at(-1)}`;
+}
+function joinAnd(words) {
+  if (words.length <= 1) return words.join("");
+  if (words.length === 2) return `${words[0]} and ${words[1]}`;
+  return `${words.slice(0, -1).join(", ")}, and ${words.at(-1)}`;
+}
+const cap = (s) => (s ? s[0].toUpperCase() + s.slice(1) : s);
+const short = (s, n = 40) => ([...s].length > n ? `${[...s].slice(0, n - 1).join("")}…` : s);
+
+/**
+ * One chip for each active filter, in query order. `clear` is the change
+ * to the criteria that removes the filter.
+ * @param {Criteria} input
+ * @returns {{id: string, label: string, clear: Partial<Criteria>}[]}
+ */
+export function filterChips(input) {
+  const c = normalizeCriteria(input);
+  const chips = [];
+  if (c.format) chips.push({ id: "format", label: FORMAT_NAMES[c.format] ?? c.format, clear: { format: null } });
+  if (c.game) chips.push({ id: "game", label: GAME_LABELS[c.game], clear: { game: null } });
+  if (c.excludeRebalanced) chips.push({ id: "excludeRebalanced", label: "No rebalanced cards", clear: { excludeRebalanced: false } });
+  const prefix = c.useIdentity ? "Color identity " : "";
+  if (c.colorless) {
+    chips.push({ id: "colors", label: `${prefix}colorless`.replace(/^c/, "C"), clear: { colorless: false } });
+  } else if (c.colorMode !== "any" && c.colors.length > 0) {
+    const names = COLORS.filter((x) => c.colors.includes(x)).map((x) => COLOR_NAMES[x].toLowerCase());
+    const mode = MODE_LABELS[c.colorMode];
+    chips.push({ id: "colors", label: cap(`${prefix}${prefix ? mode.toLowerCase() : mode} ${joinAnd(names)}`), clear: { colors: [], colorMode: "any" } });
+  }
+  if (c.types.length) chips.push({ id: "types", label: cap(joinOr(CARD_TYPES.filter((t) => c.types.includes(t)))), clear: { types: [] } });
+  if (c.typeText.trim()) chips.push({ id: "typeText", label: `Type: ${short(c.typeText.trim())}`, clear: { typeText: "" } });
+  if (c.mvMin !== null || c.mvMax !== null) {
+    const label = c.mvMin !== null && c.mvMax !== null
+      ? (c.mvMin === c.mvMax ? `Mana value ${c.mvMin}` : `Mana value ${c.mvMin} to ${c.mvMax}`)
+      : c.mvMin !== null ? `Mana value ${c.mvMin} or more` : `Mana value ${c.mvMax} or less`;
+    chips.push({ id: "mv", label, clear: { mvMin: null, mvMax: null } });
+  }
+  if (c.rarities.length) chips.push({ id: "rarities", label: cap(joinOr(RARITIES.filter((r) => c.rarities.includes(r)))), clear: { rarities: [] } });
+  if (c.keyword.trim()) chips.push({ id: "keyword", label: `Keyword: ${short(c.keyword.trim())}`, clear: { keyword: "" } });
+  if (c.oracleText.trim()) chips.push({ id: "oracleText", label: `Text: ${short(c.oracleText.trim())}`, clear: { oracleText: "" } });
+  if (c.rawQuery.trim()) chips.push({ id: "rawQuery", label: `Raw query: ${short(c.rawQuery.trim())}`, clear: { rawQuery: "" } });
+  return chips;
 }
 
 /** @param {string} query */

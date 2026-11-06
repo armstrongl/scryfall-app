@@ -1,18 +1,26 @@
-// The Lists view: list index and list detail, with deck checks, Arena
-// export, and refresh of card data.
+// The Lists view: list index and list detail, with deck checks, deck stats,
+// Arena export, Open on Scryfall, and refresh of card data.
 
-import { BACKUP_REMINDER_DAYS, SECTION_NAMES, SECTIONS } from "../config.js";
+import { BACKUP_REMINDER_DAYS, DECK_FORMAT_NAMES, DECK_FORMATS, SECTION_NAMES } from "../config.js";
 import { makeSnapshot } from "../cards.js";
 import { checkDeck } from "../deck-rules.js";
 import { arenaText, needsBackupReminder } from "../export.js";
 import {
-  applyRefresh, createList, groupBySection, removeEntry, renameList, scryfallIds, setKind,
-  totalQuantity, updateEntry,
+  applyRefresh, createList, groupBySection, isBrawlFormat, removeEntry, renameList, restoreEntry, scryfallIds,
+  sectionsFor, setFormat, setKind, totalQuantity, updateEntry,
 } from "../lists.js";
+import { scryfallListUrls } from "../links.js";
+import { deckStats } from "../stats.js";
 import { errorMessage } from "../scryfall.js";
-import { cardMedia } from "./card-view.js";
-import { openSynergyPanel } from "./synergy-panel.js";
+import { cardMedia, glowClass, manaCost } from "./card-view.js";
+import { openDetails } from "./details.js";
+import { openExplore } from "./explore-panel.js";
+import { openAddPanel } from "./add-panel.js";
 import { announce, confirmBox, copyText, field, formatDate, h, message, plural, replace } from "./dom.js";
+
+const KIND_LABEL = (list) => (list.kind === "deck" ? `${DECK_FORMAT_NAMES[list.format] ?? "Standard"} deck` : "Collection");
+const COLOR_ORDER = ["W", "U", "B", "R", "G"];
+const TYPE_LABELS = { creature: "Creatures", planeswalker: "Planeswalkers", battle: "Battles", instant: "Instants", sorcery: "Sorceries", artifact: "Artifacts", enchantment: "Enchantments", land: "Lands", other: "Other" };
 
 /** @param {import("../main.js").App} app */
 export function createListsView(app) {
@@ -21,17 +29,31 @@ export function createListsView(app) {
   const notFoundByList = new Map();
   let sortBy = "name";
   let refreshing = null;
+  /** The last removed entry of a list, shown as an Undo row where it was. */
+  const removedByList = new Map();
+  let focusUndo = false;
 
   function reminder() {
     return needsBackupReminder(app.settings, Date.now(), BACKUP_REMINDER_DAYS)
-      ? h("p", { class: "msg msg-warn" }, "Your lists changed since your last backup. ", h("a", { href: "#data", text: "Export a backup" }), " so you don't lose them.")
+      ? h("p", { class: "msg msg-warn" }, "Your lists changed since your last backup. ", h("a", { href: "#data", text: "Back up your data" }), " so you don't lose them.")
       : null;
+  }
+
+  /** Colored dots for the colors in a list. */
+  function listPips(list) {
+    const colors = new Set(list.entries.flatMap((e) => e.card.colorIdentity ?? []));
+    return h("span", { class: "list-pips", "aria-hidden": "true" },
+      COLOR_ORDER.filter((c) => colors.has(c)).map((c) => h("span", { class: `pip pip-${c.toLowerCase()}`, text: c })));
   }
 
   // Index --------------------------------------------------------------------
   function renderIndex() {
     const name = h("input", { type: "text", required: true, autocomplete: "off" });
-    const kind = h("select", {}, h("option", { value: "collection", text: "Collection" }), h("option", { value: "deck", text: "Deck (Standard)" }));
+    const kind = h("select", { onchange: () => { formatField.hidden = kind.value !== "deck"; } },
+      h("option", { value: "collection", text: "Collection" }), h("option", { value: "deck", text: "Deck" }));
+    const format = h("select", {}, DECK_FORMATS.map((f) => h("option", { value: f, text: DECK_FORMAT_NAMES[f] })));
+    const formatField = field("Format", format);
+    formatField.hidden = true;
     const err = h("div");
     const createForm = h("form", {
       class: "panel-box",
@@ -43,7 +65,7 @@ export function createListsView(app) {
           name.focus();
           return;
         }
-        const list = createList(name.value, kind.value);
+        const list = createList(name.value, kind.value, undefined, format.value);
         if (await app.saveList(list)) {
           announce(`Made the list ${list.name}.`);
           location.hash = `#lists/${list.id}`;
@@ -51,13 +73,15 @@ export function createListsView(app) {
       },
     },
     h("h2", { id: "new-list-title", text: "New list" }),
-    h("div", { class: "grid-2" }, field("Name", name), field("Kind", kind)),
+    h("div", { class: "grid-3" }, field("Name", name), field("Kind", kind), formatField),
     err,
     h("button", { type: "submit", class: "primary", text: "Make list" }));
 
     const lists = app.lists.slice().sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
     replace(el,
-      h("h1", { id: "lists-title", class: "view-title", text: "Lists" }),
+      h("div", { class: "view-head" },
+        h("h1", { id: "lists-title", class: "view-title", tabindex: "-1", text: "Lists" }),
+        h("p", { class: "tagline", text: "Collections, decks, and brews in progress." })),
       app.storageOk ? null : message("warn", "Storage is not available in this browser window. Lists are lost when you close the page."),
       reminder(),
       lists.length === 0
@@ -66,7 +90,10 @@ export function createListsView(app) {
           h("li", {},
             h("a", { href: `#lists/${l.id}`, class: "list-link" },
               h("span", { class: "row-title", text: l.name }),
-              h("span", { class: "hint", text: `${l.kind === "deck" ? "Deck" : "Collection"} · ${plural(totalQuantity(l.entries), "card")} · changed ${formatDate(l.updatedAt)}` }))))),
+              h("span", { class: "list-meta" },
+                h("span", { class: "badge", text: KIND_LABEL(l) }),
+                listPips(l),
+                h("span", { class: "hint", text: `${plural(totalQuantity(l.entries), "card")} · changed ${formatDate(l.updatedAt)}` })))))),
       createForm);
   }
 
@@ -75,7 +102,7 @@ export function createListsView(app) {
     const list = app.lists.find((l) => l.id === listId);
     if (!list) {
       replace(el,
-        h("h1", { id: "lists-title", class: "view-title", text: "List not found" }),
+        h("h1", { id: "lists-title", class: "view-title", tabindex: "-1", text: "List not found" }),
         h("p", {}, "This list does not exist. ", h("a", { href: "#lists", text: "Go to all lists" }), "."));
       return;
     }
@@ -88,44 +115,13 @@ export function createListsView(app) {
       }
       return false;
     };
+    const isDeck = list.kind === "deck";
+    const brawl = isDeck && isBrawlFormat(list.format);
 
-    // Header actions.
-    const renameBtn = h("button", {
-      type: "button",
-      text: "Rename",
-      onclick: () => {
-        const input = h("input", { type: "text", required: true, value: list.name, autocomplete: "off" });
-        const err = h("div");
-        replace(slot, h("form", {
-          class: "inline-form",
-          onsubmit: async (e) => {
-            e.preventDefault();
-            if (!input.value.trim()) return replace(err, message("error", "Enter a name for the list."));
-            await save(renameList(list, input.value), `Renamed the list to ${input.value.trim()}.`);
-          },
-        }, field("New name", input), err, h("div", { class: "row" },
-          h("button", { type: "submit", class: "primary", text: "Rename" }),
-          h("button", { type: "button", text: "Cancel", onclick: () => { slot.replaceChildren(); renameBtn.focus(); } }))));
-        input.focus();
-      },
-    });
-    const kindSelect = h("select", {
-      onchange: () => save(setKind(list, kindSelect.value), `The list is now a ${kindSelect.value}.`),
-    }, h("option", { value: "collection", text: "Collection", selected: list.kind === "collection" }),
-    h("option", { value: "deck", text: "Deck (Standard)", selected: list.kind === "deck" }));
-    const sortSelect = h("select", {
-      onchange: () => { sortBy = sortSelect.value; renderDetail(list.id); focusById("sort-select"); },
-      id: "sort-select",
-    }, [["name", "Name"], ["manaValue", "Mana value"], ["type", "Type"]].map(([v, t]) => h("option", { value: v, text: t, selected: sortBy === v })));
-
-    const refreshBtn = h("button", {
-      type: "button",
-      text: refreshing === list.id ? "Refreshing…" : "Refresh card data",
-      disabled: refreshing !== null || list.entries.length === 0,
-      onclick: () => refresh(list.id),
-    });
+    // Main actions.
     const exportBtn = h("button", {
       type: "button",
+      class: "primary",
       text: "Export for Arena",
       disabled: list.entries.length === 0,
       onclick: () => {
@@ -140,13 +136,49 @@ export function createListsView(app) {
             announce(ok ? "Copied the deck text." : "Can't copy automatically. The text is selected, so copy it by hand.");
           },
         });
-        replace(slot, h("div", { class: "panel-box" },
-          h("h2", { text: "Arena export" }),
-          h("p", { class: "hint", text: "In MTG Arena, open Decks, then select Import. The maybe section is not exported." }),
+        replace(slot, h("section", { class: "panel-box", "aria-labelledby": "export-title" },
+          h("h2", { id: "export-title", text: "Export for Arena" }),
           area,
+          h("p", { class: "hint", text: brawl
+            ? "In MTG Arena, open Decks, then select Import. The app writes a Commander block and a Deck block. The maybe section and the sideboard are not exported."
+            : "In MTG Arena, open Decks, then select Import. The maybe section is not exported." }),
           h("div", { class: "row" }, copy, h("button", { type: "button", text: "Close", onclick: () => { slot.replaceChildren(); exportBtn.focus(); } }))));
         copy.focus();
       },
+    });
+    const urls = scryfallListUrls(list.entries.map((e) => e.card.frontName ?? e.card.name));
+    const scryfallLinks = urls.map((u, i) => h("a", {
+      href: u,
+      target: "_blank",
+      rel: "noopener",
+      class: "button",
+      text: urls.length > 1 ? `Open on Scryfall (part ${i + 1} of ${urls.length})` : "Open on Scryfall",
+    }));
+
+    const renameBtn = h("button", {
+      type: "button",
+      text: "Rename",
+      onclick: () => {
+        const input = h("input", { type: "text", required: true, value: list.name, autocomplete: "off" });
+        const err = h("div");
+        replace(slot, h("form", {
+          class: "inline-form panel-box",
+          onsubmit: async (e) => {
+            e.preventDefault();
+            if (!input.value.trim()) return replace(err, message("error", "Enter a name for the list."));
+            await save(renameList(list, input.value), `Renamed the list to ${input.value.trim()}.`);
+          },
+        }, field("New name", input), err, h("div", { class: "row" },
+          h("button", { type: "submit", class: "primary", text: "Rename" }),
+          h("button", { type: "button", text: "Cancel", onclick: () => { slot.replaceChildren(); moreBtn.focus(); } }))));
+        input.focus();
+      },
+    });
+    const refreshBtn = h("button", {
+      type: "button",
+      text: refreshing === list.id ? "Refreshing…" : "Refresh card data",
+      disabled: refreshing !== null || list.entries.length === 0,
+      onclick: () => refresh(list.id),
     });
     const deleteBtn = h("button", {
       type: "button",
@@ -161,48 +193,118 @@ export function createListsView(app) {
             location.hash = "#lists";
           }
         },
-        onCancel: () => { slot.replaceChildren(); deleteBtn.focus(); },
+        onCancel: () => { slot.replaceChildren(); moreBtn.focus(); },
       })),
     });
+    const moreMenu = h("div", { id: "list-more", class: "more-menu", hidden: true }, renameBtn, refreshBtn, deleteBtn);
+    const moreBtn = h("button", {
+      type: "button",
+      id: "list-more-btn",
+      class: "ghost",
+      "aria-expanded": "false",
+      "aria-controls": "list-more",
+      text: "More",
+      onclick: () => {
+        moreMenu.hidden = !moreMenu.hidden;
+        moreBtn.setAttribute("aria-expanded", String(!moreMenu.hidden));
+        if (!moreMenu.hidden) renameBtn.focus();
+      },
+    });
 
-    // Deck checks.
-    let checks = null;
-    if (list.kind === "deck") {
+    // Settings.
+    const kindSelect = h("select", {
+      id: "kind-select",
+      onchange: () => save(setKind(list, kindSelect.value), `The list is now a ${kindSelect.value === "deck" ? "deck" : "collection"}.`),
+    }, h("option", { value: "collection", text: "Collection", selected: list.kind === "collection" }),
+    h("option", { value: "deck", text: "Deck", selected: list.kind === "deck" }));
+    const formatSelect = h("select", {
+      id: "format-select",
+      onchange: () => save(setFormat(list, formatSelect.value), `The deck format is now ${DECK_FORMAT_NAMES[formatSelect.value]}.`),
+    }, DECK_FORMATS.map((f) => h("option", { value: f, text: DECK_FORMAT_NAMES[f], selected: list.format === f })));
+    const formatField = field("Format", formatSelect);
+    formatField.hidden = !isDeck;
+    const sortSelect = h("select", {
+      onchange: () => { sortBy = sortSelect.value; renderDetail(list.id); document.getElementById("sort-select")?.focus(); },
+      id: "sort-select",
+    }, [["name", "Name"], ["manaValue", "Mana value"], ["type", "Type"]].map(([v, t]) => h("option", { value: v, text: t, selected: sortBy === v })));
+
+    // Deck checks and stats.
+    let deckPanel = null;
+    if (isDeck) {
       const r = checkDeck(list);
-      checks = h("section", { class: "panel-box", "aria-labelledby": "checks-title" },
-        h("h2", { id: "checks-title", text: "Standard deck checks" }),
-        h("p", {}, `Main deck: ${r.mainCount}. Sideboard: ${r.sideboardCount}.`),
-        r.results.length === 0
-          ? message("ok", "The deck passes all checks.")
-          : h("ul", { class: "checks-list" }, r.results.map((x) =>
-            h("li", { class: `msg msg-${x.level === "error" ? "error" : "warn"}` }, h("strong", { text: x.level === "error" ? "Error: " : "Warning: " }), x.message))),
-        r.legalityAsOf
-          ? h("p", { class: "hint" }, `Legality as of ${formatDate(r.legalityAsOf)}. Standard changes over time. `,
-            h("button", { type: "button", class: "link", text: "Refresh card data", disabled: refreshing !== null, onclick: () => refresh(list.id) }))
-          : null);
+      const formatName = DECK_FORMAT_NAMES[list.format] ?? "Standard";
+      deckPanel = h("div", { class: "deck-panel" },
+        h("section", { class: "panel-box", "aria-labelledby": "checks-title" },
+          h("h2", { id: "checks-title", text: `${formatName} deck checks` }),
+          h("p", {}, brawl ? `Deck: ${r.mainCount} cards, counting the commander.` : `Main deck: ${r.mainCount}. Sideboard: ${r.sideboardCount}.`),
+          r.results.length === 0
+            ? message("ok", "The deck passes all checks.")
+            : h("ul", { class: "checks-list" }, r.results.map((x) =>
+              h("li", { class: `msg msg-${x.level === "error" ? "error" : "warn"}` }, h("strong", { text: x.level === "error" ? "Error: " : "Warning: " }), x.message))),
+          r.legalityAsOf
+            ? h("p", { class: "hint" }, `Legality as of ${formatDate(r.legalityAsOf)}. Formats change over time. `,
+              h("button", { type: "button", class: "link", text: "Refresh card data", disabled: refreshing !== null, onclick: () => refresh(list.id) }))
+            : null),
+        statsPanel(list));
     }
 
-    // Entries.
-    const groups = groupBySection(list.entries, sortBy);
-    const sections = groups.map((g) => h("section", { class: "panel-box", "aria-labelledby": `sec-${g.section}` },
-      h("h2", { id: `sec-${g.section}`, text: `${SECTION_NAMES[g.section]} (${g.total})` }),
-      g.entries.length === 0
-        ? h("p", { class: "empty", text: "No cards." })
-        : h("ul", { class: "entries" }, g.entries.map((e) => entryRow(list, e, notFound.has(e.card.scryfallId), save)))));
+    // Entries. A just-removed entry stays in its sorted place as an Undo row.
+    const pending = removedByList.get(list.id);
+    const shown = pending && !list.entries.some((e) => e.id === pending.entry.id)
+      ? [...list.entries, { ...pending.entry, removed: true }] : list.entries;
+    // Sections come from the shown entries, so the Undo row's section stays.
+    const sections = sectionsFor({ ...list, entries: shown });
+    const groups = groupBySection(shown, sortBy, sections);
+    const sectionEls = groups.map((g) => {
+      const total = totalQuantity(g.entries.filter((e) => !e.removed));
+      return h("section", { class: "panel-box", "aria-labelledby": `sec-${g.section}` },
+        h("h2", { id: `sec-${g.section}`, text: `${SECTION_NAMES[g.section]} (${total})` }),
+        g.entries.length === 0
+          ? h("p", { class: "empty", text: g.section === "commander" ? "No commander yet. Move a legendary creature or planeswalker here with its Section menu." : "No cards." })
+          : h("ul", { class: "entries" }, g.entries.map((e) => (e.removed
+            ? removedRow(list, pending)
+            : entryRow(list, e, sections, notFound.has(e.card.scryfallId), save)))));
+    });
 
     replace(el,
-      h("p", {}, h("a", { href: "#lists", text: "All lists" })),
-      h("h1", { id: "lists-title", class: "view-title", text: list.name }),
+      h("p", { class: "crumb" }, h("a", { href: "#lists", text: "← All lists" })),
+      h("div", { class: "view-head" },
+        h("h1", { id: "lists-title", class: "view-title", tabindex: "-1", text: list.name }),
+        h("p", { class: "tagline" }, h("span", { class: "badge", text: KIND_LABEL(list) }), ` ${plural(totalQuantity(list.entries), "card")}`)),
       app.storageOk ? null : message("warn", "Storage is not available in this browser window. Lists are lost when you close the page."),
       reminder(),
-      h("div", { class: "toolbar" },
-        field("Kind", kindSelect),
-        field("Sort by", sortSelect),
-        h("div", { class: "row wrap" }, renameBtn, refreshBtn, exportBtn, deleteBtn)),
+      h("div", { class: "list-actions" }, exportBtn, scryfallLinks, moreBtn),
+      moreMenu,
       slot,
+      h("div", { class: "toolbar" }, field("Kind", kindSelect), formatField, field("Sort by", sortSelect)),
       refreshNote(list.id),
-      checks,
-      sections);
+      deckPanel,
+      sectionEls);
+  }
+
+  /** Mana curve, colors, and card types for the main deck. */
+  function statsPanel(list) {
+    const s = deckStats(list.entries);
+    const max = Math.max(1, ...s.curve);
+    const pipTotal = Object.values(s.pips).reduce((a, b) => a + b, 0);
+    return h("section", { class: "panel-box deck-stats", "aria-labelledby": "stats-title" },
+      h("h2", { id: "stats-title", text: "Deck stats" }),
+      h("p", { class: "hint", text: `${plural(s.total, "card")}: ${plural(s.lands, "land")}, ${plural(s.total - s.lands, "spell")}. Average mana value of spells: ${s.averageManaValue.toFixed(2)}.` }),
+      h("figure", { class: "curve-fig" },
+        h("figcaption", { text: "Mana curve (spells)" }),
+        h("ol", { class: "curve" }, s.curve.map((n, i) => h("li", { "aria-label": `Mana value ${i === 7 ? "7 or more" : i}: ${n}` },
+          h("span", { class: "bar-count", text: String(n) }),
+          h("span", { class: "bar", style: `--h: ${Math.round((n / max) * 100)}%` }),
+          h("span", { class: "bar-label", text: i === 7 ? "7+" : String(i) }))))),
+      h("div", { class: "stat-row" },
+        h("div", {},
+          h("h3", { text: "Colors (mana symbols)" }),
+          pipTotal === 0 ? h("p", { class: "hint", text: "No colored mana symbols." })
+            : h("ul", { class: "pip-list" }, COLOR_ORDER.filter((c) => s.pips[c]).map((c) =>
+              h("li", {}, h("span", { class: `pip pip-${c.toLowerCase()}`, "aria-hidden": "true", text: c }), ` ${s.pips[c]} (${Math.round((s.pips[c] / pipTotal) * 100)}%)`)))),
+        h("div", {},
+          h("h3", { text: "Types" }),
+          h("ul", { class: "type-list" }, Object.entries(s.types).filter(([, n]) => n).map(([t, n]) => h("li", { text: `${TYPE_LABELS[t]}: ${n}` }))))));
   }
 
   const refreshNotes = new Map();
@@ -244,7 +346,8 @@ export function createListsView(app) {
     }
   }
 
-  function entryRow(list, entry, isNotFound, save) {
+  function entryRow(list, entry, sections, isNotFound, save) {
+    const card = entry.card;
     const qty = h("input", {
       type: "number", min: "1", step: "1", value: String(entry.quantity), inputmode: "numeric", class: "qty",
       onchange: () => {
@@ -254,59 +357,117 @@ export function createListsView(app) {
           announce("Quantity must be a whole number, 1 or more. To remove a card, select Remove.");
           return;
         }
-        save(updateEntry(list, entry.id, { quantity: n }), `${entry.card.name}: quantity ${n}.`);
+        save(updateEntry(list, entry.id, { quantity: n }), `${card.name}: quantity ${n}.`);
       },
     });
     const section = h("select", {
-      onchange: () => save(updateEntry(list, entry.id, { section: section.value }), `Moved ${entry.card.name} to ${SECTION_NAMES[section.value]}.`),
-    }, SECTIONS.map((s) => h("option", { value: s, text: SECTION_NAMES[s], selected: s === entry.section })));
+      onchange: () => save(updateEntry(list, entry.id, { section: section.value }), `Moved ${card.name} to ${SECTION_NAMES[section.value]}.`),
+    }, sections.map((s) => h("option", { value: s, text: SECTION_NAMES[s], selected: s === entry.section })));
     const note = h("input", {
-      type: "text", value: entry.note, autocomplete: "off",
+      type: "text", value: entry.note, autocomplete: "off", placeholder: "Note",
       onchange: () => save(updateEntry(list, entry.id, { note: note.value }), "Saved the note."),
     });
     const remove = h("button", {
-      type: "button", text: "Remove",
-      onclick: () => save(removeEntry(list, entry.id), `Removed ${entry.card.name}.`),
+      type: "button",
+      class: "ghost",
+      text: "Remove",
+      "aria-label": `Remove ${card.name}`,
+      onclick: async () => {
+        const index = list.entries.findIndex((e) => e.id === entry.id);
+        removedByList.set(list.id, { entry, index });
+        focusUndo = true;
+        if (await save(removeEntry(list, entry.id))) {
+          announce(`Removed ${card.name}. Undo is available where the card was.`);
+        } else {
+          removedByList.delete(list.id);
+          focusUndo = false;
+        }
+      },
     });
-    return h("li", { class: "row-item entry" },
-      cardMedia(entry.card, { size: "small", lazy: true }),
+    const details = () => openDetails(app, card, { onAdd: () => openAddPanel(app, card), onExplore: () => openExplore(app, card) });
+    return h("li", { class: `row-item entry ${glowClass(card)}`, dataset: { entryId: entry.id } },
+      cardMedia(card, { size: "small", lazy: true }),
       h("div", { class: "row-body" },
-        h("p", { class: "row-title" }, h("a", { href: entry.card.scryfallUri, target: "_blank", rel: "noopener", text: entry.card.name })),
-        h("p", { class: "hint", text: `${entry.card.typeLine} · ${entry.card.setName}` }),
+        h("div", { class: "tile-head" },
+          h("p", { class: "row-title" }, h("button", { type: "button", class: "link name-link", text: card.name, "aria-label": `Details for ${card.name}`, onclick: details })),
+          manaCost(card.manaCost)),
+        h("p", { class: "hint", text: `${card.typeLine} · ${card.setName}` }),
         isNotFound ? h("p", { class: "msg msg-warn", text: "Not found on Scryfall" }) : null,
         h("div", { class: "entry-controls" },
           field("Quantity", qty),
           field("Section", section),
           field("Note", note)),
         h("div", { class: "row wrap" },
-          h("button", { type: "button", text: "Find synergies", "aria-label": `Find synergies for ${entry.card.name}`, onclick: () => openSynergyPanel(app, entry.card) }),
+          h("button", { type: "button", class: "ghost", text: "Explore", "aria-label": `Explore ${card.name}`, onclick: () => openExplore(app, card) }),
           remove)));
   }
 
-  function focusById(id) {
-    document.getElementById(id)?.focus();
+  /** The row left behind by Remove, with Undo. */
+  function removedRow(list, pending) {
+    const { entry, index } = pending;
+    return h("li", { class: "removed", dataset: { entryId: `removed-${entry.id}` } },
+      h("p", { text: `Removed ${entry.quantity} × ${entry.card.name}.` }),
+      h("button", {
+        type: "button",
+        class: "undo",
+        text: "Undo",
+        "aria-label": "Undo",
+        onclick: async () => {
+          const latest = app.lists.find((l) => l.id === list.id);
+          removedByList.delete(list.id);
+          if (latest && await app.saveList(restoreEntry(latest, entry, index))) {
+            announce(`Put ${entry.card.name} back.`);
+            const row = el.querySelector(`li[data-entry-id="${CSS.escape(entry.id)}"]`);
+            row?.querySelector("button, input, select")?.focus();
+          }
+        },
+      }),
+      h("button", {
+        type: "button",
+        class: "ghost",
+        text: "Dismiss",
+        "aria-label": `Dismiss: removed ${entry.card.name}`,
+        onclick: () => {
+          removedByList.delete(list.id);
+          render();
+          el.querySelector("h1")?.focus();
+        },
+      }));
   }
 
   let currentId = null;
   function render() {
-    // Keep focus on the same control when a change re-renders the view.
+    // Keep focus on the same control when a change re-renders the view. Rows
+    // are found by entry ID, so a re-sort doesn't move focus to another row.
     const active = document.activeElement;
     const activeKey = active && el.contains(active) ? describe(active) : null;
     if (currentId) renderDetail(currentId);
     else renderIndex();
+    if (focusUndo) {
+      focusUndo = false;
+      const undo = el.querySelector(".removed .undo");
+      if (undo) return undo.focus();
+    }
     if (activeKey) restore(activeKey);
   }
 
-  function describe(node) {
-    const row = node.closest("li");
-    const rows = row ? [...el.querySelectorAll("li")] : [];
-    const controls = [...(row ?? el).querySelectorAll("input, select, button, a, textarea")];
-    return { rowIndex: rows.indexOf(row), controlIndex: controls.indexOf(node) };
+  /** Controls that can take focus: not hidden and not disabled. */
+  function focusable(scope) {
+    return [...scope.querySelectorAll("input, select, button, a, textarea")]
+      .filter((c) => !c.disabled && c.getClientRects().length > 0);
   }
-  function restore({ rowIndex, controlIndex }) {
-    const rows = [...el.querySelectorAll("li")];
-    const scope = rowIndex >= 0 ? rows[rowIndex] : el;
-    const target = scope ? [...scope.querySelectorAll("input, select, button, a, textarea")][controlIndex] : null;
+  function describe(node) {
+    // The More menu closes on re-render, so its buttons go back to More.
+    if (node.closest("#list-more")) return { rowId: null, id: "list-more-btn", controlIndex: -1 };
+    const row = node.closest("li");
+    const rowId = row?.dataset.entryId ?? null;
+    return { rowId, id: node.id || null, controlIndex: focusable(row ?? el).indexOf(node) };
+  }
+  function restore({ rowId, id, controlIndex }) {
+    const byId = id ? document.getElementById(id) : null;
+    if (byId && !byId.disabled && byId.getClientRects().length > 0) return byId.focus();
+    const scope = rowId ? el.querySelector(`li[data-entry-id="${CSS.escape(rowId)}"]`) : el;
+    const target = scope && controlIndex >= 0 ? focusable(scope)[controlIndex] : null;
     (target ?? el.querySelector("h1"))?.focus?.();
   }
 
@@ -314,6 +475,7 @@ export function createListsView(app) {
     el,
     /** @param {string|null} listId */
     show(listId) {
+      if (listId !== currentId) removedByList.clear();
       currentId = listId;
       render();
     },

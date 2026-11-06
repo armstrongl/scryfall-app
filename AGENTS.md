@@ -2,11 +2,13 @@
 
 These instructions are for coding agents that work in this repository. Read `README.md` for what the app does and how the code is laid out. `PLAN.md` is the full v1 specification, and `REPORT.md` records where the build differs from it and lists known problems.
 
+The app, Brewmancer, is built for its owner first. `docs/owner-profile.md` records who she is and what she asked for. Her stated wants outrank research and guesses about other players. When she asks for something new, add it to that file.
+
 ## Commands
 
 - Run the tests: `npm test` (or `node --test`). Node.js 20 or later. There are no packages to install.
 - Run the app: `python3 -m http.server 8000`, then open <http://localhost:8000/>. ES modules don't load from `file://`.
-- Run the browser tests: `node scripts/check-ui.mjs`. It needs Chrome (set `CHROME_PATH` if it's not in the usual place) and network access, because the app sends real Scryfall requests through its queue. It runs at 390 px and 1280 px, in light and dark mode.
+- Run the browser tests: `node scripts/check-ui.mjs`. It needs Chrome (set `CHROME_PATH` if it's not in the usual place) and network access, because the app sends real Scryfall requests through its queue. It runs at 390 px and 1280 px, in light and dark mode. To run one width, set `ONLY=390` or `ONLY=1280`, and optionally `SCHEME=dark`.
 - Repeat the live API checks: `node scripts/check-api.mjs`.
 - Fetch the test fixtures again: `scripts/fetch-fixtures.sh`.
 
@@ -38,7 +40,8 @@ Breaking these rules can get the user's IP address blocked by Scryfall or break 
 
 ### Data
 
-- Never invent card data, IDs, or API behavior. Test fixtures in `tests/fixtures/` are real API responses. To add one, fetch it with the headers above and the 500 ms spacing.
+- Never invent card data, IDs, or API behavior. Test fixtures in `tests/fixtures/` are real API responses. To add one, add it to `scripts/fetch-fixtures.sh`, and fetch it with the headers above and the 500 ms spacing.
+- Explore uses only the Scryfall Tagger tags in `VERIFIED_TAGS` in `src/explore.js`. Before you add a tag, check it against the live API. `scripts/check-api.mjs` checks them all again.
 - Don't change `APP_ID` in `src/config.js`. Backup files use it.
 - To change the IndexedDB schema, raise `DB_VERSION` and add an upgrade step in `src/storage/indexeddb.js`. Never edit an earlier upgrade step.
 - To change the backup format, raise `BACKUP_SCHEMA_VERSION` and keep the import checks in `src/export.js` in step with it.
@@ -59,7 +62,7 @@ Where tests go:
 
 ## Code conventions
 
-- The modules `query.js`, `cards.js`, `lists.js`, `deck-rules.js`, `export.js`, `draw.js`, and `synergy.js` in `src/` are pure: they don't use the DOM, the network, or storage. Put new logic in a pure module, and test it with `node --test`.
+- The modules `query.js`, `cards.js`, `lists.js`, `deck-rules.js`, `export.js`, `draw.js`, `synergy.js`, `explore.js`, `browse.js`, `saved.js`, `stats.js`, `links.js`, and `glossary.js` in `src/` are pure: they don't use the DOM, the network, or storage. Put new logic in a pure module, and test it with `node --test`.
 - UI code is in `src/ui/`. Build elements with the `h()` helper in `src/ui/dom.js`. Don't use `innerHTML` with card data or user text.
 - Don't use browser dialogs (`alert`, `confirm`, `prompt`). Use `confirmBox()` from `src/ui/dom.js`.
 - Keep the app usable by keyboard and screen reader: label every control, and send status messages through `announce()`.

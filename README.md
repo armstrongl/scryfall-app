@@ -1,8 +1,8 @@
-# Card discovery
+# Brewmancer
 
-Card discovery finds random Magic: The Gathering cards that match criteria you choose. You can save cards to lists, turn a list into a Standard deck, check the deck against the Standard rules, and export it as text that MTG Arena can import. The app runs in your browser, and it gets card data and images from the [Scryfall API](https://scryfall.com/docs/api). It has no server and no accounts.
+Brewmancer helps you discover Magic: The Gathering cards, learn what they do, and see how they work together. You can draw random cards or browse every card that matches your filters. You can find synergies, similar cards, and counters for any card, save cards to lists, check Standard and Brawl decks, and export decks for MTG Arena. The app runs in your browser and gets card data and images from the [Scryfall API](https://scryfall.com/docs/api). It has no server and no accounts.
 
-"Card discovery" is a working title. See [Change the app name](#change-the-app-name).
+The app is built first for its owner, an MTG Arena player who plays Standard, is starting Brawl, and loves discovering cards and how they interact. `docs/owner-profile.md` records what she asked for.
 
 ## Run the app locally
 
@@ -21,39 +21,70 @@ The app uses relative URLs, so it also works from a subpath, for example `http:/
 
 ## Use the app
 
-The app has three views. Select them at the top of the page.
+The app has three views: **Discover**, **Lists**, and **Data**. On a phone, they're in the bar at the bottom of the screen.
+
+Turn on **Nerd mode** at the top of the page to see more on every card: mana value, power and toughness, set, release date, price, EDHREC rank, and legality in Standard and Brawl. Nerd mode also shows the Scryfall query behind each Explore search.
 
 ### Find cards
 
 1. Open **Discover**.
-2. Under **Criteria**, choose what the cards must match, for example colors, mana value, or card type. The query preview shows the Scryfall search that the criteria make, and the app shows how many cards match. On a phone, select **Criteria** to open the panel.
-3. Choose how many cards to draw, from 1 to 10, then select **Draw**.
+2. Choose a preset, or select **Filters** to choose colors, card types, mana value, rarity, keywords, rules text, or any Scryfall search syntax. Each active filter shows as a chip. To remove a filter, select **×** on its chip. The app shows how many cards match.
+3. Choose how to see cards:
+   - **Draw random** draws 1 to 10 random cards.
+   - **Browse all** lists every match, in the order you choose: name, mana value, release date, rarity, color, set, popularity (EDHREC rank), price, power, toughness, or artist. Select **Show cards**. The app loads 175 cards at a time. Select **Load more** for the next 175.
 
-The built-in **Arena Standard** preset finds cards that are legal in Standard and available on MTG Arena. To keep a set of criteria, select **Save as new preset**. Your draws are kept under **History**.
+The built-in presets are **Arena Standard** (cards legal in Standard on MTG Arena) and **Arena Brawl** (cards legal in Brawl on MTG Arena, with colors read as color identity). To keep your own filters, select **Save as preset**. Your recent draws are under **Recent draws**.
+
+A card you already saved shows **Saved in** and the name of the list.
+
+### See everything about a card
+
+Select **Details** on a card. The details show:
+
+- The rules text.
+- Explanations of the card's keywords, with links to the MTG Wiki.
+- The card's official rulings. Select **Show rulings** to load them.
+- Legality in the Arena formats.
+- The printing, prices, and links to buy the card.
+- Links to Scryfall and EDHREC.
+
+On a wide screen, point at a card or move the keyboard focus to it to see the same details in the panel beside the cards.
+
+### Find synergies, similar cards, and counters
+
+1. Select **Explore** on any card, in Discover or in a list.
+2. Choose a tab:
+   - **Synergies**: cards that work with this one, such as "Green cards that leverage landfall" or "White cards that benefit from enchantments". They stay in the card's colors.
+   - **Similar**: cards that do the same job for a similar cost, share its keywords, or share its type and cost.
+   - **Counters**: cards that answer this one, such as creature removal or cards that punish fliers. They're in every color.
+3. Select **Search**. Discover opens with that search in Browse mode, most popular first. It keeps your format and game and leaves out the card itself.
+
+The searches use [Scryfall Tagger](https://tagger.scryfall.com/) tags, which the community maintains, together with keywords and rules text. Check the results before you build around them.
 
 ### Save cards to a list
 
-1. On a drawn card, select **Add to list**.
-2. Choose one or more lists, or make a new one. Set the quantity and the section: **Main deck**, **Sideboard**, or **Maybe**.
+1. On a card, select **Add**.
+2. Choose one or more lists, or make a new one. Set the quantity and the section: **Main deck**, **Sideboard**, **Maybe**, or **Commander**.
 3. Select **Add**.
 
-A list is a **Collection** or a **Deck (Standard)**. You can change the kind at any time in the **Lists** view, and the cards stay.
+A list is a **Collection** or a **Deck**. A deck has a format: **Standard**, **Standard Brawl**, or **Brawl**. You can change the kind and the format at any time in the **Lists** view, and the cards stay.
 
-### Find cards that work together
-
-1. On a drawn card, a card in **History**, or a card in a list, select **Find synergies**.
-2. The panel lists searches that the app makes from the card's rules text and types. For example, a card that sacrifices creatures gets a search for cards that do something when a creature dies, and an Elf gets a search for cards that reward Elves.
-3. Select **Search in Discover** on one of them. Discover opens with that search. It keeps your format and game, includes only cards in the card's colors, and leaves out the card itself.
-4. Select **Draw**, or change the criteria first.
-
-The suggestions come from patterns in the card's text, so some matches are loose. The app doesn't send a request until you count or draw cards.
+If you remove a card from a list, select **Undo** in the message that appears to put it back.
 
 ### Build and export a deck
 
-1. Open **Lists**, then open a list with the kind **Deck (Standard)**.
-2. Read the **Standard deck checks**. They show problems such as a main deck under 60 cards, a sideboard over 15 cards, more than 4 copies of a card, or a card that is not legal in Standard. Legality comes from the card data saved with the list. To get current data, select **Refresh card data**.
-3. Select **Export for Arena**, then select **Copy**.
-4. In MTG Arena, open **Decks**, then select **Import**.
+1. Open **Lists**, then open a list with the kind **Deck**.
+2. Choose its **Format**.
+3. Read the deck checks:
+   - **Standard:** a main deck under 60 cards, a sideboard over 15 cards, more than 4 copies of a card, and cards that aren't legal.
+   - **Brawl (100 cards) and Standard Brawl (60 cards):** the commander, the deck size, one copy of each card except basic lands, the commander's color identity, and legality.
+
+   Legality comes from the card data saved with the list. To get current data, select **More**, then **Refresh card data**.
+4. Check **Deck stats** for the mana curve, the colored mana symbols, and the card types.
+5. Select **Export for Arena**, then select **Copy**. For a Brawl deck, the text has a Commander block and a Deck block.
+6. In MTG Arena, open **Decks**, then select **Import**.
+
+To see a whole list on Scryfall, select **Open on Scryfall**. A long list opens in two or more parts, because Scryfall searches have a length limit.
 
 ## Where your data is stored
 
@@ -61,7 +92,7 @@ Your lists, presets, history, and settings are stored only in your browser, on y
 
 If you clear your browser's site data for the app, your data is deleted. To keep a copy, open **Data** and select **Export backup**. To restore it, select a backup file under **Import backup**. You can also use a backup to move your data to another device.
 
-The app sends Scryfall your card searches and, when you refresh a list, the Scryfall IDs of its cards. It doesn't send list names, notes, or anything else about you.
+The app sends Scryfall your card searches. It also sends Scryfall IDs: those of a list's cards when you refresh the list, and a card's ID when you select **Show rulings**. It doesn't send list names, notes, or anything else about you. Backups made by this version use backup schema 2. This version also imports schema 1 backups from earlier versions.
 
 ## Project layout
 
@@ -71,12 +102,13 @@ The app sends Scryfall your card searches and, when you refresh a list, the Scry
 | `src/main.js` | App startup and navigation between views. |
 | `src/config.js` | The app name, API settings, and other constants. |
 | `src/scryfall.js` | The Scryfall API client. All API requests go through its queue, which spaces requests at least 500 ms apart. |
-| `src/query.js`, `src/cards.js`, `src/lists.js`, `src/deck-rules.js`, `src/export.js`, `src/draw.js`, `src/synergy.js` | App logic with no DOM code. The tests cover these modules. |
+| `src/query.js`, `src/cards.js`, `src/lists.js`, `src/deck-rules.js`, `src/export.js`, `src/draw.js`, `src/synergy.js`, `src/explore.js`, `src/browse.js`, `src/saved.js`, `src/stats.js`, `src/links.js`, `src/glossary.js` | App logic with no DOM code. The tests cover these modules. |
 | `src/storage/` | Data storage in IndexedDB, with a memory fallback. |
 | `src/ui/` | The views and the DOM helpers. |
 | `tests/` | Unit tests and saved Scryfall responses (`tests/fixtures/`). |
 | `scripts/` | Development tools: fixture download, live API checks, browser tests, and icon drawing. |
-| `PLAN.md`, `REPORT.md` | The v1 plan and the report on what was built. |
+| `PLAN.md`, `REPORT.md` | The v1 plan, and the report on what was built, with the design overhaul at the end. |
+| `docs/owner-profile.md` | Who the app is for, and what she asked for. |
 
 ## Run the tests
 
@@ -88,11 +120,11 @@ npm test
 
 You can also run `node --test` directly.
 
-The tests use real Scryfall responses saved in `tests/fixtures/`. To fetch them again, run `scripts/fetch-fixtures.sh`. To repeat the live API checks from section 9 of `PLAN.md`, run `node scripts/check-api.mjs`. Both scripts send the headers that Scryfall requires and wait at least 500 ms between requests.
+The tests use real Scryfall responses saved in `tests/fixtures/`. To fetch them again, run `scripts/fetch-fixtures.sh`. To repeat the live API checks from section 9 of `PLAN.md`, and to check that every Scryfall Tagger tag that Explore uses still exists, run `node scripts/check-api.mjs`. Both scripts send the headers that Scryfall requires and wait at least 500 ms between requests.
 
 ### Browser tests
 
-`node scripts/check-ui.mjs` runs the app in headless Chrome at phone width (390 px) and desktop width (1280 px), in light and dark mode. It checks controls, focus, and layout, and it fails if the page logs an error. It uses only Node.js built-ins and the Chrome installed on your computer. If Chrome is somewhere else, set `CHROME_PATH` to its executable. The app sends real Scryfall requests during the tests, through its own request queue. Each run starts with an empty browser profile.
+`node scripts/check-ui.mjs` runs the app in headless Chrome at phone width (390 px) and desktop width (1280 px), in light and dark mode. It checks controls, focus, layout, and the card image rules, and it fails if the page logs an error. To run one width only, set `ONLY` to the width, for example `ONLY=390 node scripts/check-ui.mjs`. Add `SCHEME=dark` for dark mode. It uses only Node.js built-ins and the Chrome installed on your computer. If Chrome is somewhere else, set `CHROME_PATH` to its executable. The app sends real Scryfall requests during the tests, through its own request queue. Each run starts with an empty browser profile.
 
 ## Turn on GitHub Pages
 
@@ -124,12 +156,13 @@ The app name is in one constant: `APP_NAME` in `src/config.js`. The page title, 
 The name also appears in files that load before the JavaScript runs. Change it in these places too:
 
 - `index.html`: the `<title>` element, the header text, and the footer notice.
+- `index.html`: also the `apple-mobile-web-app-title` meta element and the Scryfall line in the footer.
 - `manifest.webmanifest`: `name` and `short_name`.
 
 The name must not contain "Scryfall". Don't change `APP_ID` in `src/config.js`, because backup files use it.
 
 ## Credits
 
-Card data and images are from [Scryfall](https://scryfall.com). Card discovery is not made by or endorsed by Scryfall.
+Card data and images are from [Scryfall](https://scryfall.com). Brewmancer is not made by or endorsed by Scryfall.
 
-Card discovery is unofficial Fan Content permitted under the Fan Content Policy. Not approved/endorsed by Wizards. Portions of the materials used are property of Wizards of the Coast. ©Wizards of the Coast LLC.
+Brewmancer is unofficial Fan Content permitted under the Fan Content Policy. Not approved/endorsed by Wizards. Portions of the materials used are property of Wizards of the Coast. ©Wizards of the Coast LLC.

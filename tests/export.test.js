@@ -172,3 +172,20 @@ test("backup reminder rule", () => {
   assert.equal(needsBackupReminder({ ...s, lastChangeAt: "2026-03-01T00:00:00.000Z", lastBackupAt: "2026-02-01T00:00:00.000Z" }, now, 14), true);
   assert.equal(needsBackupReminder({ ...s, lastChangeAt: "2026-01-01T00:00:00.000Z", lastBackupAt: "2026-02-01T00:00:00.000Z" }, now, 14), false);
 });
+
+test("settings: nerd mode, Discover mode, and browse sort have safe defaults", () => {
+  const d = defaultSettings();
+  assert.equal(d.density, "comfortable");
+  assert.equal(d.discoverMode, "draw");
+  assert.deepEqual(d.browseSort, { order: "name", dir: "auto" });
+  const clock = fakeClock();
+  const backup = makeBackup({ ...sampleData(clock), settings: { ...d, density: "nerd", discoverMode: "browse", browseSort: { order: "cmc", dir: "desc" } } }, clock.now());
+  const s = replaceData(backup).settings;
+  assert.equal(s.density, "nerd");
+  assert.equal(s.discoverMode, "browse");
+  assert.deepEqual(s.browseSort, { order: "cmc", dir: "desc" });
+  const bad = replaceData({ ...backup, settings: { density: "huge", discoverMode: "x", browseSort: { order: "nope" } } }).settings;
+  assert.equal(bad.density, "comfortable");
+  assert.equal(bad.discoverMode, "draw");
+  assert.deepEqual(bad.browseSort, { order: "name", dir: "auto" });
+});

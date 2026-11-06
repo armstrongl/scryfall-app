@@ -1,7 +1,7 @@
 // App-wide constants. Change the app name here and nowhere else.
 
-/** The working title. The owner can change it in this one place. */
-export const APP_NAME = "Card discovery";
+/** The app name. Change it here; README.md lists the other places it appears. */
+export const APP_NAME = "Brewmancer";
 
 /** Short ID used in backup files and storage names. Do not change after release. */
 export const APP_ID = "card-discovery";

@@ -43,6 +43,7 @@ export function createCriteriaForm(onChange) {
   );
   const colors = checkGroup("Colors", COLORS.map((c) => [c, COLOR_NAMES[c]]), emit);
   const colorless = checkbox("Colorless", false, emit);
+  const useIdentity = checkbox("Use color identity (for Commander and Brawl)", false, emit);
   const types = checkGroup("Card types", CARD_TYPES.map((t) => [t, cap(t)]), emit);
   const typeText = h("input", { type: "text", autocomplete: "off", spellcheck: "false", oninput: emit });
   const mvMin = h("input", { type: "number", min: "0", step: "1", inputmode: "numeric", oninput: emit });
@@ -77,6 +78,7 @@ export function createCriteriaForm(onChange) {
       colorMode: colorMode.value,
       colors: checked(colors),
       colorless: colorless.input.checked,
+      useIdentity: useIdentity.input.checked,
       types: checked(types),
       typeText: typeText.value,
       mvMin: mvMin.value === "" ? null : mvMin.value,
@@ -103,6 +105,7 @@ export function createCriteriaForm(onChange) {
     colorMode.value = criteria.colorMode;
     for (const b of colors.boxes) b.input.checked = criteria.colors.includes(b.input.value);
     colorless.input.checked = criteria.colorless;
+    useIdentity.input.checked = criteria.useIdentity;
     for (const b of types.boxes) b.input.checked = criteria.types.includes(b.input.value);
     typeText.value = criteria.typeText;
     mvMin.value = criteria.mvMin ?? "";
@@ -124,6 +127,8 @@ export function createCriteriaForm(onChange) {
   }
   showHints([]);
 
+  colors.el.classList.add("mana-checks");
+  for (const b of colors.boxes) b.el.classList.add(`mana-${b.input.value}`);
   const el = h("form", { class: "criteria", onsubmit: (e) => e.preventDefault(), "aria-label": "Criteria" },
     h("div", { class: "grid-2" },
       field("Format", format),
@@ -133,6 +138,7 @@ export function createCriteriaForm(onChange) {
       field("Color mode", colorMode),
       h("div", { class: "field field-end" }, colorless.el)),
     colors.el,
+    useIdentity.el,
     hintSlots.colors,
     types.el,
     field("Type line text", typeText),

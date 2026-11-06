@@ -3,6 +3,7 @@
 import { APP_ID, BACKUP_SCHEMA_VERSION, DECK_FORMATS, HISTORY_LIMIT, READABLE_BACKUP_VERSIONS, SECTIONS } from "./config.js";
 import { isBrawlFormat } from "./lists.js";
 import { normalizeCriteria } from "./query.js";
+import { normalizeSort } from "./browse.js";
 
 /**
  * @typedef {import("./lists.js").CardList} CardList
@@ -23,6 +24,9 @@ import { normalizeCriteria } from "./query.js";
  * @property {string|null} lastUsedListId
  * @property {string|null} lastBackupAt
  * @property {string|null} lastChangeAt
+ * @property {"comfortable"|"nerd"} density Nerd mode shows more card details.
+ * @property {"draw"|"browse"} discoverMode
+ * @property {import("./browse.js").BrowseSort} browseSort
  * @typedef {Object} AppData
  * @property {CardList[]} lists
  * @property {Preset[]} presets Custom presets only.
@@ -38,6 +42,9 @@ export function defaultSettings() {
     lastUsedListId: null,
     lastBackupAt: null,
     lastChangeAt: null,
+    density: "comfortable",
+    discoverMode: "draw",
+    browseSort: { order: "name", dir: "auto" },
   };
 }
 
@@ -175,6 +182,9 @@ function cleanSettings(s) {
     lastUsedListId: isStr(s?.lastUsedListId) ? s.lastUsedListId : d.lastUsedListId,
     lastBackupAt: dateOrNull(s?.lastBackupAt),
     lastChangeAt: dateOrNull(s?.lastChangeAt),
+    density: s?.density === "nerd" ? "nerd" : d.density,
+    discoverMode: s?.discoverMode === "browse" ? "browse" : d.discoverMode,
+    browseSort: normalizeSort(s?.browseSort),
   };
 }
 

@@ -5,7 +5,7 @@ import { writeFileSync } from "node:fs";
 import { deflateSync } from "node:zlib";
 
 const hex = (s) => [1, 3, 5].map((i) => parseInt(s.slice(i, i + 2), 16));
-const BG = hex("#2b4c7e"), BACK = hex("#9fb7d9"), FRONT = hex("#f6f4ef"), DOT = hex("#e0a43a");
+const BG = hex("#3b1f6e"), BACK = hex("#b48cff"), FRONT = hex("#fff7ea"), DOT = hex("#2fd3a6");
 
 function inRoundRect(x, y, rx, ry, w, h, r) {
   if (x < rx || y < ry || x > rx + w || y > ry + h) return false;

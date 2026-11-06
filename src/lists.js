@@ -235,3 +235,17 @@ export function applyRefresh(list, snapshotsById, clock = defaultClock) {
 export function scryfallIds(list) {
   return [...new Set(list.entries.map((e) => e.card.scryfallId))];
 }
+
+/**
+ * Puts a removed entry back at its old position, for Undo. Does nothing if
+ * the entry is already in the list.
+ * @param {CardList} list
+ * @param {Entry} entry
+ * @param {number} index
+ */
+export function restoreEntry(list, entry, index, clock = defaultClock) {
+  if (list.entries.some((e) => e.id === entry.id)) return list;
+  const entries = [...list.entries];
+  entries.splice(Math.min(Math.max(0, index), entries.length), 0, entry);
+  return touch(list, { entries }, clock);
+}

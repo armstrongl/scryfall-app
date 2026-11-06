@@ -80,7 +80,7 @@ export function createListsView(app) {
     const lists = app.lists.slice().sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
     replace(el,
       h("div", { class: "view-head" },
-        h("h1", { id: "lists-title", class: "view-title", text: "Lists" }),
+        h("h1", { id: "lists-title", class: "view-title", tabindex: "-1", text: "Lists" }),
         h("p", { class: "tagline", text: "Collections, decks, and brews in progress." })),
       app.storageOk ? null : message("warn", "Storage is not available in this browser window. Lists are lost when you close the page."),
       reminder(),
@@ -102,7 +102,7 @@ export function createListsView(app) {
     const list = app.lists.find((l) => l.id === listId);
     if (!list) {
       replace(el,
-        h("h1", { id: "lists-title", class: "view-title", text: "List not found" }),
+        h("h1", { id: "lists-title", class: "view-title", tabindex: "-1", text: "List not found" }),
         h("p", {}, "This list does not exist. ", h("a", { href: "#lists", text: "Go to all lists" }), "."));
       return;
     }
@@ -248,10 +248,11 @@ export function createListsView(app) {
     }
 
     // Entries. A just-removed entry stays in its sorted place as an Undo row.
-    const sections = sectionsFor(list);
     const pending = removedByList.get(list.id);
     const shown = pending && !list.entries.some((e) => e.id === pending.entry.id)
       ? [...list.entries, { ...pending.entry, removed: true }] : list.entries;
+    // Sections come from the shown entries, so the Undo row's section stays.
+    const sections = sectionsFor({ ...list, entries: shown });
     const groups = groupBySection(shown, sortBy, sections);
     const sectionEls = groups.map((g) => {
       const total = totalQuantity(g.entries.filter((e) => !e.removed));
@@ -267,7 +268,7 @@ export function createListsView(app) {
     replace(el,
       h("p", { class: "crumb" }, h("a", { href: "#lists", text: "← All lists" })),
       h("div", { class: "view-head" },
-        h("h1", { id: "lists-title", class: "view-title", text: list.name }),
+        h("h1", { id: "lists-title", class: "view-title", tabindex: "-1", text: list.name }),
         h("p", { class: "tagline" }, h("span", { class: "badge", text: KIND_LABEL(list) }), ` ${plural(totalQuantity(list.entries), "card")}`)),
       app.storageOk ? null : message("warn", "Storage is not available in this browser window. Lists are lost when you close the page."),
       reminder(),
@@ -449,16 +450,21 @@ export function createListsView(app) {
     if (activeKey) restore(activeKey);
   }
 
+  /** Controls that can take focus: not hidden and not disabled. */
+  function focusable(scope) {
+    return [...scope.querySelectorAll("input, select, button, a, textarea")]
+      .filter((c) => !c.disabled && c.getClientRects().length > 0);
+  }
   function describe(node) {
     const row = node.closest("li");
     const rowId = row?.dataset.entryId ?? null;
-    const controls = [...(row ?? el).querySelectorAll("input, select, button, a, textarea")];
-    return { rowId, id: node.id || null, controlIndex: controls.indexOf(node) };
+    return { rowId, id: node.id || null, controlIndex: focusable(row ?? el).indexOf(node) };
   }
   function restore({ rowId, id, controlIndex }) {
-    if (id && document.getElementById(id)) return document.getElementById(id).focus();
+    const byId = id ? document.getElementById(id) : null;
+    if (byId && !byId.disabled && byId.getClientRects().length > 0) return byId.focus();
     const scope = rowId ? el.querySelector(`li[data-entry-id="${CSS.escape(rowId)}"]`) : el;
-    const target = scope ? [...scope.querySelectorAll("input, select, button, a, textarea")][controlIndex] : null;
+    const target = scope && controlIndex >= 0 ? focusable(scope)[controlIndex] : null;
     (target ?? el.querySelector("h1"))?.focus?.();
   }
 

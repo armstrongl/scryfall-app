@@ -132,6 +132,8 @@ export function createClient(options = {}) {
     try {
       body = await res.json();
     } catch {
+      // A cancel can land while the body is being read.
+      if (item.signal?.aborted) return { error: cancelled() };
       body = null;
     }
     if (res.ok && body) return { body };

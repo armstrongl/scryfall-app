@@ -189,3 +189,12 @@ test("settings: nerd mode, Discover mode, and browse sort have safe defaults", (
   assert.equal(bad.discoverMode, "draw");
   assert.deepEqual(bad.browseSort, { order: "name", dir: "auto" });
 });
+
+test("a Standard deck exports in Standard shape even with a leftover commander entry", () => {
+  const clock = fakeClock();
+  let list = createList("D", "deck", clock, "standard");
+  list = addCard(list, snap("card-legendary"), { section: "commander" }, clock);
+  list = addCard(list, snap("card-normal"), { quantity: 4 }, clock);
+  list = addCard(list, snap("card-flyer"), { section: "sideboard" }, clock);
+  assert.equal(arenaText(list), "4 Llanowar Elves\n\nSideboard\n1 Serra Angel");
+});

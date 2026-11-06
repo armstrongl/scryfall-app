@@ -26,6 +26,7 @@ export const SORT_DIRECTIONS = Object.freeze([
  * @typedef {{order: string, dir: string}} BrowseSort
  * @typedef {Object} BrowseState
  * @property {string} query
+ * @property {BrowseSort} sort The order every page of this state uses.
  * @property {any[]} cards Scryfall Card objects, in order.
  * @property {number|null} total
  * @property {boolean} hasMore
@@ -49,9 +50,13 @@ export function browseParams(sort, page) {
   return { unique: "cards", order: s.order, dir: s.dir, page };
 }
 
-/** @param {string} query @returns {BrowseState} */
-export function emptyBrowse(query) {
-  return { query, cards: [], total: null, hasMore: false, nextPage: 1 };
+/**
+ * @param {string} query
+ * @param {any} [sort] Every page of this state uses this sort.
+ * @returns {BrowseState}
+ */
+export function emptyBrowse(query, sort) {
+  return { query, sort: normalizeSort(sort), cards: [], total: null, hasMore: false, nextPage: 1 };
 }
 
 /**
@@ -65,6 +70,7 @@ export function mergePage(state, list) {
   const added = (list.data ?? []).filter((c) => !seen.has(c.id));
   return {
     query: state.query,
+    sort: state.sort,
     cards: [...state.cards, ...added],
     total: typeof list.total_cards === "number" ? list.total_cards : state.total,
     hasMore: list.has_more === true,

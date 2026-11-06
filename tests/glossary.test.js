@@ -37,3 +37,10 @@ test("keywords without an entry still show, with no explanation", () => {
 test("wiki links go to the MTG Wiki page for the term", () => {
   assert.equal(wikiUrl("First strike"), "https://mtg.fandom.com/wiki/First_strike");
 });
+
+test("corrected entries from review", () => {
+  assert.doesNotMatch(lookup("Crew").text, /other untapped/);
+  assert.match(lookup("Plot").text, /Plot only as a sorcery/);
+  assert.match(lookup("Harmonize").text, /\{X\}/);
+  assert.match(lookup("Trample").text, /battle/);
+});

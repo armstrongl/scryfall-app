@@ -106,3 +106,45 @@ test("color phrases", () => {
   assert.equal(colorPhrase(["W", "U", "B"]), "White, blue, and black");
   assert.equal(colorPhrase([]), "");
 });
+
+// Cases from the review. Real cards, with the rules text of the named card.
+const withText = (base, typeLine, oracleText, extra = {}) => snap(base, { typeLine, oracleText, keywords: [], ...extra });
+
+test("a creature with an enter ability gets blink cards, not more enter-ability creatures", () => {
+  const visionary = withText("card-normal", "Creature — Elf Shaman", "When this creature enters, draw a card.", { name: "Elvish Visionary" });
+  const r = explore(visionary);
+  const blink = r.synergies.find((s) => /blink/i.test(s.label));
+  assert.ok(blink, r.synergies.map((s) => s.label).join(" | "));
+  assert.match(blink.query, /otag:blink/);
+  assert.ok(!r.synergies.some((s) => /have enter abilities/.test(s.label)));
+});
+
+test("a mana creature gets big spells to ramp into, not more ramp", () => {
+  const r = explore(snap("card-normal"));
+  assert.ok(!r.synergies.some((s) => /help you cast it sooner/.test(s.label)), r.synergies.map((s) => s.label).join(" | "));
+  assert.ok(r.synergies.some((s) => /big spells/.test(s.label)));
+});
+
+test("a mana land isn't ramp", () => {
+  const land = withText("card-basic-land", "Land", "{T}: Add {G} or {U}.", { name: "Thornwood Falls", isBasicLand: false });
+  const r = explore(land);
+  assert.ok(!r.synergies.some((s) => /big spells/.test(s.label)));
+  assert.ok(!r.similar.some((s) => /otag:ramp/.test(s.query)));
+});
+
+test("counterspells and taxes don't count as caring about instants and sorceries", () => {
+  const negate = withText("card-normal", "Instant", "Counter target noncreature spell.", { name: "Negate" });
+  assert.ok(!explore(negate).synergies.some((s) => /reward you for casting instants/.test(s.label) && s.id.endsWith("-more")));
+  const thalia = withText("card-flyer", "Legendary Creature — Human Soldier", "First strike\nNoncreature spells cost {1} more to cast.", { name: "Thalia" });
+  assert.ok(!explore(thalia).synergies.some((s) => s.id.startsWith("spells")));
+});
+
+test("a blink spell isn't creature removal", () => {
+  const ephemerate = withText("card-normal", "Instant", "Exile target creature you control, then return it to the battlefield under its owner's control.", { name: "Ephemerate" });
+  assert.ok(!explore(ephemerate).similar.some((s) => /removal-creature/.test(s.query)));
+});
+
+test("a card that gives indestructible isn't itself indestructible", () => {
+  const heroic = withText("card-normal", "Instant", "Permanents you control gain hexproof and indestructible until end of turn.", { name: "Heroic Intervention" });
+  assert.ok(!explore(heroic).counters.some((s) => s.id === "exile"));
+});

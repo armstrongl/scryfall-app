@@ -10,6 +10,7 @@ import { CARD_TYPES, COLORS, FORMAT_KEYS, MAX_QUERY_LENGTH, RARITIES } from "./c
  * @property {"any"|"exactly"|"atLeast"|"atMost"} colorMode
  * @property {("w"|"u"|"b"|"r"|"g")[]} colors
  * @property {boolean} colorless
+ * @property {boolean} useIdentity Filter by color identity (id) instead of color (c), for Commander and Brawl.
  * @property {string[]} types
  * @property {string} typeText
  * @property {number|null} mvMin
@@ -29,6 +30,7 @@ export function defaultCriteria() {
     colorMode: "any",
     colors: [],
     colorless: false,
+    useIdentity: false,
     types: [],
     typeText: "",
     mvMin: null,
@@ -75,6 +77,7 @@ export function normalizeCriteria(input) {
     colorMode: COLOR_MODES.includes(input.colorMode) ? input.colorMode : d.colorMode,
     colors: pick(input.colors, COLORS),
     colorless: input.colorless === true,
+    useIdentity: input.useIdentity === true,
     types: pick(input.types, CARD_TYPES),
     typeText: str(input.typeText),
     mvMin: toWholeNumber(input.mvMin),
@@ -146,11 +149,12 @@ export function buildQuery(input) {
   if (c.game) parts.push(`game:${c.game}`);
   if (c.excludeRebalanced) parts.push("-is:rebalanced");
 
+  const colorKey = c.useIdentity ? "id" : "c";
   if (c.colorless) {
-    parts.push("c=c");
+    parts.push(`${colorKey}=c`);
   } else if (c.colorMode !== "any" && c.colors.length > 0) {
     const letters = COLORS.filter((x) => c.colors.includes(x)).join("");
-    parts.push(`c${OPERATORS[c.colorMode]}${letters}`);
+    parts.push(`${colorKey}${OPERATORS[c.colorMode]}${letters}`);
   } else if (c.colorMode !== "any" && c.colors.length === 0) {
     hints.push({ field: "colors", message: "Choose at least one color, or set the color mode to Any." });
   } else if (c.colorMode === "any" && c.colors.length > 0) {

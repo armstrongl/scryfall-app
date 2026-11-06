@@ -69,3 +69,67 @@ test("legality as of the oldest fetchedAt in main and sideboard", () => {
   const r = checkDeck(deck([[elves, 4], [old, 1, "sideboard"], [older, 1, "maybe"]]));
   assert.equal(r.legalityAsOf, "2025-06-01T00:00:00.000Z");
 });
+
+// Brawl -------------------------------------------------------------------------
+function brawl(items, format = "brawl") {
+  const clock = fakeClock();
+  let list = createList("B", "deck", clock, format);
+  for (const [card, quantity, section = "main"] of items) list = addCard(list, card, { quantity, section }, clock);
+  return list;
+}
+// Krenko is red. These tests give it a red-green identity so a Forest fits.
+const krenko = snap("card-legendary", { colorIdentity: ["R", "G"] });
+
+test("Brawl: a legal 100-card deck with a commander has no results", () => {
+  const r = checkDeck(brawl([[krenko, 1, "commander"], [elves, 1], [forest, 98]]));
+  assert.deepEqual(r.results, []);
+  assert.equal(r.mainCount, 100);
+});
+
+test("Brawl: deck size is 100, Standard Brawl is 60", () => {
+  assert.ok(codes(checkDeck(brawl([[krenko, 1, "commander"], [forest, 59]]))).includes("mainSize"));
+  const sb = checkDeck(brawl([[krenko, 1, "commander"], [forest, 59]], "standardbrawl"));
+  assert.ok(!codes(sb).includes("mainSize"), codes(sb).join());
+  const over = checkDeck(brawl([[krenko, 1, "commander"], [forest, 70]], "standardbrawl"));
+  assert.ok(codes(over).includes("mainSize"));
+});
+
+test("Brawl: more than one copy of a card that isn't a basic land is an error", () => {
+  const r = checkDeck(brawl([[krenko, 1, "commander"], [elves, 2], [forest, 97]]));
+  const x = r.results.find((y) => y.code === "singleton");
+  assert.ok(x);
+  assert.equal(x.card, "Llanowar Elves");
+});
+
+test("Brawl: a card outside the commander's color identity is an error", () => {
+  const r = checkDeck(brawl([[krenko, 1, "commander"], [snap("card-flyer"), 1], [forest, 98]]));
+  const x = r.results.find((y) => y.code === "identity");
+  assert.ok(x, codes(r).join());
+  assert.equal(x.card, "Serra Angel");
+});
+
+test("Brawl: commander checks", () => {
+  assert.ok(codes(checkDeck(brawl([[elves, 1], [forest, 99]]))).includes("commander"));
+  const two = checkDeck(brawl([[krenko, 1, "commander"], [snap("card-planeswalker"), 1, "commander"], [forest, 98]]));
+  assert.ok(two.results.some((x) => x.code === "commander" && x.level === "error"));
+  const notLegendary = checkDeck(brawl([[snap("card-landfall"), 1, "commander"], [forest, 99]]));
+  assert.ok(notLegendary.results.some((x) => x.code === "commander" && x.level === "error"));
+  // A planeswalker can be a Brawl commander.
+  const pw = checkDeck(brawl([[snap("card-planeswalker"), 1, "commander"]]));
+  assert.ok(!pw.results.some((x) => x.code === "commander"));
+});
+
+test("Brawl: legality comes from the format's own legality", () => {
+  // Teferi is legal in Brawl but not in Standard Brawl (real fixture data).
+  const r = checkDeck(brawl([[snap("card-planeswalker"), 1, "commander"]], "standardbrawl"));
+  assert.ok(r.results.some((x) => x.code === "legality" && x.card === "Teferi, Hero of Dominaria"));
+  const old = { ...elves };
+  delete old.legalities;
+  const u = checkDeck(brawl([[krenko, 1, "commander"], [old, 1], [forest, 98]]));
+  assert.ok(u.results.some((x) => x.code === "legalityUnknown" && x.level === "warning"));
+});
+
+test("Brawl: a sideboard gives a warning", () => {
+  const r = checkDeck(brawl([[krenko, 1, "commander"], [elves, 1], [forest, 98], [snap("card-flyer"), 1, "sideboard"]]));
+  assert.ok(codes(r).includes("sideboard"));
+});

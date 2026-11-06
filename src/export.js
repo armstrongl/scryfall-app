@@ -1,6 +1,7 @@
 // Arena text export, JSON backup, and import checks. Pure module.
 
-import { APP_ID, BACKUP_SCHEMA_VERSION, HISTORY_LIMIT, SECTIONS } from "./config.js";
+import { APP_ID, BACKUP_SCHEMA_VERSION, DECK_FORMATS, HISTORY_LIMIT, READABLE_BACKUP_VERSIONS, SECTIONS } from "./config.js";
+import { isBrawlFormat } from "./lists.js";
 import { normalizeCriteria } from "./query.js";
 
 /**
@@ -41,8 +42,9 @@ export function defaultSettings() {
 }
 
 /**
- * MTG Arena import text: main deck lines, then a Sideboard block. The
- * "maybe" section is not exported.
+ * MTG Arena import text. Standard: main deck lines, then a Sideboard block.
+ * Brawl formats: a Commander block, then a Deck block, and no sideboard. The
+ * "maybe" section is never exported.
  * @param {CardList} list
  */
 export function arenaText(list) {
@@ -50,6 +52,14 @@ export function arenaText(list) {
     list.entries.filter((e) => e.section === section).map((e) => `${e.quantity} ${e.card.frontName}`);
   const main = lines("main");
   const side = lines("sideboard");
+  const commander = lines("commander");
+  if (isBrawlFormat(list.format) || commander.length > 0) {
+    const out = [];
+    if (commander.length > 0) out.push("Commander", ...commander, "");
+    // Brawl decks have no sideboard, so the sideboard is not exported.
+    out.push("Deck", ...main);
+    return out.join("\n");
+  }
   const out = [...main];
   if (side.length > 0) out.push("", "Sideboard", ...side);
   return out.join("\n");
@@ -108,10 +118,10 @@ export function validateBackup(file) {
   const errors = [];
   if (!isObj(file)) return { ok: false, errors: ["The file is not a backup from this app."] };
   if (file.app !== APP_ID) return { ok: false, errors: ["The file is not a backup from this app."] };
-  if (file.schemaVersion !== BACKUP_SCHEMA_VERSION) {
+  if (!READABLE_BACKUP_VERSIONS.includes(file.schemaVersion)) {
     return {
       ok: false,
-      errors: [`The backup has schema version ${JSON.stringify(file.schemaVersion)}. This app reads version ${BACKUP_SCHEMA_VERSION} only.`],
+      errors: [`The backup has schema version ${JSON.stringify(file.schemaVersion)}. This app reads versions ${READABLE_BACKUP_VERSIONS.join(" and ")} only.`],
     };
   }
   for (const key of ["lists", "presets", "history"]) {
@@ -125,6 +135,7 @@ export function validateBackup(file) {
     if (!checkRecord(list, where, errors, ["createdAt", "updatedAt"])) return;
     if (!isStr(list.name)) errors.push(`${where} has no name.`);
     if (list.kind !== "collection" && list.kind !== "deck") errors.push(`${where} has an unknown kind.`);
+    if (list.format !== undefined && !DECK_FORMATS.includes(list.format)) errors.push(`${where} has an unknown format.`);
     if (!Array.isArray(list.entries)) return errors.push(`${where} has no entries list.`);
     list.entries.forEach((e, j) => {
       const ew = `${where}, entry ${j + 1}`;

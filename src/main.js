@@ -8,6 +8,7 @@ import { createDiscoverView } from "./ui/discover.js";
 import { createListsView } from "./ui/lists-view.js";
 import { createDataView } from "./ui/data-view.js";
 import { announce, h, message, replace } from "./ui/dom.js";
+import { savedIndex, savedIn } from "./saved.js";
 
 /**
  * Shared app state. Views read the cached data here and change it only
@@ -36,10 +37,17 @@ async function createApp() {
     settings: defaultSettings(),
     /**
      * Opens Discover with the given criteria and a note. Set in start(),
-     * after the views exist.
-     * @type {(criteria: import("./query.js").Criteria, note: string) => void}
+     * after the views exist. With `{mode: "browse"}`, Discover lists every
+     * match at once.
+     * @type {(criteria: import("./query.js").Criteria, note: string, opts?: {mode?: "draw"|"browse", sort?: {order: string, dir: string}}) => void}
      */
     showInDiscover: () => {},
+    /** Saved cards by card key. Rebuilt when lists change. */
+    saved: new Map(),
+    /** The lists that hold a card. @param {import("./cards.js").CardSnapshot} snapshot */
+    savedIn(snapshot) {
+      return savedIn(app.saved, snapshot);
+    },
 
     onChange(fn) {
       listeners.add(fn);
@@ -48,15 +56,33 @@ async function createApp() {
       for (const fn of listeners) fn(what);
     },
 
-    /** Shows a short status message and announces it. */
-    notify(text, kind = "ok") {
+    /**
+     * Shows a short status message and announces it. An action adds a
+     * button, such as Undo, and keeps the message up longer.
+     * @param {string} text
+     * @param {"ok"|"info"|"warn"|"error"} [kind]
+     * @param {{label: string, run: () => void}} [action]
+     */
+    notify(text, kind = "ok", action) {
       const slot = document.getElementById("toast");
       if (slot) {
-        replace(slot, message(kind, text));
+        const msg = message(kind, text);
+        if (action) {
+          msg.append(" ", h("button", {
+            type: "button",
+            class: "toast-action",
+            text: action.label,
+            onclick: () => {
+              slot.replaceChildren();
+              action.run();
+            },
+          }));
+        }
+        replace(slot, msg);
         clearTimeout(app._toastTimer);
-        app._toastTimer = setTimeout(() => slot.replaceChildren(), 6000);
+        app._toastTimer = setTimeout(() => slot.replaceChildren(), action ? 12000 : 6000);
       }
-      announce(text);
+      announce(action ? `${text} ${action.label} is available.` : text);
     },
 
     /** Runs a storage call. On failure, tells the user and returns false. */
@@ -81,7 +107,7 @@ async function createApp() {
       const [lists, presets, history, settings] = await Promise.all([
         storage.getLists(), storage.getPresets(), storage.getHistory(), storage.getSettings(),
       ]);
-      Object.assign(app, { lists, presets, history, settings });
+      Object.assign(app, { lists, presets, history, settings, saved: savedIndex(lists) });
       app.emit("all");
     },
 
@@ -90,6 +116,7 @@ async function createApp() {
         await storage.saveList(list);
         const saved = (await storage.getList(list.id)) ?? list;
         app.lists = [...app.lists.filter((l) => l.id !== list.id), saved];
+        app.saved = savedIndex(app.lists);
         app.settings = await storage.getSettings();
       }, "The list was not saved.");
       if (ok) {
@@ -102,6 +129,7 @@ async function createApp() {
       const ok = await app.guard(async () => {
         await storage.deleteList(id);
         app.lists = app.lists.filter((l) => l.id !== id);
+        app.saved = savedIndex(app.lists);
         app.settings = await storage.getSettings();
       }, "The list was not deleted.");
       if (ok) app.emit("lists");
@@ -222,16 +250,31 @@ async function start() {
   };
   replace(main, views.discover.el, views.lists.el, views.data.el);
 
-  /** Opens Discover with the given criteria, for example a synergy search. */
-  app.showInDiscover = (criteria, note) => {
+  /** Opens Discover with the given criteria, for example an Explore search. */
+  app.showInDiscover = (criteria, note, opts = {}) => {
     if (parseHash().view !== "discover") {
       // pushState doesn't fire hashchange, so route here. Discover then
-      // moves focus to its Draw button instead of the view title.
+      // moves focus itself instead of to the view title.
       history.pushState(null, "", "#discover");
       route(false);
     }
-    views.discover.load(criteria, note);
+    views.discover.load(criteria, note, opts);
   };
+
+  // Nerd mode.
+  const densityBtn = document.getElementById("density-toggle");
+  const applyDensity = () => {
+    const nerd = app.settings.density === "nerd";
+    document.documentElement.dataset.density = nerd ? "nerd" : "comfortable";
+    densityBtn?.setAttribute("aria-pressed", String(nerd));
+  };
+  applyDensity();
+  densityBtn?.addEventListener("click", () => {
+    const nerd = app.settings.density !== "nerd";
+    app.saveSettings({ density: nerd ? "nerd" : "comfortable" }, { quiet: true });
+    applyDensity();
+    announce(nerd ? "Nerd mode is on. Cards show more details." : "Nerd mode is off.");
+  });
 
   let active = null;
   function route(focus) {
@@ -258,6 +301,7 @@ async function start() {
     const { view } = parseHash();
     if (what === "all") views.discover.refresh();
     if (what === "presets") views.discover.refresh();
+    if (what === "lists" || what === "all") views.discover.refreshSaved();
     if (view === "lists" && what !== "presets") views.lists.refresh();
     if (view === "data") views.data.refresh();
   });

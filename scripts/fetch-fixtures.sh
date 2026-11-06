@@ -37,3 +37,13 @@ get search-list.json "/cards/search?q=f%3Astandard%20game%3Aarena%20t%3Agoblin%2
 ID=$(node -e 'console.log(require("./card-normal.json").id)')
 post collection-not-found.json "/cards/collection" \
   "{\"identifiers\":[{\"id\":\"$ID\"},{\"id\":\"9b1c6c0e-2f43-4c33-9c1e-5f2a0d7b1e11\"}]}"
+
+# Added for the design overhaul: paging, rulings, Brawl, synergy, and counters tests.
+get search-page.json "/cards/search?q=t%3Agoblin&unique=cards&order=cmc&dir=desc"
+DELVER=$(node -e 'console.log(require("./card-transform.json").id)')
+get rulings.json "/cards/$DELVER/rulings"
+get card-legendary.json "/cards/named?exact=Krenko%2C%20Mob%20Boss"
+get card-planeswalker.json "/cards/named?exact=Teferi%2C%20Hero%20of%20Dominaria"
+get card-landfall.json "/cards/named?exact=Lotus%20Cobra"
+get card-enchantress.json "/cards/named?exact=Starfield%20Mystic"
+get card-flyer.json "/cards/named?exact=Serra%20Angel"

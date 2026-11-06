@@ -4,8 +4,7 @@
 // without changes to the rest of the app.
 
 import { HISTORY_LIMIT } from "../config.js";
-import { defaultSettings, makeBackup, mergeData, replaceData } from "../export.js";
-import { normalizeCriteria } from "../query.js";
+import { cleanSettings, defaultSettings, makeBackup, mergeData, replaceData } from "../export.js";
 import { defaultClock } from "../lists.js";
 import { createMemoryBackend } from "./memory.js";
 
@@ -23,14 +22,8 @@ import { createMemoryBackend } from "./memory.js";
 export function createStorage(backend, clock = defaultClock) {
   async function getSettings() {
     const rec = await backend.get("meta", "settings");
-    const d = defaultSettings();
-    if (!rec) return d;
-    return {
-      lastCriteria: normalizeCriteria(rec.value?.lastCriteria),
-      lastUsedListId: rec.value?.lastUsedListId ?? null,
-      lastBackupAt: rec.value?.lastBackupAt ?? null,
-      lastChangeAt: rec.value?.lastChangeAt ?? null,
-    };
+    if (!rec) return defaultSettings();
+    return cleanSettings(rec.value);
   }
 
   async function saveSettings(settings) {

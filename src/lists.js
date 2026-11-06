@@ -1,10 +1,10 @@
 // List and entry operations. Pure module: every function returns a new object.
 
-import { SECTIONS } from "./config.js";
+import { DECK_FORMATS, SECTIONS } from "./config.js";
 
 /**
  * @typedef {import("./cards.js").CardSnapshot} CardSnapshot
- * @typedef {"main"|"sideboard"|"maybe"} Section
+ * @typedef {"commander"|"main"|"sideboard"|"maybe"} Section
  * @typedef {Object} Entry
  * @property {string} id
  * @property {CardSnapshot} card
@@ -16,7 +16,7 @@ import { SECTIONS } from "./config.js";
  * @property {string} id
  * @property {string} name
  * @property {"collection"|"deck"} kind
- * @property {"standard"} format
+ * @property {"standard"|"standardbrawl"|"brawl"} format The deck format for checks and export.
  * @property {Entry[]} entries
  * @property {string} createdAt
  * @property {string} updatedAt
@@ -52,15 +52,16 @@ function cleanSection(s) {
  * @param {string} name
  * @param {"collection"|"deck"} [kind]
  * @param {Clock} [clock]
+ * @param {string} [format] A key in DECK_FORMATS. Unknown values give "standard".
  * @returns {CardList}
  */
-export function createList(name, kind = "collection", clock = defaultClock) {
+export function createList(name, kind = "collection", clock = defaultClock, format = "standard") {
   const now = clock.now();
   return {
     id: clock.makeId(),
     name: cleanName(name),
     kind: kind === "deck" ? "deck" : "collection",
-    format: "standard",
+    format: DECK_FORMATS.includes(format) ? /** @type {any} */ (format) : "standard",
     entries: [],
     createdAt: now,
     updatedAt: now,
@@ -79,6 +80,17 @@ export function renameList(list, name, clock = defaultClock) {
 export function setKind(list, kind, clock = defaultClock) {
   if (kind !== "collection" && kind !== "deck") throw new Error(`Unknown kind: ${kind}`);
   return touch(list, { kind }, clock);
+}
+
+/** Changes the deck format. All entries stay. */
+export function setFormat(list, format, clock = defaultClock) {
+  if (!DECK_FORMATS.includes(format)) throw new Error(`Unknown format: ${format}`);
+  return touch(list, { format }, clock);
+}
+
+/** True for formats with a commander and singleton rules. */
+export function isBrawlFormat(format) {
+  return format === "brawl" || format === "standardbrawl";
 }
 
 /**
@@ -165,13 +177,31 @@ export function sortEntries(entries, by = "name") {
 }
 
 /**
- * Groups entries by section, in the fixed section order.
+ * The sections to show for a list: the commander section for Brawl formats,
+ * the sideboard for Standard, and any other section that has cards.
+ * @param {CardList} list
+ * @returns {Section[]}
+ */
+export function sectionsFor(list) {
+  const used = new Set(list.entries.map((e) => e.section));
+  const brawl = list.kind === "deck" && isBrawlFormat(list.format);
+  return /** @type {Section[]} */ (SECTIONS.filter((s) => used.has(s)
+    || (s === "commander" && brawl)
+    || (s === "sideboard" && !brawl)
+    || s === "main" || s === "maybe"));
+}
+
+/**
+ * Groups entries by section, in the fixed section order. The commander
+ * section is left out unless `sections` names it or an entry is in it.
  * @param {Entry[]} entries
  * @param {"name"|"manaValue"|"type"} [by]
+ * @param {Section[]} [sections]
  * @returns {{section: Section, entries: Entry[], total: number}[]}
  */
-export function groupBySection(entries, by = "name") {
-  return SECTIONS.map((section) => {
+export function groupBySection(entries, by = "name", sections) {
+  const list = sections ?? SECTIONS.filter((s) => s !== "commander" || entries.some((e) => e.section === "commander"));
+  return list.map((section) => {
     const items = sortEntries(entries.filter((e) => e.section === section), by);
     return { section, entries: items, total: totalQuantity(items) };
   });
@@ -204,4 +234,18 @@ export function applyRefresh(list, snapshotsById, clock = defaultClock) {
 /** The unique Scryfall IDs in a list, in entry order. */
 export function scryfallIds(list) {
   return [...new Set(list.entries.map((e) => e.card.scryfallId))];
+}
+
+/**
+ * Puts a removed entry back at its old position, for Undo. Does nothing if
+ * the entry is already in the list.
+ * @param {CardList} list
+ * @param {Entry} entry
+ * @param {number} index
+ */
+export function restoreEntry(list, entry, index, clock = defaultClock) {
+  if (list.entries.some((e) => e.id === entry.id)) return list;
+  const entries = [...list.entries];
+  entries.splice(Math.min(Math.max(0, index), entries.length), 0, entry);
+  return touch(list, { entries }, clock);
 }

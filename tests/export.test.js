@@ -108,10 +108,37 @@ test("Replace takes the file's settings", () => {
 
 test("a wrong schemaVersion is rejected", () => {
   const clock = fakeClock();
-  const backup = { ...makeBackup(sampleData(clock), clock.now()), schemaVersion: 2 };
+  const backup = { ...makeBackup(sampleData(clock), clock.now()), schemaVersion: 3 };
   const r = validateBackup(backup);
   assert.equal(r.ok, false);
-  assert.match(r.errors[0], /schema version 2/);
+  assert.match(r.errors[0], /schema version 3/);
+});
+
+test("backups are schema version 2, and version 1 backups still import", () => {
+  const clock = fakeClock();
+  const backup = makeBackup(sampleData(clock), clock.now());
+  assert.equal(backup.schemaVersion, 2);
+  assert.equal(validateBackup({ ...structuredClone(backup), schemaVersion: 1 }).ok, true);
+});
+
+test("a commander section and a Brawl format pass the backup checks", () => {
+  const clock = fakeClock();
+  let list = createList("Brawl", "deck", clock, "brawl");
+  list = addCard(list, snap("card-legendary"), { section: "commander" }, clock);
+  const data = { ...sampleData(clock), lists: [list] };
+  assert.equal(validateBackup(makeBackup(data, clock.now())).ok, true);
+  const bad = structuredClone(makeBackup(data, clock.now()));
+  bad.lists[0].format = "vintage-cube";
+  assert.equal(validateBackup(bad).ok, false);
+});
+
+test("Arena text for Brawl: Commander block, then Deck", () => {
+  const clock = fakeClock();
+  let list = createList("Brawl", "deck", clock, "brawl");
+  list = addCard(list, snap("card-legendary"), { section: "commander" }, clock);
+  list = addCard(list, snap("card-normal"), {}, clock);
+  list = addCard(list, snap("card-basic-land"), { quantity: 98 }, clock);
+  assert.equal(arenaText(list), "Commander\n1 Krenko, Mob Boss\n\nDeck\n1 Llanowar Elves\n98 Forest");
 });
 
 test("other bad files are rejected with reasons", () => {
@@ -144,4 +171,30 @@ test("backup reminder rule", () => {
   assert.equal(needsBackupReminder({ ...s, lastChangeAt: "2026-03-10T00:00:00.000Z", lastBackupAt: "2026-03-15T00:00:00.000Z" }, now, 14), false);
   assert.equal(needsBackupReminder({ ...s, lastChangeAt: "2026-03-01T00:00:00.000Z", lastBackupAt: "2026-02-01T00:00:00.000Z" }, now, 14), true);
   assert.equal(needsBackupReminder({ ...s, lastChangeAt: "2026-01-01T00:00:00.000Z", lastBackupAt: "2026-02-01T00:00:00.000Z" }, now, 14), false);
+});
+
+test("settings: nerd mode, Discover mode, and browse sort have safe defaults", () => {
+  const d = defaultSettings();
+  assert.equal(d.density, "comfortable");
+  assert.equal(d.discoverMode, "draw");
+  assert.deepEqual(d.browseSort, { order: "name", dir: "auto" });
+  const clock = fakeClock();
+  const backup = makeBackup({ ...sampleData(clock), settings: { ...d, density: "nerd", discoverMode: "browse", browseSort: { order: "cmc", dir: "desc" } } }, clock.now());
+  const s = replaceData(backup).settings;
+  assert.equal(s.density, "nerd");
+  assert.equal(s.discoverMode, "browse");
+  assert.deepEqual(s.browseSort, { order: "cmc", dir: "desc" });
+  const bad = replaceData({ ...backup, settings: { density: "huge", discoverMode: "x", browseSort: { order: "nope" } } }).settings;
+  assert.equal(bad.density, "comfortable");
+  assert.equal(bad.discoverMode, "draw");
+  assert.deepEqual(bad.browseSort, { order: "name", dir: "auto" });
+});
+
+test("a Standard deck exports in Standard shape even with a leftover commander entry", () => {
+  const clock = fakeClock();
+  let list = createList("D", "deck", clock, "standard");
+  list = addCard(list, snap("card-legendary"), { section: "commander" }, clock);
+  list = addCard(list, snap("card-normal"), { quantity: 4 }, clock);
+  list = addCard(list, snap("card-flyer"), { section: "sideboard" }, clock);
+  assert.equal(arenaText(list), "4 Llanowar Elves\n\nSideboard\n1 Serra Angel");
 });

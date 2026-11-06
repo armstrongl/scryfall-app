@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   addCard, applyRefresh, createList, groupBySection, removeEntry, renameList, scryfallIds,
-  setKind, sortEntries, updateEntry,
+  setFormat, setKind, sortEntries, updateEntry,
 } from "../src/lists.js";
 import { fakeClock, snap } from "./helpers.js";
 
@@ -118,4 +118,35 @@ test("refresh replaces snapshots and keeps entry fields", () => {
   assert.deepEqual(notFound, [snap("card-split").scryfallId]);
   assert.equal(next.entries.find((e) => e.section === "sideboard").card.fetchedAt, "2026-01-01T00:00:00.000Z");
   assert.deepEqual(scryfallIds(list).length, 2);
+});
+
+test("deck formats: create, change, and unknown formats", () => {
+  const clock = fakeClock();
+  const list = createList("B", "deck", clock, "standardbrawl");
+  assert.equal(list.format, "standardbrawl");
+  assert.equal(createList("C", "deck", clock).format, "standard");
+  assert.equal(createList("D", "deck", clock, "nonsense").format, "standard");
+  assert.equal(setFormat(list, "brawl", clock).format, "brawl");
+  assert.throws(() => setFormat(list, "nonsense", clock));
+});
+
+test("a card can go in the commander section", () => {
+  const clock = fakeClock();
+  const list = addCard(createList("B", "deck", clock, "brawl"), snap("card-legendary"), { section: "commander" }, clock);
+  assert.equal(list.entries[0].section, "commander");
+});
+
+test("restore puts a removed entry back in its place", async () => {
+  const { restoreEntry } = await import("../src/lists.js");
+  const clock = fakeClock();
+  let list = createList("A", "deck", clock);
+  list = addCard(list, snap("card-normal"), {}, clock);
+  list = addCard(list, snap("card-flyer"), {}, clock);
+  list = addCard(list, snap("card-landfall"), {}, clock);
+  const removed = list.entries[1];
+  const after = removeEntry(list, removed.id, clock);
+  const back = restoreEntry(after, removed, 1, clock);
+  assert.deepEqual(back.entries.map((e) => e.id), list.entries.map((e) => e.id));
+  // Restoring twice doesn't make a copy.
+  assert.equal(restoreEntry(back, removed, 1, clock).entries.length, 3);
 });

@@ -167,3 +167,18 @@ test("search sends order, direction, and page; rulings use the card's ID", async
   assert.equal(fetchImpl.calls[1].url, `${API_BASE}/cards/abc-123/rulings`);
   assert.equal(fetchImpl.calls[1].init.headers.Accept, ACCEPT_HEADER);
 });
+
+test("cancel while the body is being read is a cancel, not a server error", async () => {
+  const clock = virtualClock();
+  const controller = new AbortController();
+  const fetchImpl = async () => ({
+    ok: true,
+    status: 200,
+    json: async () => {
+      controller.abort();
+      throw new DOMException("The operation was aborted.", "AbortError");
+    },
+  });
+  const client = createClient({ fetchImpl, clock });
+  await assert.rejects(client.search("t:goblin", {}, controller.signal), (e) => e.kind === "cancelled");
+});

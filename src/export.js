@@ -60,7 +60,9 @@ export function arenaText(list) {
   const main = lines("main");
   const side = lines("sideboard");
   const commander = lines("commander");
-  if (isBrawlFormat(list.format) || commander.length > 0) {
+  // The layout follows the deck's format. A Standard deck never exports a
+  // Commander block, even if it still has a commander entry.
+  if (isBrawlFormat(list.format)) {
     const out = [];
     if (commander.length > 0) out.push("Commander", ...commander, "");
     // Brawl decks have no sideboard, so the sideboard is not exported.
@@ -174,7 +176,11 @@ export function validateBackup(file) {
   };
 }
 
-function cleanSettings(s) {
+/**
+ * Makes valid settings from any input, such as stored data or a backup.
+ * Unknown or wrong values fall back to the defaults.
+ */
+export function cleanSettings(s) {
   const d = defaultSettings();
   const dateOrNull = (v) => (isDate(v) ? v : null);
   return {

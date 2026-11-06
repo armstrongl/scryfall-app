@@ -69,7 +69,7 @@ const isType = (re) => (f) => re.test(f.types);
 
 /**
  * @typedef {{phrase: string, query: string}} Side
- * @typedef {{id: string, why: string, payoff: Side, enabler: Side, isPayoff: (f: any) => boolean, isEnabler: (f: any) => boolean}} Theme
+ * @typedef {{id: string, why: string, noMore?: boolean, payoffReason?: string, payoff: Side, enabler: Side, isPayoff: (f: any) => boolean, isEnabler: (f: any) => boolean}} Theme
  * @type {Theme[]}
  */
 const THEMES = [
@@ -142,16 +142,23 @@ const THEMES = [
     why: "casting instants and sorceries",
     payoff: { phrase: "reward you for casting instants and sorceries", query: "(otag:synergy-instant or otag:synergy-sorcery or otag:synergy-noncreature or kw:prowess)" },
     enabler: { phrase: "are cheap instants and sorceries", query: "(t:instant or t:sorcery) mv<=2" },
-    isPayoff: (f) => f.keywords.has("prowess") || f.keywords.has("magecraft") || /\binstant (?:or|and) sorcery spells?\b|\bnoncreature spells?\b|\binstant and sorcery cards?\b/.test(f.lower),
+    // "You cast" context only, so counterspells ("counter target noncreature
+    // spell") and taxes ("noncreature spells cost {1} more") don't match.
+    isPayoff: (f) => f.keywords.has("prowess") || f.keywords.has("magecraft")
+      || /\bwhenever you cast (?:an? |your (?:first|second) )?(?:instant|sorcery|noncreature)\b|\b(?:instant|sorcery|noncreature)(?: (?:or|and) sorcery)? spells? you cast\b|\binstant and sorcery cards? in your graveyard\b/.test(f.lower),
     isEnabler: isType(/\b(?:instant|sorcery)\b/),
   },
   {
     id: "blink",
     why: "enter abilities",
+    // A creature with an enter ability gets blink cards only. More creatures
+    // with enter abilities aren't a synergy on their own.
+    noMore: true,
+    payoffReason: "This creature has an enter ability. Blinking it uses that ability again.",
     payoff: { phrase: "have enter abilities", query: 't:creature o:"when ~ enters"' },
     enabler: { phrase: "blink your creatures to use enter abilities again", query: "(otag:blink or otag:flicker)" },
-    isPayoff: has(/\bexile [^.]*\byou control\b[^.]*\.? [^.]*\breturn\b[^.]*\bto the battlefield\b/),
-    isEnabler: (f) => /\bcreature\b/.test(f.types) && /\bwhen(?:ever)? ~ enters\b/.test(f.lower),
+    isPayoff: (f) => /\bcreature\b/.test(f.types) && /\bwhen(?:ever)? ~ enters\b/.test(f.lower),
+    isEnabler: has(/\bexile [^.]*\byou control\b[^.]*\.? [^.]*\breturn\b[^.]*\bto the battlefield\b/),
   },
   {
     id: "legendary",
@@ -204,10 +211,14 @@ const THEMES = [
   {
     id: "big-mana",
     why: "big spells",
-    payoff: { phrase: "help you cast it sooner (ramp)", query: "otag:ramp" },
-    enabler: { phrase: "are big spells to ramp into", query: "mv>=6 -t:land" },
+    // A big spell gets ramp, and a ramp card gets big spells. Lands that tap
+    // for mana aren't ramp.
+    noMore: true,
+    payoffReason: "This is a big spell. Ramp helps you cast it sooner.",
+    payoff: { phrase: "are big spells to ramp into", query: "mv>=6 -t:land" },
+    enabler: { phrase: "help you cast big spells sooner (ramp)", query: "otag:ramp" },
     isPayoff: (f) => f.manaValue >= 6 && !/\bland\b/.test(f.types),
-    isEnabler: has(/\badd \{[wubrgc]\}|\badd (?:one|two|three) mana\b|\bsearch your library for [^.]*\bbasic land\b/),
+    isEnabler: (f) => !/\bland\b/.test(f.types) && /\badd \{[wubrgc]\}|\badd (?:one|two|three) mana\b|\bsearch your library for [^.]*\bbasic land\b/.test(f.lower),
   },
 ];
 
@@ -217,12 +228,12 @@ const THEMES = [
 const ROLES = [
   { id: "counterspell", label: "counterspells", tag: "counterspell", test: has(/\bcounter target\b/) },
   { id: "sweeper", label: "sweepers", tag: "sweeper", test: has(/\b(?:destroy|exile) all\b|\bdeals? (?:\d+|x) damage to each creature\b|\ball creatures get -/) },
-  { id: "removal", label: "creature removal", tag: "removal-creature", test: has(/\b(?:destroy|exile) target (?:[a-z]+ )?(?:creature|nonland permanent|permanent)\b|\bdeals? (?:\d+|x) damage to (?:target|any target|up to one target) [^.]*creature|\btarget creature (?:an opponent controls )?gets -\d|\bfights?\b/) },
+  { id: "removal", label: "creature removal", tag: "removal-creature", test: has(/\b(?:destroy|exile) target (?:[a-z]+ )?(?:creature|nonland permanent|permanent)\b(?! you control)|\bdeals? (?:\d+|x) damage to (?:target|any target|up to one target) [^.]*creature|\btarget creature (?:an opponent controls )?gets -\d|\bfights?\b/) },
   { id: "burn", label: "burn", tag: "burn", test: has(/\bdeals? (?:\d+|x) damage to any target\b|\bdeals? (?:\d+|x) damage to (?:each|target) (?:opponent|player)\b/) },
   { id: "edict", label: "edicts", tag: "edict", test: has(/\b(?:each opponent|target player|target opponent) sacrifices? a creature\b/) },
   { id: "tutor", label: "tutors", tag: "tutor", test: has(/\bsearch your library for (?:a|an|up to one) (?!basic land)[^.]*card\b/) },
   { id: "draw", label: "card draw", tag: "draw", test: has(/\bdraws? (?:a|two|three|four|x|that many) cards?\b/) },
-  { id: "ramp", label: "ramp", tag: "ramp", test: has(/\badd \{[wubrgc]\}|\badd (?:one|two|three) mana\b|\bsearch your library for [^.]*\bland cards?\b/) },
+  { id: "ramp", label: "ramp", tag: "ramp", test: (f) => !/\bland\b/.test(f.types) && /\badd \{[wubrgc]\}|\badd (?:one|two|three) mana\b|\bsearch your library for [^.]*\bland cards?\b/.test(f.lower) },
   { id: "tokens", label: "token makers", tag: "repeatable-creature-tokens", test: has(/\bcreates? [^.]*\bcreature tokens?\b/) },
   { id: "anthem", label: "anthems", tag: "anthem", test: has(/\bcreatures you control get \+/) },
   { id: "trick", label: "combat tricks", tag: "combat-trick", test: (f) => /\binstant\b/.test(f.types) && /\btarget creature (?:you control )?gets \+/.test(f.lower) },
@@ -256,7 +267,7 @@ function kwTerm(k) {
 const ANSWERS = [
   { id: "hate-flying", label: "Cards that punish fliers", reason: "This creature flies. These cards are built to stop fliers.", query: "otag:hate-flying", test: (f) => /\bcreature\b/.test(f.types) && f.keywords.has("flying") },
   { id: "around-protection", label: "Sweepers and edicts", reason: "This creature has protection such as hexproof or ward, so targeted removal struggles. Sweepers and edicts don't target it.", query: "(otag:sweeper or otag:edict)", test: (f) => /\bcreature\b/.test(f.types) && ["hexproof", "ward", "shroud", "protection"].some((k) => f.keywords.has(k)) },
-  { id: "exile", label: "Exile removal and edicts", reason: "This card is indestructible or comes back when it dies. Exile and edicts deal with it for good.", query: "(otag:removal-exile or otag:edict)", test: (f) => f.keywords.has("indestructible") || /\bindestructible\b|\bpersist\b|\bundying\b|\breturn ~ (?:from your graveyard )?to the battlefield\b/.test(f.lower) },
+  { id: "exile", label: "Exile removal and edicts", reason: "This card is indestructible or comes back when it dies. Exile and edicts deal with it for good.", query: "(otag:removal-exile or otag:edict)", test: (f) => f.keywords.has("indestructible") || /\b~ (?:has|gains) indestructible\b|\bpersist\b|\bundying\b|\breturn ~ (?:from your graveyard )?to the battlefield\b/.test(f.lower) },
   { id: "graveyard-hate", label: "Graveyard hate", reason: "This card uses the graveyard. These cards exile graveyards or stop cards from leaving them.", query: "otag:graveyard-hate", test: (f) => THEMES.find((t) => t.id === "graveyard").isPayoff(f) },
   { id: "hate-lifegain", label: "Cards that stop life gain", reason: "This card gains life or rewards it. These cards stop players from gaining life.", query: "otag:hate-lifegain", test: (f) => THEMES.find((t) => t.id === "lifegain").isPayoff(f) },
   { id: "hate-token", label: "Answers to tokens", reason: "This card makes tokens. These cards punish tokens or clear the board.", query: "(otag:hate-token or otag:sweeper)", test: (f) => THEMES.find((t) => t.id === "go-wide").isEnabler(f) },
@@ -309,7 +320,9 @@ export function explore(snapshot) {
   for (const t of THEMES) {
     const payoff = t.isPayoff(f);
     const enabler = t.isEnabler(f);
-    if (payoff) {
+    if (payoff && t.noMore) {
+      addSyn({ id: `${t.id}-enablers`, label: cardsThat(colors, t.enabler.phrase), reason: `${t.payoffReason}${inColors}`, query: t.enabler.query, colors: "card" });
+    } else if (payoff) {
       addSyn({ id: `${t.id}-more`, label: cardsThat(colors, t.payoff.phrase), reason: `This card cares about ${t.why}. These cards care about it too.${inColors}`, query: t.payoff.query, colors: "card" });
       addSyn({ id: `${t.id}-enablers`, label: cardsThat(colors, t.enabler.phrase), reason: `This card cares about ${t.why}. These cards feed it.${inColors}`, query: t.enabler.query, colors: "card" });
     } else if (enabler) {

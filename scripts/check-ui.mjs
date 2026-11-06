@@ -287,6 +287,16 @@ async function browse(b, check) {
   await ev(setValue("#view-discover textarea", "t:goblin t:creature"));
   await ev(click("#mode-browse"));
   check("Browse has sort and direction", await ev(`!!document.querySelector("#browse-sort") && !!document.querySelector("#browse-dir")`));
+  // Switching to Draw while Browse is loading cancels the load: no browse
+  // cards appear in the Draw view.
+  await ev(setValue("#browse-sort", "name", "change"));
+  await ev(setValue("#browse-dir", "asc", "change"));
+  await ev(clickText("#view-discover button", "Show cards"));
+  await ev(click("#mode-draw"));
+  await sleep(4000);
+  check("switching to Draw cancels a Browse load", (await ev(`document.querySelectorAll(".results .tile").length`)) === 0);
+  check("the Cancel button is hidden after the switch", await ev(`[...document.querySelectorAll("#view-discover button")].find((x) => x.textContent.trim() === "Cancel").hidden`));
+  await ev(click("#mode-browse"));
   await ev(setValue("#browse-sort", "cmc", "change"));
   await ev(setValue("#browse-dir", "desc", "change"));
   await ev(clickText("#view-discover button", "Show cards"));
@@ -324,6 +334,11 @@ async function lists(b, check) {
   check("focus moves to Undo", await until(`document.activeElement?.textContent.trim() === "Undo"`, 1000));
   await ev(clickText("#view-lists .removed button", "Undo"));
   check("Undo puts the card back", await until(`document.querySelectorAll(".entry").length === ${before}`, 3000));
+  await ev(`document.querySelector(".entry button[aria-label^='Remove']").click()`);
+  await until(`!!document.querySelector("#view-lists .removed")`, 2000);
+  await ev(`[...document.querySelectorAll("#view-lists .removed button")].find((x) => x.textContent.trim() === "Dismiss").click()`);
+  await sleep(300);
+  check("Dismiss moves focus to the list heading", await ev(`document.activeElement?.id === "lists-title"`), await ev(FOCUS));
   check("no toast or bar floats over the page", await ev(`[...document.querySelectorAll("body *")].every((n) => !["fixed", "sticky"].includes(getComputedStyle(n).position) || n.closest("dialog") || n.id === "inspector" || n.classList.contains("skip"))`),
     await ev(`[...document.querySelectorAll("body *")].filter((n) => ["fixed", "sticky"].includes(getComputedStyle(n).position)).map((n) => n.tagName + "." + n.className).join(", ")`));
 }

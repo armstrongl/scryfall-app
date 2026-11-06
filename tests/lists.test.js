@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   addCard, applyRefresh, createList, groupBySection, removeEntry, renameList, scryfallIds,
-  setKind, sortEntries, updateEntry,
+  setFormat, setKind, sortEntries, updateEntry,
 } from "../src/lists.js";
 import { fakeClock, snap } from "./helpers.js";
 
@@ -118,4 +118,20 @@ test("refresh replaces snapshots and keeps entry fields", () => {
   assert.deepEqual(notFound, [snap("card-split").scryfallId]);
   assert.equal(next.entries.find((e) => e.section === "sideboard").card.fetchedAt, "2026-01-01T00:00:00.000Z");
   assert.deepEqual(scryfallIds(list).length, 2);
+});
+
+test("deck formats: create, change, and unknown formats", () => {
+  const clock = fakeClock();
+  const list = createList("B", "deck", clock, "standardbrawl");
+  assert.equal(list.format, "standardbrawl");
+  assert.equal(createList("C", "deck", clock).format, "standard");
+  assert.equal(createList("D", "deck", clock, "nonsense").format, "standard");
+  assert.equal(setFormat(list, "brawl", clock).format, "brawl");
+  assert.throws(() => setFormat(list, "nonsense", clock));
+});
+
+test("a card can go in the commander section", () => {
+  const clock = fakeClock();
+  const list = addCard(createList("B", "deck", clock, "brawl"), snap("card-legendary"), { section: "commander" }, clock);
+  assert.equal(list.entries[0].section, "commander");
 });

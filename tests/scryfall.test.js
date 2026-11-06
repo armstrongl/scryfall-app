@@ -156,3 +156,14 @@ test("the real collection fixture lists unknown IDs in not_found", () => {
   assert.equal(res.not_found.length, 1);
   assert.ok(res.not_found[0].id);
 });
+
+test("search sends order, direction, and page; rulings use the card's ID", async () => {
+  const clock = virtualClock();
+  const fetchImpl = fakeFetch(clock, () => response(200, { object: "list", data: [] }));
+  const client = createClient({ fetchImpl, clock });
+  await client.search("t:goblin", { unique: "cards", order: "cmc", dir: "desc", page: 2 });
+  assert.equal(fetchImpl.calls[0].url, `${API_BASE}/cards/search?q=t%3Agoblin&unique=cards&order=cmc&dir=desc&page=2`);
+  await client.rulings("abc-123");
+  assert.equal(fetchImpl.calls[1].url, `${API_BASE}/cards/abc-123/rulings`);
+  assert.equal(fetchImpl.calls[1].init.headers.Accept, ACCEPT_HEADER);
+});

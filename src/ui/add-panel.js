@@ -1,7 +1,7 @@
 // The "Add to list" panel (PLAN.md section 5.3). It uses a <dialog>
 // element, which is part of the page, not a browser dialog.
 
-import { SECTION_NAMES, SECTIONS } from "../config.js";
+import { DECK_FORMAT_NAMES, SECTION_NAMES } from "../config.js";
 import { addCard, createList } from "../lists.js";
 import { announce, checkbox, field, h, message } from "./dom.js";
 
@@ -15,10 +15,11 @@ export function openAddPanel(app, snapshot) {
   const boxes = app.lists
     .slice()
     .sort((a, b) => a.name.localeCompare(b.name))
-    .map((list) => ({ list, ...checkbox(`${list.name} (${list.kind})`, list.id === lastId, null) }));
+    .map((list) => ({ list, ...checkbox(`${list.name} (${list.kind === "deck" ? `${DECK_FORMAT_NAMES[list.format] ?? "Standard"} deck` : "collection"})`, list.id === lastId, null) }));
 
   const quantity = h("input", { type: "number", min: "1", step: "1", value: "1", inputmode: "numeric", required: true });
-  const section = h("select", {}, SECTIONS.map((s) => h("option", { value: s, text: SECTION_NAMES[s] })));
+  // Main deck first, so it's the default.
+  const section = h("select", {}, ["main", "sideboard", "maybe", "commander"].map((s) => h("option", { value: s, text: SECTION_NAMES[s] })));
   const newName = h("input", { type: "text", autocomplete: "off", placeholder: "Name of a new list" });
   const errorSlot = h("div");
 

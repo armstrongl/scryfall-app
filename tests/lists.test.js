@@ -135,3 +135,18 @@ test("a card can go in the commander section", () => {
   const list = addCard(createList("B", "deck", clock, "brawl"), snap("card-legendary"), { section: "commander" }, clock);
   assert.equal(list.entries[0].section, "commander");
 });
+
+test("restore puts a removed entry back in its place", async () => {
+  const { restoreEntry } = await import("../src/lists.js");
+  const clock = fakeClock();
+  let list = createList("A", "deck", clock);
+  list = addCard(list, snap("card-normal"), {}, clock);
+  list = addCard(list, snap("card-flyer"), {}, clock);
+  list = addCard(list, snap("card-landfall"), {}, clock);
+  const removed = list.entries[1];
+  const after = removeEntry(list, removed.id, clock);
+  const back = restoreEntry(after, removed, 1, clock);
+  assert.deepEqual(back.entries.map((e) => e.id), list.entries.map((e) => e.id));
+  // Restoring twice doesn't make a copy.
+  assert.equal(restoreEntry(back, removed, 1, clock).entries.length, 3);
+});

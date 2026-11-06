@@ -154,3 +154,15 @@ test("color identity: id instead of c for every color mode", () => {
   assert.equal(normalizeCriteria({}).useIdentity, false);
   assert.equal(normalizeCriteria({ useIdentity: true }).useIdentity, true);
 });
+
+test("filter chips: one per active filter, each with what to clear", async () => {
+  const { filterChips } = await import("../src/query.js");
+  const chips = filterChips({ ...defaultCriteria(), colorMode: "atMost", colors: ["g", "w"], types: ["creature"], mvMin: 2, mvMax: 4, rarities: ["rare", "mythic"], rawQuery: "otag:landfall" });
+  const labels = chips.map((c) => c.label);
+  assert.deepEqual(labels, ["Standard", "On Arena", "No rebalanced cards", "At most white and green", "Creature", "Mana value 2 to 4", "Rare or mythic", "Raw query: otag:landfall"]);
+  const raw = chips.find((c) => c.id === "rawQuery");
+  assert.deepEqual(raw.clear, { rawQuery: "" });
+  assert.deepEqual(filterChips(emptyCriteria()), []);
+  const id = filterChips({ ...emptyCriteria(), useIdentity: true, colorMode: "exactly", colors: ["r"] });
+  assert.deepEqual(id.map((c) => c.label), ["Color identity exactly red"]);
+});

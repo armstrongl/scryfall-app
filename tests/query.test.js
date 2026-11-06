@@ -144,3 +144,13 @@ test("Open on Scryfall link encodes the query", () => {
     "https://scryfall.com/search?q=f%3Astandard%20c%3E%3Dwu",
   );
 });
+
+test("color identity: id instead of c for every color mode", () => {
+  const base = { ...emptyCriteria(), useIdentity: true, colors: ["w", "g"] };
+  assert.equal(buildQuery({ ...base, colorMode: "atMost" }).query, "id<=wg");
+  assert.equal(buildQuery({ ...base, colorMode: "exactly" }).query, "id=wg");
+  assert.equal(buildQuery({ ...base, colorMode: "atLeast" }).query, "id>=wg");
+  assert.equal(buildQuery({ ...emptyCriteria(), useIdentity: true, colorless: true }).query, "id=c");
+  assert.equal(normalizeCriteria({}).useIdentity, false);
+  assert.equal(normalizeCriteria({ useIdentity: true }).useIdentity, true);
+});

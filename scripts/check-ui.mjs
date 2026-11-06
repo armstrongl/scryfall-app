@@ -155,10 +155,13 @@ async function shell(b, width, check) {
   await ev(click(toggle));
   check("nerd mode turns off", (await ev(`document.documentElement.dataset.density`)) === "comfortable");
   if (width < 500) {
-    check("phone: the view tabs are a bar fixed to the bottom", (await ev(`getComputedStyle(document.querySelector("nav.views")).position`)) === "fixed"
-      && (await ev(`Math.abs(document.querySelector("nav.views").getBoundingClientRect().bottom - innerHeight) < 2`)),
-      await ev(`JSON.stringify(document.querySelector("nav.views").getBoundingClientRect())`));
-    check("phone: the brand is visible, not under the tab bar", await ev(`(() => {
+    check("phone: the view tabs are in the header and never float over the page", await ev(`(() => {
+      const nav = document.querySelector("nav.views");
+      const pos = getComputedStyle(nav).position;
+      return pos !== "fixed" && pos !== "sticky" && document.querySelector(".site-header").contains(nav)
+        && getComputedStyle(document.querySelector(".site-header")).position !== "sticky";
+    })()`));
+    check("phone: the brand is visible", await ev(`(() => {
       const r = document.querySelector(".brand").getBoundingClientRect();
       const hit = document.elementFromPoint(r.left + 5, r.top + r.height / 2);
       return !!hit && !!hit.closest(".brand");
@@ -317,9 +320,12 @@ async function lists(b, check) {
   await ev(`document.querySelector(".entry button[aria-label^='Remove']").click()`);
   await sleep(500);
   check("Remove takes the card out", (await ev(`document.querySelectorAll(".entry").length`)) === before - 1);
-  check("an Undo button appears", await until(`[...document.querySelectorAll("#toast button")].some((x) => x.textContent.trim() === "Undo")`, 2000));
-  await ev(clickText("#toast button", "Undo"));
+  check("an Undo button appears where the card was", await until(`[...document.querySelectorAll("#view-lists .removed button")].some((x) => x.textContent.trim() === "Undo")`, 2000));
+  check("focus moves to Undo", await until(`document.activeElement?.textContent.trim() === "Undo"`, 1000));
+  await ev(clickText("#view-lists .removed button", "Undo"));
   check("Undo puts the card back", await until(`document.querySelectorAll(".entry").length === ${before}`, 3000));
+  check("no toast or bar floats over the page", await ev(`[...document.querySelectorAll("body *")].every((n) => !["fixed", "sticky"].includes(getComputedStyle(n).position) || n.closest("dialog") || n.id === "inspector" || n.classList.contains("skip"))`),
+    await ev(`[...document.querySelectorAll("body *")].filter((n) => ["fixed", "sticky"].includes(getComputedStyle(n).position)).map((n) => n.tagName + "." + n.className).join(", ")`));
 }
 
 // Runner ---------------------------------------------------------------------------

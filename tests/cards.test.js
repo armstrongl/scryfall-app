@@ -111,3 +111,57 @@ test("search results from a real List object make valid snapshots", () => {
     assert.equal(s.standardLegality, "legal", card.name);
   }
 });
+
+// Fields for card details, Brawl checks, and buy links ----------------------------
+
+test("snapshot keeps the details fields from a real card", () => {
+  const card = fixture("card-normal");
+  const s = makeSnapshot(card, AT);
+  assert.deepEqual(s.keywords, card.keywords);
+  assert.equal(s.legalities.standard, card.legalities.standard);
+  assert.equal(s.legalities.brawl, card.legalities.brawl);
+  assert.equal(s.legalities.standardbrawl, card.legalities.standardbrawl);
+  assert.equal(s.power, card.power);
+  assert.equal(s.toughness, card.toughness);
+  assert.equal(s.loyalty, null);
+  assert.equal(s.artist, card.artist);
+  assert.equal(s.releasedAt, card.released_at);
+  assert.equal(s.flavorText, card.flavor_text ?? null);
+  assert.equal(s.edhrecRank, card.edhrec_rank);
+  assert.equal(s.gameChanger, card.game_changer);
+  assert.deepEqual(s.producedMana, card.produced_mana);
+  assert.deepEqual(s.games, card.games);
+  assert.deepEqual(s.prices, { usd: card.prices.usd, usdFoil: card.prices.usd_foil, eur: card.prices.eur, tix: card.prices.tix });
+  assert.deepEqual(s.purchaseUris, { tcgplayer: card.purchase_uris.tcgplayer, cardmarket: card.purchase_uris.cardmarket, cardhoarder: card.purchase_uris.cardhoarder });
+  assert.equal(s.relatedUris.edhrec, card.related_uris.edhrec);
+  assert.equal(s.relatedUris.gatherer, card.related_uris.gatherer);
+  assert.equal(s.images[0].large, card.image_uris.large);
+});
+
+test("snapshot lists related parts but not the card itself", () => {
+  const card = fixture("card-normal");
+  const s = makeSnapshot(card, AT);
+  const others = card.all_parts.filter((p) => p.id !== card.id);
+  assert.deepEqual(s.allParts, others.map((p) => ({ id: p.id, component: p.component, name: p.name, typeLine: p.type_line })));
+  assert.ok(s.allParts.every((p) => p.id !== card.id));
+});
+
+test("two-faced card: power and toughness from the front face, flavor from any face", () => {
+  const card = fixture("card-transform");
+  const s = makeSnapshot(card, AT);
+  assert.equal(s.power, card.card_faces[0].power);
+  assert.equal(s.toughness, card.card_faces[0].toughness);
+  assert.equal(s.artist, card.card_faces[0].artist);
+  assert.equal(s.images[1].large, card.card_faces[1].image_uris.large);
+});
+
+test("snapshot fields are safe defaults when the card has none", () => {
+  const card = fixture("card-basic-land");
+  const s = makeSnapshot({ ...card, prices: undefined, purchase_uris: undefined, related_uris: undefined, all_parts: undefined, keywords: undefined, edhrec_rank: undefined }, AT);
+  assert.deepEqual(s.keywords, []);
+  assert.deepEqual(s.allParts, []);
+  assert.deepEqual(s.prices, { usd: null, usdFoil: null, eur: null, tix: null });
+  assert.deepEqual(s.purchaseUris, { tcgplayer: null, cardmarket: null, cardhoarder: null });
+  assert.deepEqual(s.relatedUris, { edhrec: null, gatherer: null });
+  assert.equal(s.edhrecRank, null);
+});

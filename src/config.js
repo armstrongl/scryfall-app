@@ -1,7 +1,7 @@
 // App-wide constants. Change the app name here and nowhere else.
 
-/** The working title. The owner can change it in this one place. */
-export const APP_NAME = "Card discovery";
+/** The app name. Change it here; README.md lists the other places it appears. */
+export const APP_NAME = "Brewmancer";
 
 /** Short ID used in backup files and storage names. Do not change after release. */
 export const APP_ID = "card-discovery";
@@ -37,7 +37,13 @@ export const COLLECTION_BATCH_SIZE = 75;
 /** Show the backup reminder when the last backup is older than this. */
 export const BACKUP_REMINDER_DAYS = 14;
 
-export const BACKUP_SCHEMA_VERSION = 1;
+/**
+ * Version 2 added the commander section, deck formats other than Standard,
+ * and card detail fields. Version 1 backups still import.
+ */
+export const BACKUP_SCHEMA_VERSION = 2;
+/** Backup versions this app can read. */
+export const READABLE_BACKUP_VERSIONS = [1, 2];
 
 export const DB_NAME = "card-discovery";
 export const DB_VERSION = 1;
@@ -92,8 +98,16 @@ export const COLOR_NAMES = { w: "White", u: "Blue", b: "Black", r: "Red", g: "Gr
 
 export const RARITIES = ["common", "uncommon", "rare", "mythic"];
 
-export const SECTIONS = ["main", "sideboard", "maybe"];
-export const SECTION_NAMES = { main: "Main deck", sideboard: "Sideboard", maybe: "Maybe" };
+export const SECTIONS = ["commander", "main", "sideboard", "maybe"];
+export const SECTION_NAMES = { commander: "Commander", main: "Main deck", sideboard: "Sideboard", maybe: "Maybe" };
+
+/**
+ * Deck formats a list can be checked against. Keys are Scryfall legality keys.
+ * Brawl is Arena's 100-card Brawl (formerly Historic Brawl). Rules:
+ * https://magic.wizards.com/en/formats/brawl
+ */
+export const DECK_FORMATS = ["standard", "standardbrawl", "brawl"];
+export const DECK_FORMAT_NAMES = { standard: "Standard", standardbrawl: "Standard Brawl", brawl: "Brawl" };
 
 /**
  * The notice that the Wizards of the Coast Fan Content Policy requires,

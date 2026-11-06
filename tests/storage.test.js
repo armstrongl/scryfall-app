@@ -46,3 +46,14 @@ test("settings have defaults", async () => {
   assert.equal(settings.lastCriteria.format, "standard");
   assert.equal(settings.lastBackupAt, null);
 });
+
+test("settings keep nerd mode, Discover mode, and browse sort through storage", async () => {
+  const storage = createStorage(createMemoryBackend());
+  const s = await storage.getSettings();
+  await storage.saveSettings({ ...s, density: "nerd", discoverMode: "browse", browseSort: { order: "cmc", dir: "desc" } });
+  await storage.saveList(createList("A", "collection", fakeClock()));
+  const back = await storage.getSettings();
+  assert.equal(back.density, "nerd");
+  assert.equal(back.discoverMode, "browse");
+  assert.deepEqual(back.browseSort, { order: "cmc", dir: "desc" });
+});

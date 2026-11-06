@@ -3,6 +3,7 @@
 // least 500 ms between requests. Run: node scripts/check-api.mjs
 import { buildQuery, emptyCriteria } from "../src/query.js";
 import { PARTNER_QUERIES, rewardsQuery } from "../src/synergy.js";
+import { VERIFIED_TAGS } from "../src/explore.js";
 
 const API = "https://api.scryfall.com";
 const HEADERS = { Accept: "application/json;q=0.9,*/*;q=0.8", "User-Agent": "CardDiscoveryDev/0.1" };
@@ -73,6 +74,14 @@ for (const [label, fragment] of Object.entries(synergy)) {
   const { status, body } = await search(q);
   const warn = body.warnings?.length ? `WARNINGS: ${body.warnings.join(" | ")}` : "no warnings";
   console.log(`${label.padEnd(22)} ${status} ${body.total_cards ?? body.code} ${warn}`);
+}
+
+console.log("\n## Explore tags (each tag in VERIFIED_TAGS in src/explore.js, on Arena in any format)");
+console.log("A tag with 0 cards or an error no longer exists. Remove it from VERIFIED_TAGS and from the queries that use it.");
+for (const tag of VERIFIED_TAGS) {
+  const { status, body } = await search(`otag:${tag} game:arena`);
+  const ok = status === 200 && body.total_cards > 0;
+  console.log(`${ok ? "ok  " : "GONE"} ${tag.padEnd(28)} ${status} ${body.total_cards ?? body.code}`);
 }
 
 console.log("\n## Error responses");

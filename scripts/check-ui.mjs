@@ -18,7 +18,7 @@ import { extname, join, normalize, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
-const CONFIGS = process.env.ONLY ? [{ width: Number(process.env.ONLY), scheme: "light" }] : [
+const CONFIGS = process.env.ONLY ? [{ width: Number(process.env.ONLY), scheme: process.env.SCHEME ?? "light" }] : [
   { width: 390, scheme: "light" },
   { width: 390, scheme: "dark" },
   { width: 1280, scheme: "light" },
@@ -155,7 +155,14 @@ async function shell(b, width, check) {
   await ev(click(toggle));
   check("nerd mode turns off", (await ev(`document.documentElement.dataset.density`)) === "comfortable");
   if (width < 500) {
-    check("phone: the view tabs are a bar fixed to the bottom", (await ev(`getComputedStyle(document.querySelector("nav.views")).position`)) === "fixed");
+    check("phone: the view tabs are a bar fixed to the bottom", (await ev(`getComputedStyle(document.querySelector("nav.views")).position`)) === "fixed"
+      && (await ev(`Math.abs(document.querySelector("nav.views").getBoundingClientRect().bottom - innerHeight) < 2`)),
+      await ev(`JSON.stringify(document.querySelector("nav.views").getBoundingClientRect())`));
+    check("phone: the brand is visible, not under the tab bar", await ev(`(() => {
+      const r = document.querySelector(".brand").getBoundingClientRect();
+      const hit = document.elementFromPoint(r.left + 5, r.top + r.height / 2);
+      return !!hit && !!hit.closest(".brand");
+    })()`));
   }
 }
 
@@ -169,6 +176,14 @@ async function discover(b, check) {
     return before !== after;
   })());
   check("active filters show as chips", await ev(`[...document.querySelectorAll(".chips .chip")].some((c) => /Standard/.test(c.textContent))`));
+  await ev(setValue("#view-discover .preset-row select", "builtin-arena-brawl", "change"));
+  await ev(clickText("#view-discover button", "Apply"));
+  check("the Arena Brawl preset uses Brawl and color identity", await ev(`(() => {
+    const q = document.querySelector("code.query").textContent;
+    return /f:brawl/.test(q) && [...document.querySelectorAll(".chips .chip")].some((c) => /^Brawl/.test(c.textContent));
+  })()`));
+  await ev(setValue("#view-discover .preset-row select", "builtin-arena-standard", "change"));
+  await ev(clickText("#view-discover button", "Apply"));
   await ev(setValue("#view-discover textarea", "t:goblin t:creature"));
   check("raw query reaches the query preview", await until(`document.querySelector("code.query").textContent.includes("(t:goblin t:creature)")`, 3000));
   check("a raw query chip has a remove button", await ev(`[...document.querySelectorAll(".chips .chip button")].some((x) => /raw query/i.test(x.getAttribute("aria-label")))`));

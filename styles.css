@@ -122,11 +122,11 @@ code, .mono { font-family: var(--mono); font-size: 0.88em; }
 :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 
 /* Header and navigation ------------------------------------------------------ */
+/* No backdrop-filter on the header on phones: it would make the header the
+   containing block for the fixed tab bar inside it. */
 .site-header {
-  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  background: color-mix(in srgb, var(--surface) 82%, var(--bg));
   border-bottom: 1px solid var(--border);
-  backdrop-filter: saturate(1.4) blur(10px);
-  -webkit-backdrop-filter: saturate(1.4) blur(10px);
 }
 .header-inner {
   max-width: 1440px; margin: 0 auto; display: flex; align-items: center; gap: 0.75rem;
@@ -178,6 +178,11 @@ nav.views a[aria-current="page"] { color: var(--accent); background: var(--accen
 
 @media (min-width: 760px) {
   body { padding-bottom: 0; }
+  .site-header {
+    background: color-mix(in srgb, var(--surface) 82%, transparent);
+    backdrop-filter: saturate(1.4) blur(10px);
+    -webkit-backdrop-filter: saturate(1.4) blur(10px);
+  }
   nav.views {
     position: static; background: none; border: 0; padding: 0; backdrop-filter: none; -webkit-backdrop-filter: none;
     justify-content: flex-start; gap: 0.25rem;

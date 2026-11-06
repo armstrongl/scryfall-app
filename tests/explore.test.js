@@ -148,3 +148,9 @@ test("a card that gives indestructible isn't itself indestructible", () => {
   const heroic = withText("card-normal", "Instant", "Permanents you control gain hexproof and indestructible until end of turn.", { name: "Heroic Intervention" });
   assert.ok(!explore(heroic).counters.some((s) => s.id === "exile"));
 });
+
+test("reason text reads right for blink and ramp cards", () => {
+  const ephemerate = withText("card-normal", "Instant", "Exile target creature you control, then return it to the battlefield under its owner's control.", { name: "Ephemerate" });
+  const all = [...explore(ephemerate).synergies, ...explore(snap("card-normal")).synergies].map((s) => s.reason).join(" | ");
+  assert.doesNotMatch(all, /gives you enter abilities|gives you big spells/, all);
+});

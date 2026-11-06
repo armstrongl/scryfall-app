@@ -14,6 +14,22 @@ const LEGAL_NAMES = { ...FORMAT_NAMES, historic: "Historic", alchemy: "Alchemy",
 
 /** Rulings by Scryfall ID, for this session. */
 const rulingsCache = new Map();
+/** Rulings requests still running, by Scryfall ID, so a card is never asked for twice. */
+const rulingsLoading = new Map();
+
+/** @returns {Promise<any[]>} */
+function loadRulings(app, scryfallId) {
+  if (!rulingsLoading.has(scryfallId)) {
+    rulingsLoading.set(scryfallId, app.client.rulings(scryfallId)
+      .then((res) => {
+        const data = Array.isArray(res.data) ? res.data : [];
+        rulingsCache.set(scryfallId, data);
+        return data;
+      })
+      .finally(() => rulingsLoading.delete(scryfallId)));
+  }
+  return rulingsLoading.get(scryfallId);
+}
 
 function section(title, ...children) {
   return h("section", { class: "detail-section" }, h("h3", { text: title }), ...children);
@@ -45,26 +61,25 @@ function rulingsArea(app, snapshot) {
     show(cached);
     return slot;
   }
-  const btn = h("button", {
-    type: "button",
-    text: "Show rulings",
-    onclick: async () => {
-      btn.disabled = true;
-      btn.textContent = "Loading rulings…";
-      try {
-        const res = await app.client.rulings(snapshot.scryfallId);
-        const data = Array.isArray(res.data) ? res.data : [];
-        rulingsCache.set(snapshot.scryfallId, data);
-        show(data);
-        announce(data.length ? `${data.length} ${data.length === 1 ? "ruling" : "rulings"}.` : "No rulings.");
-      } catch (e) {
-        btn.disabled = false;
-        btn.textContent = "Show rulings";
-        slot.append(message("error", errorMessage(e)));
-      }
-    },
-  });
+  const run = async () => {
+    btn.disabled = true;
+    btn.textContent = "Loading rulings…";
+    try {
+      const data = await loadRulings(app, snapshot.scryfallId);
+      if (!slot.isConnected) return;
+      show(data);
+      announce(data.length ? `${data.length} ${data.length === 1 ? "ruling" : "rulings"}.` : "No rulings.");
+    } catch (e) {
+      btn.disabled = false;
+      btn.textContent = "Show rulings";
+      slot.append(message("error", errorMessage(e)));
+    }
+  };
+  const btn = h("button", { type: "button", text: "Show rulings", onclick: run });
   slot.append(btn);
+  // A request for this card is already running, for example from the
+  // other panel: wait for it instead of sending another.
+  if (rulingsLoading.has(snapshot.scryfallId)) run();
   return slot;
 }
 

@@ -3,17 +3,17 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Brewmancer</title>
+  <title>Cascade</title>
   <meta name="description" content="Discover Magic: The Gathering cards, see how they work together, and build Standard and Brawl decks for MTG Arena.">
   <meta name="color-scheme" content="light dark">
-  <meta name="theme-color" content="#f5f3fb" media="(prefers-color-scheme: light)">
-  <meta name="theme-color" content="#13101c" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0d1117" media="(prefers-color-scheme: dark)">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="./icons/icon-180.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="Brewmancer">
+  <meta name="apple-mobile-web-app-title" content="Cascade">
   <link rel="stylesheet" href="./styles.css">
   <script type="module" src="./src/main.js"></script>
 </head>
@@ -21,15 +21,19 @@
   <a class="skip" href="#main">Skip to content</a>
   <header class="site-header">
     <div class="header-inner">
-      <a class="brand" href="#discover"><img src="./icons/icon.svg" alt="" width="32" height="32"><span data-app-name>Brewmancer</span></a>
+      <a class="brand" href="#discover"><img src="./icons/icon.svg" alt="" width="28" height="28"><span data-app-name>Cascade</span></a>
       <nav class="views" aria-label="Views">
-        <a href="#discover" data-view="discover"><span class="nav-icon" aria-hidden="true">✦</span><span>Discover</span></a>
-        <a href="#lists" data-view="lists"><span class="nav-icon" aria-hidden="true">❖</span><span>Lists</span></a>
-        <a href="#data" data-view="data"><span class="nav-icon" aria-hidden="true">⛁</span><span>Data</span></a>
+        <a href="#discover" data-view="discover">Discover</a>
+        <a href="#lists" data-view="lists">Lists</a>
+        <a href="#data" data-view="data">Data</a>
+        <a href="#help" data-view="help">Help</a>
       </nav>
-      <button type="button" id="density-toggle" class="density-toggle" aria-pressed="false" title="Show more card details: prices, legality, stats, and queries">
-        <span class="switch" aria-hidden="true"></span><span>Nerd mode</span>
-      </button>
+      <div class="tip-wrap">
+        <button type="button" id="density-toggle" class="density-toggle" aria-pressed="false" aria-describedby="nerd-tip">
+          <span class="switch" aria-hidden="true"></span><span>Nerd mode</span>
+        </button>
+        <span id="nerd-tip" class="tooltip" role="tooltip">Nerd mode shows more details on every card: mana value, power and toughness, set and rarity, release date, price, EDHREC rank, and legality in Standard and Brawl. Cards get smaller, so more fit on the screen.</span>
+      </div>
     </div>
     <p id="pause" class="pause" hidden></p>
   </header>
@@ -39,8 +43,8 @@
     <noscript><p>This app needs JavaScript.</p></noscript>
   </main>
   <footer class="site-footer">
-    <p>Card data and images from <a id="scryfall-link" href="https://scryfall.com">Scryfall</a>. Brewmancer isn't made by or endorsed by Scryfall.</p>
-    <p id="fan-notice">Brewmancer is unofficial Fan Content permitted under the Fan Content Policy. Not approved/endorsed by Wizards. Portions of the materials used are property of Wizards of the Coast. ©Wizards of the Coast LLC.</p>
+    <p>Card data and images from <a id="scryfall-link" href="https://scryfall.com">Scryfall</a>. Cascade isn't made by or endorsed by Scryfall.</p>
+    <p id="fan-notice">Cascade is unofficial Fan Content permitted under the Fan Content Policy. Not approved/endorsed by Wizards. Portions of the materials used are property of Wizards of the Coast. ©Wizards of the Coast LLC.</p>
   </footer>
   <div id="live" class="visually-hidden" aria-live="polite" aria-atomic="true"></div>
 </body>

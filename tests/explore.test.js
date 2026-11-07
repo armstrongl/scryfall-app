@@ -100,6 +100,19 @@ test("criteria: in a Brawl format, colors use color identity", () => {
   assert.match(buildQuery(c).query, /id<=g/);
 });
 
+test("criteria: an Explore search carries a readable label for its chip", () => {
+  const card = snap("card-landfall");
+  const s = explore(card).synergies[0];
+  const c = exploreCriteria(defaultCriteria(), card, s, "synergies");
+  assert.equal(c.rawLabel, `Works with Lotus Cobra: ${s.label}`);
+  assert.doesNotMatch(c.rawLabel, /otag:|-!/);
+  const sim = explore(card).similar[0];
+  assert.equal(exploreCriteria(defaultCriteria(), card, sim, "similar").rawLabel, `Similar to Lotus Cobra: ${sim.label}`);
+  const ans = explore(card).counters[0];
+  assert.equal(exploreCriteria(defaultCriteria(), card, ans, "counters").rawLabel, `Answers to Lotus Cobra: ${ans.label}`);
+  assert.equal(exploreCriteria(defaultCriteria(), card, s).rawLabel, s.label);
+});
+
 test("color phrases", () => {
   assert.equal(colorPhrase(["G"]), "Green");
   assert.equal(colorPhrase(["W", "U"]), "White and blue");

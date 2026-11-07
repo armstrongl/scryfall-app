@@ -109,6 +109,8 @@ test("free text with a double quote makes no term and gives a hint", () => {
     assert.equal(r.query, "", field);
     assert.equal(r.hints.length, 1, field);
     assert.equal(r.hints[0].field, field);
+    // The hint names the field as the form labels it.
+    assert.match(r.hints[0].message, /Use the Scryfall search field/, field);
   }
   // A quote in the raw query is allowed.
   assert.equal(q({ rawQuery: 'o:"draw"' }).query, '(o:"draw")');
@@ -159,10 +161,28 @@ test("filter chips: one per active filter, each with what to clear", async () =>
   const { filterChips } = await import("../src/query.js");
   const chips = filterChips({ ...defaultCriteria(), colorMode: "atMost", colors: ["g", "w"], types: ["creature"], mvMin: 2, mvMax: 4, rarities: ["rare", "mythic"], rawQuery: "otag:landfall" });
   const labels = chips.map((c) => c.label);
-  assert.deepEqual(labels, ["Standard", "On Arena", "No rebalanced cards", "At most white and green", "Creature", "Mana value 2 to 4", "Rare or mythic", "Raw query: otag:landfall"]);
+  assert.deepEqual(labels, ["Standard", "On Arena", "No rebalanced cards", "At most white and green", "Creature", "Mana value 2 to 4", "Rare or mythic", "Custom search: otag:landfall"]);
   const raw = chips.find((c) => c.id === "rawQuery");
-  assert.deepEqual(raw.clear, { rawQuery: "" });
+  assert.deepEqual(raw.clear, { rawQuery: "", rawLabel: "" });
   assert.deepEqual(filterChips(emptyCriteria()), []);
   const id = filterChips({ ...emptyCriteria(), useIdentity: true, colorMode: "exactly", colors: ["r"] });
   assert.deepEqual(id.map((c) => c.label), ["Color identity exactly red"]);
+});
+
+test("criteria keep a readable label for the custom search", () => {
+  assert.equal(defaultCriteria().rawLabel, "");
+  assert.equal(normalizeCriteria({ rawLabel: "Works with Lotus Cobra" }).rawLabel, "Works with Lotus Cobra");
+  assert.equal(normalizeCriteria({ rawLabel: 5 }).rawLabel, "");
+  // The label never changes the query.
+  assert.equal(buildQuery({ ...emptyCriteria(), rawQuery: "otag:landfall", rawLabel: "Landfall" }).query, "(otag:landfall)");
+});
+
+test("filter chips: a labeled search shows its label in full, not the query", async () => {
+  const { filterChips } = await import("../src/query.js");
+  const label = "Works with Lotus Cobra: Green cards that leverage landfall";
+  const chips = filterChips({ ...emptyCriteria(), rawQuery: '(otag:landfall or kw:landfall) -!"Lotus Cobra"', rawLabel: label });
+  assert.deepEqual(chips.map((c) => c.label), [label]);
+  assert.deepEqual(chips[0].clear, { rawQuery: "", rawLabel: "" });
+  // A label without a query isn't a filter.
+  assert.deepEqual(filterChips({ ...emptyCriteria(), rawLabel: label }), []);
 });

@@ -7,6 +7,8 @@ import { defaultSettings } from "./export.js";
 import { createDiscoverView } from "./ui/discover.js";
 import { createListsView } from "./ui/lists-view.js";
 import { createDataView } from "./ui/data-view.js";
+import { createHelpView } from "./ui/help-view.js";
+import { NERD_MODE_TIP } from "./docs.js";
 import { announce, h, message, replace } from "./ui/dom.js";
 import { savedIndex, savedIn } from "./saved.js";
 
@@ -221,11 +223,31 @@ function showPause(until) {
   pauseTimer = setInterval(tick, 1000);
 }
 
+// Nerd mode tooltip -------------------------------------------------------------
+/**
+ * The tooltip shows on hover and on keyboard focus (CSS), and Escape hides it
+ * until the pointer or focus leaves, so it never blocks anything.
+ * @param {HTMLElement|null} button
+ */
+function setUpTooltip(button) {
+  const wrap = button?.closest(".tip-wrap");
+  const tip = document.getElementById(button?.getAttribute("aria-describedby") ?? "");
+  if (!wrap || !tip) return;
+  tip.textContent = NERD_MODE_TIP;
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && getComputedStyle(tip).display !== "none") wrap.classList.add("tip-off");
+  });
+  const reset = () => wrap.classList.remove("tip-off");
+  wrap.addEventListener("mouseleave", reset);
+  wrap.addEventListener("focusout", reset);
+}
+
 // Views and navigation -----------------------------------------------------------
 function parseHash() {
   const [view, id] = location.hash.replace(/^#/, "").split("/");
   if (view === "lists") return { view: "lists", id: id ?? null };
   if (view === "data") return { view: "data", id: null };
+  if (view === "help") return { view: "help", id: id ?? null };
   return { view: "discover", id: null };
 }
 
@@ -247,8 +269,9 @@ async function start() {
     discover: createDiscoverView(app),
     lists: createListsView(app),
     data: createDataView(app),
+    help: createHelpView(),
   };
-  replace(main, views.discover.el, views.lists.el, views.data.el);
+  replace(main, views.discover.el, views.lists.el, views.data.el, views.help.el);
 
   /** Opens Discover with the given criteria, for example an Explore search. */
   app.showInDiscover = (criteria, note, opts = {}) => {
@@ -269,6 +292,7 @@ async function start() {
     densityBtn?.setAttribute("aria-pressed", String(nerd));
   };
   applyDensity();
+  setUpTooltip(densityBtn);
   densityBtn?.addEventListener("click", () => {
     const nerd = app.settings.density !== "nerd";
     app.saveSettings({ density: nerd ? "nerd" : "comfortable" }, { quiet: true });
@@ -287,7 +311,13 @@ async function start() {
     if (view === "lists") views.lists.show(id);
     if (view === "data") views.data.show();
     const changed = active !== `${view}/${id}`;
+    const sameView = active?.split("/")[0] === view;
     active = `${view}/${id}`;
+    if (view === "help") {
+      // Moving between Help pages puts focus on the new page's heading.
+      views.help.show(id, { focus: focus && changed && sameView });
+      if (sameView) return;
+    }
     if (focus && changed) {
       const title = views[view].el.querySelector("h1");
       if (title) {

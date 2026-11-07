@@ -25,6 +25,9 @@ function checkGroup(legend, items, onchange) {
  */
 export function createCriteriaForm(onChange) {
   let criteria = normalizeCriteria(null);
+  // The readable name of the Scryfall search, for example from Explore.
+  // Editing the search by hand drops it, because it no longer fits.
+  let rawLabel = "";
   const emit = () => {
     criteria = read();
     syncDisabled();
@@ -51,7 +54,7 @@ export function createCriteriaForm(onChange) {
   const rarities = checkGroup("Rarity", RARITIES.map((r) => [r, rarityName(r)]), emit);
   const keyword = h("input", { type: "text", autocomplete: "off", spellcheck: "false", oninput: emit });
   const oracleText = h("input", { type: "text", autocomplete: "off", oninput: emit });
-  const rawQuery = h("textarea", { rows: "2", autocomplete: "off", spellcheck: "false", oninput: emit });
+  const rawQuery = h("textarea", { rows: "2", autocomplete: "off", spellcheck: "false", oninput: () => { rawLabel = ""; emit(); } });
 
   const hintSlots = {
     colors: h("p", { class: "hint field-hint", id: uid("hint") }),
@@ -87,6 +90,7 @@ export function createCriteriaForm(onChange) {
       keyword: keyword.value,
       oracleText: oracleText.value,
       rawQuery: rawQuery.value,
+      rawLabel: rawQuery.value.trim() ? rawLabel : "",
     });
   }
 
@@ -114,6 +118,7 @@ export function createCriteriaForm(onChange) {
     keyword.value = criteria.keyword;
     oracleText.value = criteria.oracleText;
     rawQuery.value = criteria.rawQuery;
+    rawLabel = criteria.rawLabel;
     syncDisabled();
   }
 
@@ -152,7 +157,7 @@ export function createCriteriaForm(onChange) {
     hintSlots.keyword,
     field("Rules text", oracleText),
     hintSlots.oracleText,
-    field("Raw query", rawQuery, "Any Scryfall search syntax. The app adds parentheses around it."));
+    field("Scryfall search", rawQuery, "Optional. Any Scryfall search syntax, such as t:goblin or o:\"draw a card\". It shows as a Custom search filter."));
 
   return { el, set, get: () => criteria, showHints };
 }

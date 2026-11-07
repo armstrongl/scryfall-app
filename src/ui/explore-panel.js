@@ -27,7 +27,7 @@ export function openExplore(app, snapshot) {
   };
 
   function use(group, s) {
-    const criteria = exploreCriteria(app.settings.lastCriteria, snapshot, s);
+    const criteria = exploreCriteria(app.settings.lastCriteria, snapshot, s, group.key);
     close(false);
     const colors = s.colors === "card" && criteria.colors.length ? " It stays in the card's colors." : "";
     app.showInDiscover(criteria, `${group.note(snapshot.name, s.label)} The search keeps your format and game.${colors} Most popular first.`, {
@@ -63,8 +63,7 @@ export function openExplore(app, snapshot) {
         h("li", { class: "suggestion" },
           h("div", { class: "suggestion-body" },
             h("h3", { text: s.label }),
-            h("p", { class: "hint", text: s.reason }),
-            h("p", { class: "query-wrap nerd-only" }, h("code", { class: "query", text: s.query }))),
+            h("p", { class: "hint", text: s.reason })),
           h("button", { type: "button", class: "primary", text: "Search", "aria-label": `Search: ${s.label}`, onclick: () => use(g, s) }))))
       : message("info", g.empty));
     tabs.push(tab);

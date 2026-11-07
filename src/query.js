@@ -18,7 +18,9 @@ import { CARD_TYPES, COLORS, COLOR_NAMES, FORMAT_KEYS, FORMAT_NAMES, MAX_QUERY_L
  * @property {("common"|"uncommon"|"rare"|"mythic")[]} rarities
  * @property {string} keyword
  * @property {string} oracleText
- * @property {string} rawQuery
+ * @property {string} rawQuery Scryfall search syntax.
+ * @property {string} rawLabel A readable name for rawQuery, for example the
+ *   Explore search it came from. Shown on its chip instead of the syntax.
  */
 
 /** @returns {Criteria} */
@@ -39,6 +41,7 @@ export function defaultCriteria() {
     keyword: "",
     oracleText: "",
     rawQuery: "",
+    rawLabel: "",
   };
 }
 
@@ -86,6 +89,7 @@ export function normalizeCriteria(input) {
     keyword: str(input.keyword),
     oracleText: str(input.oracleText),
     rawQuery: str(input.rawQuery),
+    rawLabel: str(input.rawLabel),
   };
 }
 
@@ -137,7 +141,7 @@ export function buildQuery(input) {
     if (value.includes('"')) {
       hints.push({
         field,
-        message: `${label} can't contain a double quote ("). Use the raw query field for this term.`,
+        message: `${label} can't contain a double quote ("). Use the Scryfall search field for this term.`,
       });
       return;
     }
@@ -240,7 +244,10 @@ export function filterChips(input) {
   if (c.rarities.length) chips.push({ id: "rarities", label: cap(joinOr(RARITIES.filter((r) => c.rarities.includes(r)))), clear: { rarities: [] } });
   if (c.keyword.trim()) chips.push({ id: "keyword", label: `Keyword: ${short(c.keyword.trim())}`, clear: { keyword: "" } });
   if (c.oracleText.trim()) chips.push({ id: "oracleText", label: `Text: ${short(c.oracleText.trim())}`, clear: { oracleText: "" } });
-  if (c.rawQuery.trim()) chips.push({ id: "rawQuery", label: `Raw query: ${short(c.rawQuery.trim())}`, clear: { rawQuery: "" } });
+  if (c.rawQuery.trim()) {
+    const label = c.rawLabel.trim() || `Custom search: ${short(c.rawQuery.trim())}`;
+    chips.push({ id: "rawQuery", label, clear: { rawQuery: "", rawLabel: "" } });
+  }
   return chips;
 }
 

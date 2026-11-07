@@ -1,11 +1,11 @@
 // The Discover view: presets, filters, and two ways to see cards. Draw shows
-// random cards. Browse lists every match, sorted the way the user picks,
+// random cards, preferring cards not drawn recently for the same search. Browse lists every match, sorted the way the user picks,
 // page by page. Cards show as tiles, with details in an inspector beside
 // them on wide screens and in a sheet everywhere.
 
-import { MAX_DRAW, MIN_DRAW, POOL_DEBOUNCE_MS } from "../config.js";
+import { MAX_DRAW, MIN_DRAW, POOL_DEBOUNCE_MS, SMALL_POOL_SIZE } from "../config.js";
 import { cardKey, makeSnapshot } from "../cards.js";
-import { drawBatch, planCount } from "../draw.js";
+import { drawBatch, planCount, recentKeys, sampleFromPool } from "../draw.js";
 import { SORT_DIRECTIONS, SORT_OPTIONS, browseParams, emptyBrowse, mergePage, normalizeSort } from "../browse.js";
 import { buildQuery, defaultCriteria, filterChips, normalizeCriteria, scryfallSearchUrl } from "../query.js";
 import { errorMessage } from "../scryfall.js";
@@ -14,7 +14,7 @@ import { openExplore } from "./explore-panel.js";
 import { createInspector, openDetails } from "./details.js";
 import { cardMedia, cardTile, fillSaved } from "./card-view.js";
 import { createCriteriaForm } from "./criteria-form.js";
-import { announce, confirmBox, copyText, field, formatDate, formatNumber, h, message, plural, replace } from "./dom.js";
+import { announce, confirmBox, field, formatDate, formatNumber, h, message, plural, replace } from "./dom.js";
 
 export const BUILT_IN_PRESET = Object.freeze({
   id: "builtin-arena-standard",
@@ -171,19 +171,10 @@ export function createDiscoverView(app) {
     filtersToggle.setAttribute("aria-expanded", String(open));
   }
   const chipList = h("ul", { class: "chips", "aria-label": "Active filters" });
-  const previewCode = h("code", { class: "query" });
   const previewNotes = h("div", { class: "preview-notes" });
   const poolLine = h("p", { class: "pool", "aria-live": "polite" });
-  const openLink = h("a", { class: "button ghost", target: "_blank", rel: "noopener", text: "Open on Scryfall" });
-  const copyBtn = h("button", {
-    type: "button",
-    class: "ghost",
-    text: "Copy query",
-    onclick: async () => {
-      const ok = await copyText(current.query, previewCode);
-      announce(ok ? "Copied the query." : "Can't copy automatically. The query is selected, so copy it by hand.");
-    },
-  });
+  // The page doesn't show the query itself. Scryfall's site shows it.
+  const openLink = h("a", { id: "open-scryfall", class: "button ghost", target: "_blank", rel: "noopener", text: "Open on Scryfall" });
 
   function onCriteria(criteria) {
     current = buildQuery(criteria);
@@ -218,16 +209,6 @@ export function createDiscoverView(app) {
   }
 
   function renderPreview() {
-    if (!current.query) previewCode.textContent = "(no criteria: any card)";
-    else {
-      // One span for each space-separated part, so lines break between
-      // terms and not at a hyphen. The text content stays the same query.
-      const parts = current.query.split(" ");
-      replace(previewCode, parts.flatMap((p, i) => [
-        h("span", { class: p.length > 30 ? "term long" : "term", text: p }),
-        i < parts.length - 1 ? " " : null,
-      ]));
-    }
     openLink.href = scryfallSearchUrl(current.query);
     form.showHints(current.hints);
     renderChips();
@@ -236,7 +217,6 @@ export function createDiscoverView(app) {
     const cached = poolCache.get(current.query);
     for (const w of cached?.warnings ?? []) notes.push(message("warn", `Scryfall ignored part of the query: ${w}`));
     replace(previewNotes, notes);
-    copyBtn.disabled = !current.query;
     openLink.toggleAttribute("aria-disabled", !current.query);
   }
 
@@ -264,17 +244,18 @@ export function createDiscoverView(app) {
   }
 
   const pageKey = (query, s, page) => `${query}\n${s.order}\n${s.dir}\n${page}`;
+  const NAME_SORT = { order: "name", dir: "auto" };
 
   async function fetchPool() {
     const query = current.query;
     const controller = new AbortController();
     poolController = controller;
     try {
-      const params = browseParams({ order: "name", dir: "auto" }, 1);
+      const params = browseParams(NAME_SORT, 1);
       const list = await app.client.search(query, params, controller.signal);
       poolCache.set(query, { total: list.total_cards, warnings: list.warnings ?? [] });
       // The count's first page is also Browse's first page in name order.
-      cachePage(pageKey(query, { order: "name", dir: "auto" }, 1), list);
+      cachePage(pageKey(query, NAME_SORT, 1), list);
     } catch (e) {
       if (e.kind === "cancelled") return;
       if (e.kind === "notFound") poolCache.set(query, { total: 0, warnings: [] });
@@ -294,9 +275,9 @@ export function createDiscoverView(app) {
 
   // Mode switch --------------------------------------------------------------------
   const modeDraw = h("button", { type: "button", id: "mode-draw", class: "seg", "aria-pressed": "true", onclick: () => setMode("draw", true) },
-    h("span", { class: "seg-icon", "aria-hidden": "true", text: "🂠" }), "Draw random");
+    "Draw random");
   const modeBrowse = h("button", { type: "button", id: "mode-browse", class: "seg", "aria-pressed": "false", onclick: () => setMode("browse", true) },
-    h("span", { class: "seg-icon", "aria-hidden": "true", text: "▦" }), "Browse all");
+    "Browse all");
   const drawControls = h("div", { class: "control-row" });
   const browseControls = h("div", { class: "control-row" });
 
@@ -333,8 +314,8 @@ export function createDiscoverView(app) {
   }
 
   // Draw -------------------------------------------------------------------------
-  const countInput = h("input", { type: "number", min: String(MIN_DRAW), max: String(MAX_DRAW), step: "1", value: "3", inputmode: "numeric", class: "count" });
-  const drawBtn = h("button", { type: "button", class: "primary big", text: "Draw", onclick: draw });
+  const countInput = h("input", { id: "draw-count", type: "number", min: String(MIN_DRAW), max: String(MAX_DRAW), step: "1", value: "3", inputmode: "numeric", class: "count" });
+  const drawBtn = h("button", { type: "button", id: "draw-btn", class: "primary big", text: "Draw", onclick: draw });
   const cancelBtn = h("button", { type: "button", text: "Cancel", hidden: true, onclick: () => { drawController?.abort(); browseController?.abort(); } });
   const progress = h("p", { class: "progress", "aria-live": "polite" });
   const drawNotes = h("div", { class: "draw-notes" });
@@ -372,30 +353,51 @@ export function createDiscoverView(app) {
     cancelBtn.hidden = false;
     results.classList.add("revealing");
     const found = [];
+    const keyOf = (card) => cardKey(makeSnapshot(card, ""));
+    // Cards drawn before for this same search. The draw prefers others.
+    const recent = recentKeys(app.history, query);
+    const onCard = (card) => {
+      if (drawController !== controller) return;
+      const snapshot = makeSnapshot(card, new Date().toISOString());
+      const extra = [];
+      if (query.includes("game:arena") && Array.isArray(card.games) && !card.games.includes("arena")) {
+        extra.push(h("p", { class: "msg msg-warn", text: "Scryfall does not list this printing on Arena." }));
+      }
+      results.append(tile(snapshot, extra, found.length));
+      found.push(snapshot);
+      app.addHistory({ id: crypto.randomUUID(), card: snapshot, query, drawnAt: snapshot.fetchedAt });
+    };
     try {
-      const r = await drawBatch({
-        client: app.client,
-        query,
-        count: plan.count,
-        keyOf: (card) => cardKey(makeSnapshot(card, "")),
-        signal: controller.signal,
-        onProgress: ({ found: n, count }) => {
-          progress.textContent = count > 1 ? `Drawing ${Math.min(n + 1, count)} of ${count}…` : "Drawing…";
-        },
-        onCard: (card) => {
-          if (drawController !== controller) return;
-          const snapshot = makeSnapshot(card, new Date().toISOString());
-          const extra = [];
-          if (query.includes("game:arena") && Array.isArray(card.games) && !card.games.includes("arena")) {
-            extra.push(h("p", { class: "msg msg-warn", text: "Scryfall does not list this printing on Arena." }));
-          }
-          results.append(tile(snapshot, extra, found.length));
-          found.push(snapshot);
-          app.addHistory({ id: crypto.randomUUID(), card: snapshot, query, drawnAt: snapshot.fetchedAt });
-        },
-      });
+      let r;
+      if (pool !== null && pool <= SMALL_POOL_SIZE) {
+        // A small pool fits on one search page: one request, then a local
+        // draw that can take every new card before a recent one.
+        progress.textContent = "Drawing…";
+        const key = pageKey(query, NAME_SORT, 1);
+        const list = pageCache.get(key) ?? await app.client.search(query, browseParams(NAME_SORT, 1), controller.signal);
+        cachePage(key, list);
+        const s = sampleFromPool(list.data ?? [], plan.count, keyOf, recent);
+        s.cards.forEach(onCard);
+        r = { cards: s.cards, attempts: 1, stoppedEarly: s.cards.length < plan.count, repeats: s.repeats };
+      } else {
+        r = await drawBatch({
+          client: app.client,
+          query,
+          count: plan.count,
+          keyOf,
+          recent,
+          signal: controller.signal,
+          onProgress: ({ found: n, count }) => {
+            progress.textContent = count > 1 ? `Drawing ${Math.min(n + 1, count)} of ${count}…` : "Drawing…";
+          },
+          onCard,
+        });
+      }
       // A draw replaced by a mode switch or a new search says nothing.
       if (drawController !== controller) return;
+      if (r.repeats > 0 && !controller.signal.aborted) {
+        drawNotes.append(message("info", `${plural(r.repeats, "card")} ${r.repeats === 1 ? "was" : "were"} also in your recent draws for this search, because there weren't enough new ones.`));
+      }
       if (controller.signal.aborted) {
         drawNotes.append(message("info", `Draw cancelled. ${plural(found.length, "card")} drawn.`));
         announce(`Draw cancelled. ${plural(found.length, "card")} drawn.`);
@@ -566,7 +568,6 @@ export function createDiscoverView(app) {
           h("p", { class: "hint", text: item.card.typeLine }),
           saved,
           h("p", { class: "hint" }, h("time", { datetime: item.drawnAt, text: formatDate(item.drawnAt) })),
-          h("p", { class: "hint mono nerd-only", text: item.query || "(any card)" }),
           h("div", { class: "row wrap" },
             h("button", { type: "button", class: "ghost", text: "Details", "aria-label": `Details for ${item.card.name}`, onclick: a.onDetails }),
             h("button", { type: "button", class: "ghost", text: "Explore", "aria-label": `Explore ${item.card.name}`, onclick: a.onExplore }),
@@ -604,11 +605,8 @@ export function createDiscoverView(app) {
       presetSlot,
       chipList,
       filtersPanel,
-      h("div", { class: "query-line" },
-        h("p", { class: "query-wrap" }, previewCode),
-        h("div", { class: "row wrap" }, copyBtn, openLink)),
       previewNotes,
-      poolLine,
+      h("div", { class: "pool-line" }, poolLine, openLink),
       h("div", { class: "mode-row" },
         h("div", { class: "segmented", role: "group", "aria-label": "How to see cards" }, modeDraw, modeBrowse),
         drawControls,

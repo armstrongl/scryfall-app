@@ -3,7 +3,7 @@
 // colors), so it works for old saved cards without a new request.
 //
 // The suggestions come from patterns in the rules text. They are a starting
-// point, not a judgment: the user sees each query and can change it.
+// point, not a judgment: the user can open each search on Scryfall and change it.
 // Every partner query here was checked against the live API on 2026-11-04.
 // To check them again, run scripts/check-api.mjs ("Synergy queries").
 

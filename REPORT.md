@@ -84,8 +84,8 @@ Not checked: a real phone, Safari, a screen reader, and the reduced-motion setti
 
 ## Known problems
 
-- In history rows, a long query can wrap at the hyphen in `-is:rebalanced`. The query preview wraps between terms, but history rows do not yet.
-- Removing an entry from a list happens at once, with no confirmation and no undo. The plan asks for confirmations only for deleting lists and presets and clearing history.
+- In history rows, a long query can wrap at the hyphen in `-is:rebalanced`. The query preview wraps between terms, but history rows do not yet. (No longer applies: history rows don't show queries since the feedback round.)
+- Removing an entry from a list happens at once, with no confirmation and no undo. The plan asks for confirmations only for deleting lists and presets and clearing history. (Fixed in the overhaul: Remove leaves an **Undo** row.)
 - After the Lists view re-renders (for example after a quantity change), the app tries to keep focus on the same control. If a row moves because of sorting, focus can land on a different row.
 - The refresh shows "Not found on Scryfall" only for the current session. After a reload, that marker is gone, but the old snapshots stay.
 - Pool size requests for old queries are cancelled. If the debounce fires during a 30-second pause, the count waits until the pause ends.
@@ -102,7 +102,7 @@ Not checked: a real phone, Safari, a screen reader, and the reduced-motion setti
 
 # Design overhaul: Brewmancer (November 2026)
 
-The app was renamed Brewmancer and rebuilt around what I want. The process: an interview and a use session with me, six research agents, and an independent review. The research covered the tools I use, what I might want, UI and UX practice, platform needs, an audit of v1, and the Scryfall API. `docs/about-me.md` records what I asked for and where each request is in the app. The working files (research, screenshots, and the plan) are in `.artifacts/design-overhaul/`, which git ignores.
+The app was renamed Brewmancer and rebuilt around what I want. The process: an interview and a use session with me, six research agents, and an independent review. The research covered the tools I use, what I might want, UI and UX practice, platform needs, an audit of v1, and the Scryfall API. The working files (research, screenshots, and the plan) are in `.artifacts/design-overhaul/`, which git ignores.
 
 ## What changed
 
@@ -171,12 +171,11 @@ The app was renamed Brewmancer and rebuilt around what I want. The process: an i
 
 1. Import a Brawl export into MTG Arena, and confirm that Arena accepts the `Commander` and `Deck` headers.
 2. Try the app on the iPhone and iPad, with the app on the Home Screen.
-3. Answer the open questions at the end of `docs/about-me.md`.
-4. Consider renaming the repository, for example to `cascade`, before turning on GitHub Pages. The README's Pages steps are unchanged.
+3. Consider renaming the repository, for example to `cascade`, before turning on GitHub Pages. The README's Pages steps are unchanged.
 
 # Feedback round: Cascade (7 November 2026)
 
-I tried the overhaul and asked for eight changes. `docs/about-me.md` lists each request and where it is now.
+I tried the overhaul and asked for eight changes.
 
 ## What changed
 
@@ -196,7 +195,7 @@ I tried the overhaul and asked for eight changes. `docs/about-me.md` lists each 
 2. **Small pools draw from a search page.** The random endpoint can't be told which cards to skip, so in a small pool a redraw would mostly get recent cards back and waste requests. One search page holds the whole pool, costs one request (none if the pool count already fetched it), and lets the draw take every new card first. It also makes the redraw behavior testable in the browser checks.
 3. **The criteria label didn't raise the backup schema.** Criteria now have an optional `rawLabel` string. Older schema 2 apps drop it on import, and this version reads older backups without it, so `BACKUP_SCHEMA_VERSION` stays 2.
 4. **No web font.** Geist uses the Geist typeface, but loading it would add an outside request. The app uses Primer's system font stack instead.
-5. **The docs speak in my voice.** Every doc, including `PLAN.md`, now refers to me in the first person, and my profile moved to `docs/about-me.md`. The `PLAN.md` edit changes only how it refers to me, not what it specifies. A test in `tests/docs.test.js` fails if a doc talks about me in the third person.
+5. **The docs speak in my voice.** Every doc, including `PLAN.md`, now refers to me in the first person. The `PLAN.md` edit changes only how it refers to me, not what it specifies. A test in `tests/docs.test.js` fails if a doc talks about me in the third person.
 
 ## Tests
 
@@ -211,7 +210,7 @@ I tried the overhaul and asked for eight changes. `docs/about-me.md` lists each 
 
 # Combos, first version: links to Commander Spellbook (7 November 2026)
 
-I asked for a combo feature like [Commander Spellbook](https://commanderspellbook.com). I went through every feature their site has, chose what I want, and picked links only for the first version. Issue #5 has my plan for the rest. `docs/about-me.md` lists my picks.
+I asked for a combo feature like [Commander Spellbook](https://commanderspellbook.com). I went through every feature their site has, chose what I want, and picked links only for the first version. Issue #5 has my plan for the rest, with every feature I picked.
 
 ## What changed
 
@@ -241,3 +240,20 @@ I asked for a combo feature like [Commander Spellbook](https://commanderspellboo
 
 - Find My Combos shows combos legal in Commander unless I change its filter on their site. The panel says so.
 - The links can't tell me how many combos a card has, because the app has no combo data.
+
+# Docs audit (7 November 2026)
+
+I had every doc checked against the code. Most of the fixes were small: missing links and labels, the backup reminder rule, and the app name written out in the help pages instead of using `APP_NAME`. I also removed my profile doc. The audit found four changes from `PLAN.md` that this report never recorded:
+
+| Area | `PLAN.md` | Now |
+| --- | --- | --- |
+| Draw count | The default is 1. | The default is 3. |
+| Card tiles | The set name, the rarity, a **View on Scryfall** link, and an **Add to list** button. | **Details**, **Explore**, and **Add**. The set and rarity show in nerd mode, and **View on Scryfall** is in the details. |
+| Prices | Out of scope. | Prices and buy links in the details, and the price in nerd mode, all from Scryfall. |
+| Modules | The file layout in section 3.2. | New pure modules: `synergy.js`, `explore.js`, `browse.js`, `saved.js`, `stats.js`, `links.js`, `glossary.js`, `docs.js`, and `combos.js`. New UI modules: `details.js`, `explore-panel.js`, and `help-view.js`. `README.md` lists them all. |
+
+## Tests
+
+- Written first, and seen failing before the fixes: the help page tests for `APP_NAME`, Get started, the backup reminder, and the combo format note, and the browser check for the **Explore** button's label.
+- Fixed after the fix: the test for the details links first read the wrong help page. I pointed it at the right one after fixing the docs, so I broke the docs on purpose to see it fail.
+- Added after the code: the test that no doc points to a profile doc, and the test that code comments speak in my voice. Neither found anything wrong in today's comments, so I added a bad line on purpose to see each one fail.

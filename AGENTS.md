@@ -2,7 +2,7 @@
 
 These instructions are for coding agents that work in this repository. Read `README.md` for what the app does and how the code is laid out. `PLAN.md` is the full v1 specification, and `REPORT.md` records where the build differs from it and lists known problems.
 
-I'm building Cascade for myself first. `docs/about-me.md` records who I am and what I've asked for. What I say I want outranks research and guesses about other players. When I ask for something new, add it to that file.
+I'm building Cascade for myself first. What I say I want outranks research and guesses about other players.
 
 You work on my behalf, as me. Write everything for this project in my voice, in the first person: docs, code comments, commit messages, pull requests, and comments on GitHub. Never refer to me in the third person or by a role. `tests/docs.test.js` fails if a doc does.
 
@@ -13,7 +13,7 @@ Agents lead this project. I give direction and feedback; I don't approve each st
 - **Ship it yourself, always.** Every change ends merged: work on a branch, commit, push, open a pull request, and merge it yourself once `npm test` and `node scripts/check-ui.mjs` pass. Don't stop at a local commit, and don't wait for me to review it.
 - **Decide, don't ask.** When this file or `PLAN.md` doesn't cover a detail, pick the most conservative option that keeps the hard rules below, note the choice in the pull request description, and keep going. If the choice departs from `PLAN.md`, record it in `REPORT.md`.
 - **Ask me only about:**
-  - Taste and feel: what I want, how the app looks, its tone, and the open questions in `docs/about-me.md`.
+  - Taste and feel: what I want, how the app looks, and its tone.
   - Removing a feature I asked for, or changing one significantly.
   - Any change that could lose or damage saved lists, such as IndexedDB schema or backup format changes.
 - **When you're not sure I need to weigh in**, don't ask me yet. First get a second opinion from an Opus subagent (in Claude Code, the Agent tool with `model: "opus"`). Give it the decision, the options, and this section. Ask me only if it says I should decide. Otherwise go ahead and record the choice.
@@ -102,7 +102,7 @@ After every change, ALWAYS check whether each of these needs an update, and upda
 | What | Where |
 | --- | --- |
 | Agent instructions | `AGENTS.md` (`CLAUDE.md` only points here) |
-| README and other repository docs | `README.md`, `REPORT.md`, and `docs/about-me.md`. `PLAN.md` is the v1 plan: don't change what it specifies. Record differences from it in `REPORT.md`. |
+| README and other repository docs | `README.md` and `REPORT.md`. `PLAN.md` is the v1 plan: don't change what it specifies. Record differences from it in `REPORT.md`. |
 | Interface copy | Every text the user sees or hears: labels, buttons, hints, messages, `title` and `aria-label` text, `announce()` messages, and tooltips such as the nerd mode tooltip (`NERD_MODE_TIP` in `src/docs.js`). Search `src/ui/`, `src/main.js`, and `index.html`. |
 | Help pages built into the app | `DOC_PAGES` in `src/docs.js`, shown in the **Help** view. |
 
@@ -112,5 +112,5 @@ After every change, ALWAYS check whether each of these needs an update, and upda
 
 - The tests were written before the code, and they pass.
 - If you changed anything in the UI, `node scripts/check-ui.mjs` passes, and its checks cover the change.
-- You checked every place in "Keep the docs in step" and updated each one that the change affects: `AGENTS.md`, `README.md`, `REPORT.md`, `docs/about-me.md`, the interface copy and tooltips, and the help pages in `src/docs.js`.
+- You checked every place in "Keep the docs in step" and updated each one that the change affects: `AGENTS.md`, `README.md`, `REPORT.md`, the interface copy and tooltips, and the help pages in `src/docs.js`.
 - Your pull request is merged. If something blocks the merge, tell me what it is.

@@ -2,7 +2,7 @@
 
 Cascade helps you discover Magic: The Gathering cards, learn what they do, and see how they work together. You can draw random cards or browse every card that matches your filters. You can find synergies, similar cards, and counters for any card, find combos on [Commander Spellbook](https://commanderspellbook.com), save cards to lists, check Standard and Brawl decks, and export decks for MTG Arena. The app runs in your browser and gets card data and images from the [Scryfall API](https://scryfall.com/docs/api). It has no server and no accounts.
 
-I'm building the app for myself first. I play Standard on MTG Arena, I'm starting Brawl, and I love discovering cards and how they interact. `docs/about-me.md` records what I've asked for.
+I'm building the app for myself first. I play Standard on MTG Arena, I'm starting Brawl, and I love discovering cards and how they interact.
 
 ## Run the app locally
 
@@ -122,7 +122,6 @@ The app sends Scryfall your card searches. It also sends Scryfall IDs: those of 
 | `tests/` | Unit tests and saved Scryfall responses (`tests/fixtures/`). |
 | `scripts/` | Development tools: fixture download, live API checks, browser tests, and icon drawing. |
 | `PLAN.md`, `REPORT.md` | The v1 plan, and the report on what was built, with the design overhaul at the end. |
-| `docs/about-me.md` | Who I am as a player, and what I've asked for. |
 
 ## Run the tests
 

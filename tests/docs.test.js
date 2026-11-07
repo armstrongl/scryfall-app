@@ -2,7 +2,7 @@
 // pages in step with the app: names, limits, and removed features.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { APP_NAME, MAX_DRAW, MIN_DRAW } from "../src/config.js";
 import { DOC_PAGES, NERD_MODE_TIP, docPage, inlineParts, pageText } from "../src/docs.js";
 
@@ -84,7 +84,7 @@ test("inline parts mark UI labels in bold, with no HTML", () => {
 const ROOT = new URL("../", import.meta.url);
 const DOC_FILES = [
   "README.md", "AGENTS.md", "REPORT.md", "PLAN.md",
-  ...readdirSync(new URL("docs/", ROOT)).filter((f) => f.endsWith(".md")).map((f) => `docs/${f}`),
+  ...(existsSync(new URL("docs/", ROOT)) ? readdirSync(new URL("docs/", ROOT)).filter((f) => f.endsWith(".md")).map((f) => `docs/${f}`) : []),
 ];
 const THIRD_PERSON = /\bowner(?:'s|s)?\b|\bshe(?:'s)?\b|\bher\b|\bhers\b|\bherself\b/i;
 
@@ -99,9 +99,15 @@ test("the docs speak as me, never about me in the third person", () => {
   assert.deepEqual(found, []);
 });
 
-test("my profile is docs/about-me.md", () => {
-  assert.ok(DOC_FILES.includes("docs/about-me.md"));
-  assert.ok(!DOC_FILES.includes("docs/owner-profile.md"));
+test("there's no profile doc, and no doc points to one", () => {
+  for (const gone of ["docs/about-me.md", "docs/owner-profile.md"]) assert.ok(!existsSync(new URL(gone, ROOT)), gone);
+  const found = [];
+  for (const file of DOC_FILES) {
+    readFileSync(new URL(file, ROOT), "utf8").split("\n").forEach((line, i) => {
+      if (/about-me|owner-profile/.test(line)) found.push(`${file}:${i + 1}`);
+    });
+  }
+  assert.deepEqual(found, []);
 });
 
 test("the Combos page explains bracket tags and credits Commander Spellbook", () => {

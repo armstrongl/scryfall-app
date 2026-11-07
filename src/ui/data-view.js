@@ -115,7 +115,7 @@ export function createDataView(app) {
         importSlot),
       h("section", { class: "panel-box", "aria-labelledby": "about-title" },
         h("h2", { id: "about-title", text: "About" }),
-        h("p", {}, `${APP_NAME} finds random Magic: The Gathering cards and helps you build Standard decks for MTG Arena. `,
+        h("p", {}, `${APP_NAME} helps you discover Magic: The Gathering cards, learn what they do, see how they work together, and build Standard and Brawl decks for MTG Arena. To learn how, open `, h("a", { href: "#help", text: "Help" }), ". ",
           "Card data and images come from ", h("a", { href: SCRYFALL_SITE, text: "Scryfall" }), ". The app is not made by or endorsed by Scryfall."),
         h("p", { text: FAN_CONTENT_NOTICE })));
   }

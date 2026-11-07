@@ -1,7 +1,7 @@
 // App-wide constants. Change the app name here and nowhere else.
 
 /** The app name. Change it here; README.md lists the other places it appears. */
-export const APP_NAME = "Brewmancer";
+export const APP_NAME = "Cascade";
 
 /** Short ID used in backup files and storage names. Do not change after release. */
 export const APP_ID = "card-discovery";
@@ -25,9 +25,14 @@ export const MAX_QUERY_LENGTH = 1000;
 export const POOL_DEBOUNCE_MS = 800;
 
 export const MIN_DRAW = 1;
-export const MAX_DRAW = 10;
+export const MAX_DRAW = 30;
 /** A batch makes at most this many attempts for each requested card. */
 export const DRAW_ATTEMPT_FACTOR = 3;
+/**
+ * Scryfall sends up to 175 cards a search page. A pool this size or smaller
+ * is drawn from one search page instead of one request per card.
+ */
+export const SMALL_POOL_SIZE = 175;
 
 export const HISTORY_LIMIT = 100;
 

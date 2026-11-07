@@ -1,6 +1,6 @@
-# Brewmancer
+# Cascade
 
-Brewmancer helps you discover Magic: The Gathering cards, learn what they do, and see how they work together. You can draw random cards or browse every card that matches your filters. You can find synergies, similar cards, and counters for any card, save cards to lists, check Standard and Brawl decks, and export decks for MTG Arena. The app runs in your browser and gets card data and images from the [Scryfall API](https://scryfall.com/docs/api). It has no server and no accounts.
+Cascade helps you discover Magic: The Gathering cards, learn what they do, and see how they work together. You can draw random cards or browse every card that matches your filters. You can find synergies, similar cards, and counters for any card, save cards to lists, check Standard and Brawl decks, and export decks for MTG Arena. The app runs in your browser and gets card data and images from the [Scryfall API](https://scryfall.com/docs/api). It has no server and no accounts.
 
 The app is built first for its owner, an MTG Arena player who plays Standard, is starting Brawl, and loves discovering cards and how they interact. `docs/owner-profile.md` records what she asked for.
 
@@ -21,16 +21,16 @@ The app uses relative URLs, so it also works from a subpath, for example `http:/
 
 ## Use the app
 
-The app has three views: **Discover**, **Lists**, and **Data**. On a phone, they're in the bar at the bottom of the screen.
+The app has four views: **Discover**, **Lists**, **Data**, and **Help**. On a phone, they're in the row of tabs under the app name. **Help** has short pages on every feature, built into the app.
 
-Turn on **Nerd mode** at the top of the page to see more on every card: mana value, power and toughness, set, release date, price, EDHREC rank, and legality in Standard and Brawl. Nerd mode also shows the Scryfall query behind each Explore search.
+Turn on **Nerd mode** at the top of the page to see more on every card: mana value, power and toughness, set and rarity, release date, price, EDHREC rank, and legality in Standard and Brawl. Cards get smaller, so more fit on the screen. To see what nerd mode does, point at the switch or move the keyboard focus to it.
 
 ### Find cards
 
 1. Open **Discover**.
-2. Choose a preset, or select **Filters** to choose colors, card types, mana value, rarity, keywords, rules text, or any Scryfall search syntax. Each active filter shows as a chip. To remove a filter, select **×** on its chip. The app shows how many cards match.
+2. Choose a preset, or select **Filters** to choose colors, card types, mana value, rarity, keywords, rules text, or Scryfall search syntax (**Scryfall search**). Each active filter shows as a chip in plain words. Scryfall search syntax that you type shows as **Custom search**, and a search from Explore says where it came from, for example "Works with Lotus Cobra". To remove a filter, select **×** on its chip. The app shows how many cards match. To see the same search on the Scryfall website, select **Open on Scryfall**.
 3. Choose how to see cards:
-   - **Draw random** draws 1 to 10 random cards.
+   - **Draw random** draws 1 to 30 random cards. When you draw again with the same filters, the app prefers cards you haven't drawn recently for that search. If there aren't enough new cards, it fills the draw with recent ones and says how many. If 175 cards or fewer match, the app gets them all in one request and draws from them. Otherwise it asks Scryfall for one random card at a time, at most two a second.
    - **Browse all** lists every match, in the order you choose: name, mana value, release date, rarity, color, set, popularity (EDHREC rank), price, power, toughness, or artist. Select **Show cards**. The app loads 175 cards at a time. Select **Load more** for the next 175.
 
 The built-in presets are **Arena Standard** (cards legal in Standard on MTG Arena) and **Arena Brawl** (cards legal in Brawl on MTG Arena, with colors read as color identity). To keep your own filters, select **Save as preset**. Your recent draws are under **Recent draws**.
@@ -57,7 +57,7 @@ On a wide screen, point at a card or move the keyboard focus to it to see the sa
    - **Synergies**: cards that work with this one, such as "Green cards that leverage landfall" or "White cards that benefit from enchantments". They stay in the card's colors.
    - **Similar**: cards that do the same job for a similar cost, share its keywords, or share its type and cost.
    - **Counters**: cards that answer this one, such as creature removal or cards that punish fliers. They're in every color.
-3. Select **Search**. Discover opens with that search in Browse mode, most popular first. It keeps your format and game and leaves out the card itself.
+3. Select **Search**. Discover opens with that search in Browse mode, most popular first. It keeps your format and game and leaves out the card itself. Its filter chip names the search, for example "Works with Lotus Cobra: Green cards that leverage landfall".
 
 The searches use [Scryfall Tagger](https://tagger.scryfall.com/) tags, which the community maintains, together with keywords and rules text. Check the results before you build around them.
 
@@ -103,8 +103,9 @@ The app sends Scryfall your card searches. It also sends Scryfall IDs: those of 
 | `src/config.js` | The app name, API settings, and other constants. |
 | `src/scryfall.js` | The Scryfall API client. All API requests go through its queue, which spaces requests at least 500 ms apart. |
 | `src/query.js`, `src/cards.js`, `src/lists.js`, `src/deck-rules.js`, `src/export.js`, `src/draw.js`, `src/synergy.js`, `src/explore.js`, `src/browse.js`, `src/saved.js`, `src/stats.js`, `src/links.js`, `src/glossary.js` | App logic with no DOM code. The tests cover these modules. |
+| `src/docs.js` | The help pages shown in the **Help** view, and the nerd mode tooltip text. |
 | `src/storage/` | Data storage in IndexedDB, with a memory fallback. |
-| `src/ui/` | The views and the DOM helpers. |
+| `src/ui/` | The views, including the Help view (`help-view.js`), and the DOM helpers. |
 | `tests/` | Unit tests and saved Scryfall responses (`tests/fixtures/`). |
 | `scripts/` | Development tools: fixture download, live API checks, browser tests, and icon drawing. |
 | `PLAN.md`, `REPORT.md` | The v1 plan, and the report on what was built, with the design overhaul at the end. |
@@ -151,18 +152,19 @@ Also export a backup from the **Data** view from time to time. The app reminds y
 
 ## Change the app name
 
-The app name is in one constant: `APP_NAME` in `src/config.js`. The page title, header, and Fan Content notice use it at run time.
+The app name is in one constant: `APP_NAME` in `src/config.js`. The page title, header, Fan Content notice, and help pages use it at run time.
 
 The name also appears in files that load before the JavaScript runs. Change it in these places too:
 
 - `index.html`: the `<title>` element, the header text, and the footer notice.
 - `index.html`: also the `apple-mobile-web-app-title` meta element and the Scryfall line in the footer.
 - `manifest.webmanifest`: `name` and `short_name`.
+- `scripts/check-ui.mjs` and `tests/docs.test.js`: the checks for the name.
 
 The name must not contain "Scryfall". Don't change `APP_ID` in `src/config.js`, because backup files use it.
 
 ## Credits
 
-Card data and images are from [Scryfall](https://scryfall.com). Brewmancer is not made by or endorsed by Scryfall.
+Card data and images are from [Scryfall](https://scryfall.com). Cascade is not made by or endorsed by Scryfall.
 
-Brewmancer is unofficial Fan Content permitted under the Fan Content Policy. Not approved/endorsed by Wizards. Portions of the materials used are property of Wizards of the Coast. ©Wizards of the Coast LLC.
+Cascade is unofficial Fan Content permitted under the Fan Content Policy. Not approved/endorsed by Wizards. Portions of the materials used are property of Wizards of the Coast. ©Wizards of the Coast LLC.

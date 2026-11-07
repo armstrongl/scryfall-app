@@ -1,9 +1,10 @@
 // The criteria builder form (PLAN.md section 4.1).
 
 import { CARD_TYPES, COLOR_NAMES, COLORS, FORMAT_KEYS, FORMAT_NAMES, RARITIES } from "../config.js";
+import { TIPS } from "../docs.js";
 import { normalizeCriteria } from "../query.js";
 import { rarityName } from "../cards.js";
-import { checkbox, field, h, uid } from "./dom.js";
+import { checkbox, field, h, helpLink, infoTip, uid } from "./dom.js";
 
 const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
@@ -56,6 +57,7 @@ export function createCriteriaForm(onChange) {
   const oracleText = h("input", { type: "text", autocomplete: "off", oninput: emit });
   const rawQuery = h("textarea", { rows: "2", autocomplete: "off", spellcheck: "false", oninput: () => { rawLabel = ""; emit(); } });
 
+  const mvLegendId = uid("legend");
   const hintSlots = {
     colors: h("p", { class: "hint field-hint", id: uid("hint") }),
     typeText: h("p", { class: "hint field-hint", id: uid("hint") }),
@@ -137,27 +139,30 @@ export function createCriteriaForm(onChange) {
   const el = h("form", { class: "criteria", onsubmit: (e) => e.preventDefault(), "aria-label": "Criteria" },
     h("div", { class: "grid-2" },
       field("Format", format),
-      field("Game", game)),
-    rebalanced.el,
+      field("Game", game, undefined, TIPS.game)),
+    h("div", { class: "check-row" }, rebalanced.el, infoTip("Exclude rebalanced cards", TIPS.rebalanced)),
     h("div", { class: "grid-2" },
-      field("Color mode", colorMode),
+      field("Color mode", colorMode, undefined, TIPS.colorMode),
       h("div", { class: "field field-end" }, colorless.el)),
     colors.el,
-    useIdentity.el,
+    h("div", { class: "check-row" }, useIdentity.el, infoTip("Use color identity", TIPS.colorIdentity)),
     hintSlots.colors,
     types.el,
-    field("Type line text", typeText),
+    field("Type line text", typeText, undefined, TIPS.typeLine),
     hintSlots.typeText,
-    h("fieldset", { class: "mv" },
-      h("legend", { text: "Mana value" }),
+    // The group is named by the legend's text only, so the ? button's name
+    // doesn't join it.
+    h("fieldset", { class: "mv", "aria-labelledby": mvLegendId },
+      h("legend", {}, h("span", { id: mvLegendId, text: "Mana value" }), infoTip("Mana value", TIPS.manaValue)),
       h("div", { class: "grid-2" }, field("Minimum", mvMin), field("Maximum", mvMax))),
     hintSlots.mv,
     rarities.el,
-    field("Keyword ability", keyword),
+    field("Keyword ability", keyword, undefined, TIPS.keyword),
     hintSlots.keyword,
-    field("Rules text", oracleText),
+    field("Rules text", oracleText, undefined, TIPS.rulesText),
     hintSlots.oracleText,
-    field("Scryfall search", rawQuery, "Optional. Any Scryfall search syntax, such as t:goblin or o:\"draw a card\". It shows as a Custom search filter."));
+    field("Scryfall search", rawQuery, "Optional. Any Scryfall search syntax, such as t:goblin or o:\"draw a card\". It shows as a Custom search filter."),
+    h("p", { class: "hint" }, helpLink("find-cards", "Learn more about filters")));
 
   return { el, set, get: () => criteria, showHints };
 }

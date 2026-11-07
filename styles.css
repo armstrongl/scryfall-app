@@ -171,12 +171,13 @@ nav.views a[aria-current="page"] { color: var(--text); font-weight: 600; border-
   .brand { margin-right: 1.25rem; }
   nav.views { order: 0; flex: none; margin: 0; padding: 0; gap: 0.25rem; align-self: stretch; }
   nav.views a { flex: none; padding: 0 0.75rem; min-height: 48px; font-size: inherit; }
-  .tip-wrap { margin-left: auto; }
+  .header-inner > .tip-wrap { margin-left: auto; }
 }
 
-/* Nerd mode switch and its tooltip. The tooltip shows on hover and on
-   keyboard focus, and Escape hides it (WCAG 1.4.13). */
-.tip-wrap { position: relative; display: inline-flex; }
+/* Tooltips (dom.js): shown on hover and on keyboard focus, and on click for
+   ? buttons. Escape hides them (WCAG 1.4.13). JavaScript places each one
+   below its control, or above it, inside the screen and off card images. */
+.tip-wrap { position: relative; display: inline-flex; vertical-align: middle; }
 .density-toggle {
   display: inline-flex; align-items: center; gap: 0.5rem; min-height: 40px; padding: 0 0.25rem;
   border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 0.875rem; font-weight: 500; cursor: pointer;
@@ -195,16 +196,36 @@ nav.views a[aria-current="page"] { color: var(--text); font-weight: 600; border-
 .density-toggle[aria-pressed="true"] .switch { background: var(--accent); border-color: var(--accent); }
 .density-toggle[aria-pressed="true"] .switch::after { left: 15px; border-color: var(--accent); }
 .tooltip {
-  display: none; position: absolute; z-index: 25; top: calc(100% + 6px); right: 0;
+  display: none; position: absolute; z-index: 25; top: calc(100% + 6px); left: 0;
   width: max-content; max-width: min(300px, calc(100vw - 2 * var(--gutter)));
   padding: 0.5rem 0.65rem; border-radius: var(--radius);
   background: var(--tip-bg); color: var(--tip-text); font-size: 0.8125rem; font-weight: 400; line-height: 1.45;
   box-shadow: var(--shadow-md);
 }
+.tooltip.tip-above { top: auto; bottom: calc(100% + 6px); }
 /* A bridge over the gap, so the pointer can move onto the tooltip. */
 .tooltip::before { content: ""; position: absolute; left: 0; right: 0; top: -6px; height: 6px; }
-.tip-wrap:hover .tooltip, .tip-wrap:has(:focus-visible) .tooltip { display: block; }
-.tip-wrap.tip-off .tooltip { display: none; }
+.tooltip.tip-above::before { top: auto; bottom: -6px; }
+.tip-wrap.tip-open .tooltip { display: block; }
+
+/* The ? button beside a label. Its tap target is --tap square, bigger than
+   the circle. Fields and checkboxes sit above it, so they keep their clicks. */
+button.info-tip {
+  position: relative; display: inline-flex; align-items: center; justify-content: center;
+  width: 18px; height: 18px; min-height: 0; padding: 0; border-radius: 50%;
+  border: 1px solid var(--border-strong); background: transparent; box-shadow: none;
+  color: var(--muted); font-size: 0.6875rem; font-weight: 600; line-height: 1; cursor: help;
+}
+button.info-tip::after {
+  content: ""; position: absolute; left: 50%; top: 50%;
+  width: var(--tap); height: var(--tap); margin: calc(var(--tap) / -2) 0 0 calc(var(--tap) / -2);
+}
+.field > :is(input, select, textarea), .check { position: relative; z-index: 1; }
+button.info-tip:hover:not(:disabled) { background: var(--surface-2); color: var(--text); }
+.label-row { display: flex; align-items: center; gap: 0.375rem; }
+.check-row { display: flex; align-items: center; gap: 0.375rem; margin-bottom: 0.75rem; }
+legend .tip-wrap { margin-left: 0.375rem; }
+.help-link { font-size: 0.875rem; }
 
 .pause {
   margin: 0; padding: 0.5rem var(--gutter); background: var(--warn-bg); color: var(--text);

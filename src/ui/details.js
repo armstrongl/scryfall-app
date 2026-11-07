@@ -4,10 +4,11 @@
 import { FORMAT_NAMES } from "../config.js";
 import { legalityName, rarityName } from "../cards.js";
 import { cardComboSearch } from "../combos.js";
+import { TIPS } from "../docs.js";
 import { glossaryFor, wikiUrl } from "../glossary.js";
 import { errorMessage } from "../scryfall.js";
 import { cardMedia, glowClass, manaCost, savedText } from "./card-view.js";
-import { announce, formatDate, h, message, replace } from "./dom.js";
+import { announce, closeOnHelpLink, formatDate, h, helpLink, infoTip, message, replace } from "./dom.js";
 
 /** Formats shown in the legality list, most relevant to Arena first. */
 const LEGAL_FORMATS = ["standard", "standardbrawl", "brawl", "alchemy", "historic", "timeless", "pioneer", "commander"];
@@ -130,8 +131,8 @@ export function cardDetails(app, snapshot, opts = {}) {
     section("Printing",
       h("dl", { class: "facts" },
         [["Set", `${s.setName} (${(s.set ?? "").toUpperCase()}) #${s.collectorNumber}`], ["Rarity", rarityName(s.rarity)],
-          ["Released", s.releasedAt], ["Artist", s.artist], ["EDHREC rank", s.edhrecRank ? `#${s.edhrecRank.toLocaleString()} in Commander decks` : null]]
-          .filter(([, v]) => v).map(([k, v]) => h("div", {}, h("dt", { text: k }), h("dd", { text: v }))))),
+          ["Released", s.releasedAt], ["Artist", s.artist], ["EDHREC rank", s.edhrecRank ? `#${s.edhrecRank.toLocaleString()} in Commander decks` : null, TIPS.edhrecRank]]
+          .filter(([, v]) => v).map(([k, v, tip]) => h("div", {}, h("dt", {}, k, tip ? [" ", infoTip(k, tip)] : null), h("dd", { text: v }))))),
     (prices.length || buy.length) ? section("Prices and buying",
       prices.length ? h("dl", { class: "facts" }, prices.map(([k, v, cur]) => h("div", {}, h("dt", { text: k }), h("dd", { text: `${cur}${v}` })))) : null,
       prices.length ? h("p", { class: "hint", text: `Prices from Scryfall as of ${formatDate(s.fetchedAt)}. They change daily.` }) : null,
@@ -143,7 +144,8 @@ export function cardDetails(app, snapshot, opts = {}) {
         link(s.scryfallUri, "View on Scryfall"),
         link(s.relatedUris?.edhrec, "EDHREC"),
         link(s.relatedUris?.gatherer, "Gatherer"),
-        link(cardComboSearch(s, app.settings.lastCriteria?.format ?? null).url, "Combos on Commander Spellbook"))));
+        link(cardComboSearch(s, app.settings.lastCriteria?.format ?? null).url, "Combos on Commander Spellbook")),
+      h("p", { class: "hint" }, helpLink("glossary", "Learn more about Magic terms in the Glossary"))));
 }
 
 /**
@@ -175,6 +177,7 @@ export function openDetails(app, snapshot, opts = {}) {
   dialog.addEventListener("click", (e) => {
     if (e.target === dialog) close();
   });
+  closeOnHelpLink(dialog, () => close(false));
   document.body.append(dialog);
   dialog.showModal();
   closeBtn.focus();

@@ -303,3 +303,46 @@ The agent instructions were rebuilt so that every agent gets the same rules: Cla
 
 - Claude Code reads the rules on its own. Codex and Copilot read only `AGENTS.md` on their own, and must follow its links to the rules.
 - The checks for voice and session links run in `npm test`, not on GitHub. An agent that skips the tests can still break them until the work in [issue #10](https://github.com/armstrongl/scryfall-app/issues/10) is done.
+
+# Help links, tooltips, and the copy index (7 November 2026)
+
+The requests: link the help pages to useful sites, add more tooltips, keep an index of the interface copy for audits, and keep the first person out of the docs and the app's text, while still following technical writing and interface copy practice. Four related changes were picked as well: links between help pages, **Learn more** links from the app, a Glossary page, and linked card names.
+
+## What changed
+
+| Area | Change |
+| --- | --- |
+| Help links | Help text takes `[label](url)` links. Links to other sites open in a new tab and say so to screen readers. Links to `#help/…` open another help page. Any other target stays plain text. Every page now links the sites, apps, formats, terms, and cards it mentions: 123 links to 61 addresses, mostly on Wizards of the Coast, Scryfall, Commander Spellbook, and the MTG Wiki. |
+| Glossary | A new **Glossary** help page with 35 Magic terms in five groups, each with a link to learn more. |
+| Tooltips | `withTip()` and `infoTip()` in `src/ui/dom.js`. Tooltips on Apply, Save as preset, Draw random, Browse all, Open on Scryfall, Export for Arena, Find combos, a list's Open on Scryfall, and Refresh card data. **?** buttons explain eight filters, a list's kind, the Add panel's sections, EDHREC rank in the details, and the storage line in Data. The text is `TIPS` in `src/docs.js`. The nerd mode tooltip uses the same code now. |
+| Learn more | `helpLink()` links from Explore, the Combos tab, the filters, Find combos, the deck checks, the details, and the Data view to the matching help page. In a dialog, the link closes the dialog first. |
+| Copy index | `scripts/ui-copy.mjs` writes `docs/ui-copy.md`: where each kind of copy lives, every tooltip and where it's used, the help pages, and every text in `index.html`, `src/main.js`, and `src/ui/`. `npm test` fails when the index is out of date. |
+| Link check | `scripts/check-links.mjs` checks every help link against the live web, including `#fragment` targets. |
+| Voice | The new help text, tooltips, and Glossary speak to the reader as "you" and never use the first person, like the rest of the docs since the agent instructions round. |
+
+## Decisions
+
+1. **The copy index is generated, not written by hand.** A hand-kept list goes stale on the first change nobody remembers to copy into it. The generator reads the source as text, and a test compares its output with the committed file. It has no line numbers, so its diff shows only the copy that changed.
+2. **The extractor is a heuristic.** It finds strings by their context (`text:`, `aria-label`, `announce()`, `message()`, and more) and keeps other strings that read like prose. It skips short lowercase words, such as "never" from `formatDate()`. The index says so, and the table at its top names the pure modules that hold the rest of the copy.
+3. **No tooltips on card tiles.** A tooltip there would cover a card image. Tooltips go below their control, or above it when below would leave the screen or cover a card. The browser checks test this for every tooltip.
+4. **? buttons for fields, hover tooltips for buttons.** A tap on a touch screen doesn't show a button's tooltip, because the tap already runs the action. A ? button shows its tooltip on click or tap. Tooltip text is never the only place the information lives: the help pages say it too.
+5. **Escape closes a tooltip first.** In a dialog, the first Escape closes the open tooltip and the second closes the dialog.
+6. **? buttons meet the tap target size.** The circle is 18px, but its tap target is `--tap` square: 44px on touch screens and 32px with a mouse. Where the target overlaps a field or checkbox, the field sits on top and keeps its clicks.
+7. **Tooltips close when they'd be in the way.** A button's tooltip closes when the button is used, so new cards never show up under it. If a tooltip can't be placed clear of every card image, it doesn't show. A tooltip removed by a re-render doesn't hold on to the next Escape.
+8. **Many links, on purpose.** The request was to err on the side of more links, so terms are linked inline even when a page links the same site twice. An independent review suggested fewer links. The Glossary keeps one place for each term's definition.
+9. **Links prefer official sources.** Wizards of the Coast pages for formats, brackets, and the Game Changers list, then Scryfall and Commander Spellbook, then the MTG Wiki for terms. MTG Wiki titles were checked through its API, because the wiki blocks scripted page requests.
+
+## Tests
+
+- Written first, and seen failing before the code: the unit tests for link markup, help links, the Glossary, tooltips, help links from the app, and the first-person rule (`tests/docs.test.js`), and the copy index tests (`tests/ui-copy.test.js`). The browser checks for tooltips in Discover, Lists, and Data, the ? buttons, the Explore button's name, and the Learn more links in the filters, details, Explore, Find combos, the deck checks, Data, and the Add panel all failed on the first run.
+- Some unit tests passed before their code, because there were no links yet: the checks that unsafe links stay plain text, that `pageText` drops link markup, and that help links point at pages that exist. Each was broken on purpose (allowing `http:` links, keeping the markup, linking a missing page), seen failing, and restored. So were the copy index tests (one tooltip left out) and `scripts/check-links.mjs` (a misspelled wiki page).
+- The first browser run stopped before the Help checks. To prove they can fail, the Help view was broken on purpose: no "opens in a new tab" text, help page links sent to the wrong page, and the Glossary renamed. Each check failed, then the code was restored.
+- The tap target check for ? buttons was written after a rule for 44px targets landed on `main`, and failed on every ? button before the CSS changed.
+- An Opus review found a tooltip that could stay open over new cards, open tooltips that swallowed Escape after a re-render, a ? button that joined the Mana value group's name, and a ? button that needed two presses from the keyboard. Each got a browser check first, seen failing, then the fix. The Escape and keyboard checks were also broken on purpose after the fix, to see them fail for the right reason. The review's copy notes are fixed too: the storage tooltip, **Any** in the color mode help, snow-covered basics, special rarities, and "many buttons" in Get started. The extractor now decodes `\u` escapes, with a test, and a test checks that it finds every `announce()` and `aria-label` in three UI files.
+- `node scripts/check-ui.mjs` passes at 390 px and 1280 px, in light and dark mode. `node scripts/check-links.mjs` finds no broken links.
+
+## Known problems
+
+- Cardmarket and Cardhoarder answer scripts with 403, so the link check can't verify them. It lists them as unchecked.
+- The help pages and the app's keyword links point to the MTG Wiki on Fandom (`mtg.fandom.com`), while `.claude/rules/help-docs.md` names `mtg.wiki`. Both sites work. Moving every link to one host is still open.
+- The Glossary and the tooltips explain terms in the app's own words. Check them against the linked sources when the rules change.

@@ -6,7 +6,7 @@
 
 import { exploreCombos } from "../combos.js";
 import { explore, exploreCriteria } from "../explore.js";
-import { announce, h, message } from "./dom.js";
+import { announce, closeOnHelpLink, h, helpLink, message } from "./dom.js";
 
 const GROUPS = [
   { key: "synergies", label: "Synergies", intro: "Cards that work with this one. Searches use Scryfall's community tags and the card's rules text, so check the results.", empty: "The app found nothing in this card's rules text to build on. Try Similar.", note: (name, label) => `Cards that may work with ${name}: ${label}.` },
@@ -61,6 +61,7 @@ export function openExplore(app, snapshot) {
       tabindex: "0",
     },
     h("p", { class: "hint", text: g.intro }),
+    g.key === "combos" ? h("p", { class: "hint" }, helpLink("combos", "Learn more about combos and bracket tags")) : null,
     items.length
       ? h("ul", { class: "suggestion-list" }, items.map((s) =>
         h("li", { class: "suggestion" },
@@ -102,7 +103,9 @@ export function openExplore(app, snapshot) {
   dialog.append(
     h("div", { class: "row space" }, h("h2", { id: "explore-title", text: `Explore ${snapshot.name}` }), closeBtn),
     tablist,
-    ...panels);
+    ...panels,
+    h("p", { class: "hint explore-help" }, helpLink("explore", "Learn more about Explore")));
+  closeOnHelpLink(dialog, () => close(false));
   dialog.addEventListener("cancel", (e) => {
     e.preventDefault();
     close();

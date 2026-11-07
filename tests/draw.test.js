@@ -41,7 +41,7 @@ test("a batch stops when the signal is aborted", async () => {
   assert.equal(r.cards.length, 2);
 });
 
-test("I can draw up to 30 cards at once", () => {
+test("a draw can take up to 30 cards at once", () => {
   assert.equal(MAX_DRAW, 30);
   assert.deepEqual(planCount(30, null), { count: 30, reduced: false });
   assert.deepEqual(planCount(31, null), { count: 30, reduced: false });

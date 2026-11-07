@@ -54,6 +54,8 @@ Agents lead this project. Direction and feedback come in the session, not approv
 - Run the browser tests: `node scripts/check-ui.mjs`. It needs Chrome (set `CHROME_PATH` if it's not in the usual place) and network access, because the app sends real Scryfall requests through its queue. It starts its own static server and a fresh browser profile, so you don't need the `http.server` command above. It runs at 390 px and 1280 px, in light and dark mode, and takes a few minutes. To run one width, set `ONLY=390` or `ONLY=1280`, and optionally `SCHEME=dark`.
 - Repeat the live API checks: `node scripts/check-api.mjs`.
 - Fetch the test fixtures again: `scripts/fetch-fixtures.sh`.
+- Rebuild the interface copy index, `docs/ui-copy.md`: `node scripts/ui-copy.mjs`. `npm test` fails when it's out of date.
+- Check every link in the help pages against the live web: `node scripts/check-links.mjs`.
 - Redraw the PNG icons after changing the design: `node scripts/make-icons.js`. Keep it in step with `icons/icon.svg`.
 
 Run the tests before every commit.
@@ -121,6 +123,7 @@ Where tests go:
 - Keep the app usable by keyboard and screen reader: label every control, and send status messages through `announce()`.
 - The app name is `APP_NAME` in `src/config.js`. `README.md` lists the other places where the name appears.
 - `.artifacts/` is gitignored. Put plans, screenshots, and review reports there, not in the tracked tree.
+- Tooltips, ? buttons, and **Learn more** links come from `withTip()`, `infoTip()`, and `helpLink()` in `src/ui/dom.js`, with the text in `TIPS` in `src/docs.js`. [Design](.claude/rules/design.md) has the rules.
 - The look is a blend of GitHub's [Primer](https://primer.style) and Vercel's [Geist](https://vercel.com/geist/introduction). [Design](.claude/rules/design.md) has the full system.
 - Keep raw Scryfall query syntax out of the main interface: filter chips, Explore, results, and history. Name searches in plain words, as filter chips do, and link to the search with **Open on Scryfall**. Syntax is fine where it helps someone who writes queries: the **Scryfall search** field and its hint, and Scryfall's warnings about a typed query.
 
@@ -132,8 +135,9 @@ After every change, ALWAYS check whether each of these needs an update, and upda
 | --- | --- |
 | Agent instructions | `AGENTS.md`, the rules in `.claude/rules/`, the skills in `.agents/skills/`, and `CLAUDE.md` (Claude-only notes) |
 | README and other repository docs | `README.md` and `REPORT.md`. `PLAN.md` is the v1 plan: don't change what it specifies. Record differences from it in `REPORT.md`. |
-| Interface copy | Every text the user sees or hears: labels, buttons, hints, messages, `title` and `aria-label` text, `announce()` messages, and tooltips such as the nerd mode tooltip (`NERD_MODE_TIP` in `src/docs.js`). Search `src/ui/`, `src/main.js`, and `index.html`. |
-| Help pages built into the app | `DOC_PAGES` in `src/docs.js`, shown in the **Help** view. [Help docs](.claude/rules/help-docs.md) has the rules. |
+| Interface copy | Every text the user sees or hears: labels, buttons, hints, messages, `title` and `aria-label` text, and `announce()` messages. `docs/ui-copy.md` indexes all of it and says where each kind lives. Rebuild it with `node scripts/ui-copy.mjs`, and read its diff to review the copy the change touches. |
+| Tooltips | `TIPS` in `src/docs.js`, including the nerd mode tooltip (`NERD_MODE_TIP`). Add one where a control or field isn't obvious. |
+| Help pages built into the app | `DOC_PAGES` in `src/docs.js`, shown in the **Help** view, including the **Glossary**. [Help docs](.claude/rules/help-docs.md) has the rules. |
 
 When a new request or taste comes up in the session, record it in the rules file it belongs to, in the same change.
 
@@ -142,5 +146,6 @@ When a new request or taste comes up in the session, record it in the rules file
 - The tests were written before the code, and they pass.
 - `node scripts/check-ui.mjs` passes, and its checks cover any UI change.
 - You checked every place in "Keep the docs in step" and updated each one that the change affects.
+- `docs/ui-copy.md` is rebuilt, and you read its diff.
 - An Opus subagent reviewed the change, and you fixed what it found or said in the pull request why not.
 - Your pull request is merged, its branch is deleted, and the app is running locally and open in the default browser. If something blocks the merge, say what it is.

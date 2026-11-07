@@ -2,7 +2,8 @@
 
 import { APP_NAME, BACKUP_REMINDER_DAYS, FAN_CONTENT_NOTICE, SCRYFALL_SITE } from "../config.js";
 import { backupFileName, needsBackupReminder, validateBackup } from "../export.js";
-import { announce, confirmBox, field, formatDate, h, message, plural, replace } from "./dom.js";
+import { TIPS } from "../docs.js";
+import { announce, confirmBox, field, formatDate, h, helpLink, infoTip, message, plural, replace } from "./dom.js";
 
 const PERSISTENCE_TEXT = {
   persistent: "Storage: persistent",
@@ -100,10 +101,11 @@ export function createDataView(app) {
       h("section", { class: "panel-box", "aria-labelledby": "storage-title" },
         h("h2", { id: "storage-title", text: "Storage" }),
         app.storageOk
-          ? h("p", { text: PERSISTENCE_TEXT[app.persistence] ?? PERSISTENCE_TEXT.unknown })
+          ? h("p", {}, PERSISTENCE_TEXT[app.persistence] ?? PERSISTENCE_TEXT.unknown, " ", infoTip("Storage", TIPS.storage))
           : message("warn", `Storage is not available, so lists, presets, and history are lost when you close the page. Discovery still works. ${app.storageError ?? ""}`.trim()),
         h("p", { class: "hint", text: `Last backup: ${formatDate(app.settings.lastBackupAt)}.` }),
-        h("p", { class: "hint", text: "On iPhone and iPad, Safari deletes this app's data if you don't open it for 7 days of Safari use. To prevent this, add the app to your Home Screen: in Safari, select Share, then Add to Home Screen. Open the app from the Home Screen icon." })),
+        h("p", { class: "hint", text: "On iPhone and iPad, Safari deletes this app's data if you don't open it for 7 days of Safari use. To prevent this, add the app to your Home Screen: in Safari, select Share, then Add to Home Screen. Open the app from the Home Screen icon." }),
+        h("p", { class: "hint" }, helpLink("your-data", "Learn more about where your data is stored"))),
       h("section", { class: "panel-box", "aria-labelledby": "backup-title" },
         h("h2", { id: "backup-title", text: "Backup" }),
         reminder ? message("warn", "Your data changed since your last backup. Export a backup now.") : null,

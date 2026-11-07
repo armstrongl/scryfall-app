@@ -58,6 +58,10 @@ Never crop, clip, cover, stretch, filter, or transform a card image, and never p
 
 - Plain words. No Scryfall query syntax in the main interface: filter chips, Explore, results, and history. Name searches in plain words, as filter chips do, and offer **Open on Scryfall**. Syntax is fine in the **Scryfall search** field, its hint, and Scryfall's warnings about a typed query.
 - A control says what it does: **Export for Arena**, not **Export**.
-- A tooltip explains what a switch does, on hover and on keyboard focus, as the nerd mode tooltip does.
+- A tooltip says what a control does, or what a field means, in one or two short sentences. Give a button or link one with `withTip()`, and a field or setting a ? button with `infoTip()`, both in `src/ui/dom.js`. The text goes in `TIPS` in `src/docs.js`.
+- Buttons show their tooltips on hover and keyboard focus. A ? button also shows its tooltip on click or tap, so it works on touch screens. Escape hides tooltips, and in a dialog the first Escape closes only the tooltip.
+- A tooltip never holds the only copy of something: the help pages say it too. Never put one on a card tile: `placeTip()` keeps tooltips off card images, but a tile has no room for one.
+- Link from the app to its help page with `helpLink()`. The text starts with "Learn more about". In a dialog, call `closeOnHelpLink()` so the dialog closes first.
+- `docs/ui-copy.md` indexes every text the app shows. Rebuild it with `node scripts/ui-copy.mjs` after a copy change, and read its diff.
 
 Issue #11 applies the icon and motion rules to the app.

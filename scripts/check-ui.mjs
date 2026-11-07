@@ -153,6 +153,102 @@ async function hover(b, selector) {
   await b.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: r.x, y: r.y });
 }
 
+/** The tooltip that a control points to with aria-describedby. */
+const TIP_OF = (sel) => `(document.querySelector(${JSON.stringify(sel)})?.getAttribute("aria-describedby") ?? "").split(" ").map((id) => document.getElementById(id)).find((t) => t?.getAttribute("role") === "tooltip")`;
+const tipOpen = (sel) => `(() => { const t = ${TIP_OF(sel)}; return !!t && getComputedStyle(t).display !== "none" && t.getBoundingClientRect().width > 0; })()`;
+/** The open tooltip is inside the screen and covers no card image. */
+const tipPlaced = (sel) => `(() => {
+  const t = ${TIP_OF(sel)}.getBoundingClientRect();
+  const imgs = [...document.querySelectorAll(".card-media img, .card-media .card-text")].map((i) => i.getBoundingClientRect()).filter((r) => r.width > 0);
+  return t.left >= 0 && t.right <= innerWidth && imgs.every((r) => r.right <= t.left || r.left >= t.right || r.bottom <= t.top || r.top >= t.bottom);
+})()`;
+const mouseAway = (b) => b.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: 1, y: 899 });
+
+/**
+ * Every tooltip in a scope: buttons show theirs on hover and on keyboard
+ * focus, and ? buttons also on click. Each stays inside the screen, covers
+ * no card image, and hides on Escape.
+ */
+async function tooltipsIn(b, scope, label, check) {
+  const { ev, until, key } = b;
+  const count = await ev(`(() => {
+    document.querySelectorAll("[data-tip-test]").forEach((el) => { delete el.dataset.tipTest; });
+    const els = [...document.querySelectorAll(${JSON.stringify(scope)} + " [aria-describedby]")].filter((el) => el.getClientRects().length > 0
+      && el.getAttribute("aria-describedby").split(" ").some((id) => document.getElementById(id)?.getAttribute("role") === "tooltip"));
+    els.forEach((el, i) => { el.dataset.tipTest = String(i); });
+    return els.length;
+  })()`);
+  const bad = [];
+  for (let i = 0; i < count; i++) {
+    const sel = `[data-tip-test="${i}"]`;
+    const name = await ev(`(() => { const el = document.querySelector(${JSON.stringify(sel)}); return el.getAttribute("aria-label") ?? el.textContent.trim(); })()`);
+    const info = await ev(`document.querySelector(${JSON.stringify(sel)}).classList.contains("info-tip")`);
+    await ev(`document.querySelector(${JSON.stringify(sel)}).scrollIntoView({ block: "center" })`);
+    if (await ev(tipOpen(sel))) bad.push(`${name}: open before use`);
+    if (info) {
+      if (!/^About /.test(name)) bad.push(`${name}: a ? button is named "About …"`);
+      // The tap target is as wide as --tap (44px on touch screens), more than the circle that shows.
+      const wide = await ev(`(() => {
+        const el = document.querySelector(${JSON.stringify(sel)});
+        const half = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--tap")) / 2 - 1;
+        const r = el.getBoundingClientRect();
+        const y = r.top + r.height / 2;
+        return [-half, half].every((dx) => el.contains(document.elementFromPoint(r.left + r.width / 2 + dx, y)));
+      })()`);
+      if (!wide) bad.push(`${name}: tap target narrower than --tap`);
+      await ev(click(sel));
+      if (!(await until(tipOpen(sel), 1000))) bad.push(`${name}: click doesn't open it`);
+      else if (!(await ev(tipPlaced(sel)))) bad.push(`${name}: off screen or over a card`);
+      await ev(click(sel));
+      if (await ev(tipOpen(sel))) bad.push(`${name}: a second click doesn't close it`);
+    } else {
+      await hover(b, sel);
+      if (!(await until(tipOpen(sel), 1000))) bad.push(`${name}: hover doesn't open it`);
+      else if (!(await ev(tipPlaced(sel)))) bad.push(`${name}: off screen or over a card`);
+      await mouseAway(b);
+      if (!(await until(`!${tipOpen(sel)}`, 1000))) bad.push(`${name}: doesn't close when the pointer leaves`);
+    }
+    await ev(`document.querySelector(${JSON.stringify(sel)}).focus()`);
+    if (!(await until(tipOpen(sel), 1000))) bad.push(`${name}: keyboard focus doesn't open it`);
+    await key("Escape", 27);
+    if (await ev(tipOpen(sel))) bad.push(`${name}: Escape doesn't close it`);
+    await ev(`document.activeElement.blur()`);
+  }
+  await ev(`window.scrollTo(0, 0)`);
+  check(`${label}: tooltips open on hover, focus, or click, stay on screen, cover no card, and close`, count > 0 && bad.length === 0, count ? bad.join("; ") : "no tooltips");
+  return count;
+}
+
+/** Tooltips in Discover, with cards on the screen. */
+async function discoverTips(b, check) {
+  const { ev } = b;
+  const open = await ev(`document.querySelector("#filters-toggle").getAttribute("aria-expanded") === "true"`);
+  if (!open) await ev(click("#filters-toggle"));
+  check("the filters have ? buttons that explain them", (await ev(`document.querySelectorAll("#filters-panel .info-tip").length`)) >= 8,
+    await ev(`[...document.querySelectorAll("#filters-panel .info-tip")].map((x) => x.getAttribute("aria-label")).join(", ")`));
+  check("the filters link to their help page", await ev(`!!document.querySelector("#filters-panel a[href='#help/find-cards']")`));
+  const n = await tooltipsIn(b, "#view-discover", "Discover", check);
+  check("a ? button in a legend doesn't join the group's name", await ev(`[...document.querySelectorAll("fieldset")].filter((f) => f.querySelector(":scope > legend button")).every((f) => {
+    const name = document.getElementById(f.getAttribute("aria-labelledby") ?? "")?.textContent ?? "";
+    return name !== "" && !/About|[?]/.test(name);
+  })`));
+  // A ? button opened by keyboard focus closes on Enter.
+  await ev(`document.querySelector("#filters-panel .info-tip").focus()`);
+  await b.until(tipOpen("#filters-panel .info-tip"), 1000);
+  for (const type of ["keyDown", "keyUp"]) await b.send("Input.dispatchKeyEvent", { type, key: "Enter", code: "Enter", windowsVirtualKeyCode: 13, text: type === "keyDown" ? "\r" : undefined });
+  check("Enter closes a ? tooltip that focus opened", !(await ev(tipOpen("#filters-panel .info-tip"))));
+  await ev(`document.activeElement.blur()`);
+  // A button's tooltip closes when the button is used, so new cards never appear under it.
+  await ev(`document.querySelector("#view-discover .preset-row button:nth-child(2) button, #view-discover .preset-row .tip-wrap:nth-child(2) button").id = "save-preset-test"`);
+  await hover(b, "#save-preset-test");
+  await b.until(tipOpen("#save-preset-test"), 1000);
+  await ev(click("#save-preset-test"));
+  check("clicking a button closes its tooltip", !(await ev(tipOpen("#save-preset-test"))));
+  await ev(clickText("#view-discover .preset-slot button", "Cancel"));
+  await mouseAway(b);
+  check("Discover has tooltips on its buttons and filters", n >= 12, String(n));
+}
+
 /** Header, name, nerd mode, and the clean look. */
 async function shell(b, width, check) {
   const { ev } = b;
@@ -299,6 +395,7 @@ async function details(b, width, name, check) {
     return !!d.querySelector(".legal-list") && [...d.querySelectorAll("a")].some((a) => /scryfall\.com/.test(a.href));
   })()`));
   check("details sheet links to the card's combos on Commander Spellbook", await ev(`[...document.querySelectorAll("dialog[open] a")].some((a) => a.textContent.trim() === "Combos on Commander Spellbook" && a.href.startsWith("https://commanderspellbook.com/search/?q=") && a.target === "_blank")`));
+  check("details sheet links to the Glossary", await ev(`!!document.querySelector("dialog[open] a[href='#help/glossary']")`));
   check("details sheet has a Show rulings button", await ev(`[...document.querySelectorAll("dialog[open] button")].some((x) => x.textContent.trim() === "Show rulings")`));
   check("focus starts inside the sheet", await ev(`document.querySelector("dialog[open]")?.contains(document.activeElement) ?? false`));
   // Rulings: one request per card, even if the sheet is reopened while it runs.
@@ -338,6 +435,7 @@ async function exploreFlow(b, check) {
   await sleep(300);
   check("the Explore button's label names all four tabs", /synergies, similar cards, counters, and combos/.test(await ev(`document.querySelector(".results .tile button[aria-label^='Explore']").getAttribute("aria-label")`)));
   check("Explore opens with four tabs", (await ev(`[...document.querySelectorAll("dialog[open] [role=tab]")].map((t) => t.firstChild.textContent.trim()).join("|")`)) === "Synergies|Similar|Counters|Combos");
+  check("Explore links to its help page", await ev(`[...document.querySelectorAll("dialog[open] a[href='#help/explore']")].some((a) => /^Learn more/.test(a.textContent.trim()))`));
   check("Explore shows no query syntax", await ev(`!document.querySelector("dialog[open] code")`));
   check("the Synergies tab is selected", (await ev(`document.querySelector("dialog[open] [role=tab][aria-selected=true]").firstChild.textContent.trim()`)) === "Synergies");
   await ev(`document.querySelector("dialog[open] [role=tab][aria-selected=true]").focus()`);
@@ -414,6 +512,7 @@ async function lists(b, check) {
   check("Find combos shows the list as decklist text", /^1 \S/.test(await ev(`document.querySelector("textarea[aria-label='Decklist for Commander Spellbook']")?.value ?? ""`)));
   check("Find combos has Copy and a link to Find My Combos", await ev(`[...document.querySelectorAll("#view-lists .panel-box button")].some((x) => x.textContent.trim() === "Copy")
     && [...document.querySelectorAll("#view-lists .panel-box a")].some((a) => a.href === "https://commanderspellbook.com/find-my-combos/" && a.target === "_blank")`));
+  check("Find combos links to the Combos help page", await ev(`!!document.querySelector("#view-lists .panel-box a[href='#help/combos']")`));
   check("focus moves to Copy in the Find combos panel", await ev(`document.activeElement?.textContent.trim() === "Copy" && !!document.activeElement.closest(".panel-box")`), await ev(FOCUS));
   await ev(clickText("#view-lists .panel-box button", "Close"));
   await sleep(200);
@@ -429,6 +528,19 @@ async function lists(b, check) {
   await ev(setValue("#format-select", "brawl", "change"));
   await sleep(500);
   check("Brawl checks replace Standard checks", /Brawl deck checks/.test(await ev(`document.querySelector("#checks-title")?.textContent ?? ""`)));
+  check("deck checks link to their help page", await ev(`!!document.querySelector("#view-lists a[href='#help/lists-and-decks']")`));
+  await tooltipsIn(b, "#view-lists", "Lists", check);
+  // A ? tooltip that's open when the view re-renders must not swallow the next Escape.
+  await ev(`document.querySelector("#view-lists .toolbar .info-tip").click()`);
+  await ev(setValue("#format-select", "standardbrawl", "change"));
+  await sleep(500);
+  await ev(setValue("#format-select", "brawl", "change"));
+  await sleep(500);
+  await ev(`document.querySelector(".entry button[aria-label^='Explore']").click()`);
+  await sleep(300);
+  await b.key("Escape", 27);
+  await sleep(200);
+  check("Escape still closes a dialog after a re-render removed an open tooltip", await ev(`!document.querySelector("dialog[open]")`));
   check("Brawl lists have a Commander section", await ev(`!!document.querySelector("#sec-commander")`));
   const before = await ev(`document.querySelectorAll(".entry").length`);
   await ev(`document.querySelector(".entry button[aria-label^='Remove']").click()`);
@@ -447,6 +559,42 @@ async function lists(b, check) {
     await ev(`[...document.querySelectorAll("body *")].filter((n) => ["fixed", "sticky"].includes(getComputedStyle(n).position)).map((n) => n.tagName + "." + n.className).join(", ")`));
 }
 
+/** Data: the storage tooltip and the link to its help page. */
+async function data(b, check) {
+  const { ev, until } = b;
+  await ev(`location.hash = "#data"`);
+  await until(`!document.querySelector("#view-data").hidden`, 3000);
+  check("Data links to the Your data help page", await ev(`!!document.querySelector("#view-data a[href='#help/your-data']")`));
+  await tooltipsIn(b, "#view-data", "Data", check);
+}
+
+/** A ? button in a dialog: Escape closes the tooltip first, then the dialog. */
+async function dialogTip(b, check) {
+  const { ev, until, key } = b;
+  await ev(`location.hash = "#discover"`);
+  await until(`!document.querySelector("#view-discover").hidden`, 3000);
+  await ev(`document.querySelector(".results .tile button[aria-label^='Add']").click()`);
+  await sleep(300);
+  const sel = "dialog[open] .info-tip";
+  check("the Add panel explains its sections", await ev(`!!document.querySelector(${JSON.stringify(sel)})`));
+  await ev(`document.querySelector(${JSON.stringify(sel)}).focus()`);
+  await until(tipOpen(sel), 1000);
+  await key("Escape", 27);
+  check("Escape closes the tooltip and keeps the Add panel open", !(await ev(tipOpen(sel))) && (await ev(`!!document.querySelector("dialog[open]")`)));
+  await key("Escape", 27);
+  await sleep(200);
+  check("a second Escape closes the Add panel", await ev(`!document.querySelector("dialog[open]")`));
+}
+
+/** Learn more in Explore closes the panel and opens the Explore help page. */
+async function learnMore(b, check) {
+  const { ev, until } = b;
+  await ev(`document.querySelector(".results .tile button[aria-label^='Explore']").click()`);
+  await sleep(300);
+  await ev(`document.querySelector("dialog[open] a[href='#help/explore']").click()`);
+  check("Learn more closes Explore and opens its help page", await until(`!document.querySelector("dialog[open]") && document.querySelector("#help-page-title")?.textContent === "Explore" && !document.querySelector("#view-help").hidden`, 3000));
+}
+
 /** Help: the pages built into the app. */
 async function help(b, check) {
   const { ev, until } = b;
@@ -463,6 +611,14 @@ async function help(b, check) {
   await ev(`location.hash = "#help/explore"`);
   check("a link straight to a Help page works", await until(`document.querySelector("#help-page-title")?.textContent === "Explore"`, 3000));
   check("Help marks UI labels in bold", await ev(`!!document.querySelector("#view-help article strong")`));
+  check("Help links open other sites in a new tab, and say so", await ev(`(() => {
+    const links = [...document.querySelectorAll("#view-help article a[href^='https://']")];
+    return links.length > 0 && links.every((a) => a.target === "_blank" && a.rel.includes("noopener") && /opens in a new tab/.test(a.querySelector(".visually-hidden")?.textContent ?? ""));
+  })()`));
+  await ev(`document.querySelector("#view-help article a[href='#help/combos']")?.click()`);
+  check("a link to another help page opens it", await until(`document.querySelector("#help-page-title")?.textContent === "Combos"`, 3000));
+  check("focus moves to the linked page's heading", await until(`document.activeElement?.id === "help-page-title"`, 1000), await ev(FOCUS));
+  check("Help has a Glossary page", await ev(`[...document.querySelectorAll("#view-help .help-nav a")].some((a) => a.textContent.trim() === "Glossary")`));
   check("Help has no horizontal scroll", !(await ev("document.documentElement.scrollWidth > window.innerWidth")));
 }
 
@@ -488,10 +644,14 @@ for (const { width, scheme } of CONFIGS) {
     check("app starts", await b.until(`!!document.querySelector("#view-discover h1")`));
     await shell(b, width, check);
     const name = await discover(b, check);
+    await discoverTips(b, check);
     await details(b, width, name, check);
     await exploreFlow(b, check);
     await browse(b, check);
     await lists(b, check);
+    await data(b, check);
+    await dialogTip(b, check);
+    await learnMore(b, check);
     await help(b, check);
     check("no horizontal page scroll", !(await b.ev("document.documentElement.scrollWidth > window.innerWidth")));
     check("no console errors", b.errors.length === 0, b.errors.join(" | "));

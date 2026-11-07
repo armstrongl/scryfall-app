@@ -2,7 +2,7 @@
 
 Cascade helps you discover Magic: The Gathering cards, learn what they do, and see how they work together. You can draw random cards or browse every card that matches your filters. You can find synergies, similar cards, and counters for any card, save cards to lists, check Standard and Brawl decks, and export decks for MTG Arena. The app runs in your browser and gets card data and images from the [Scryfall API](https://scryfall.com/docs/api). It has no server and no accounts.
 
-The app is built first for its owner, an MTG Arena player who plays Standard, is starting Brawl, and loves discovering cards and how they interact. `docs/owner-profile.md` records what she asked for.
+I'm building the app for myself first. I play Standard on MTG Arena, I'm starting Brawl, and I love discovering cards and how they interact. `docs/about-me.md` records what I've asked for.
 
 ## Run the app locally
 
@@ -109,7 +109,7 @@ The app sends Scryfall your card searches. It also sends Scryfall IDs: those of 
 | `tests/` | Unit tests and saved Scryfall responses (`tests/fixtures/`). |
 | `scripts/` | Development tools: fixture download, live API checks, browser tests, and icon drawing. |
 | `PLAN.md`, `REPORT.md` | The v1 plan, and the report on what was built, with the design overhaul at the end. |
-| `docs/owner-profile.md` | Who the app is for, and what she asked for. |
+| `docs/about-me.md` | Who I am as a player, and what I've asked for. |
 
 ## Run the tests
 
@@ -129,7 +129,7 @@ The tests use real Scryfall responses saved in `tests/fixtures/`. To fetch them 
 
 ## Turn on GitHub Pages
 
-The repository owner does this once. For details, see [Creating a GitHub Pages site](https://docs.github.com/en/pages/getting-started-with-github-pages/creating-a-github-pages-site) and [Configuring a publishing source](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site).
+I turn on GitHub Pages once, by hand. Agents don't change these settings. For details, see [Creating a GitHub Pages site](https://docs.github.com/en/pages/getting-started-with-github-pages/creating-a-github-pages-site) and [Configuring a publishing source](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site).
 
 1. On GitHub, open the repository, then select **Settings**.
 2. In the sidebar, select **Pages**.

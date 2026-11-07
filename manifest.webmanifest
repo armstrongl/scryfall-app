@@ -1,12 +1,12 @@
 {
-  "name": "Brewmancer",
-  "short_name": "Brewmancer",
+  "name": "Cascade",
+  "short_name": "Cascade",
   "description": "Discover Magic: The Gathering cards, see how they work together, and build Standard and Brawl decks for MTG Arena.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#13101c",
-  "theme_color": "#13101c",
+  "background_color": "#0d1117",
+  "theme_color": "#0d1117",
   "icons": [
     {
       "src": "icons/icon-192.png",

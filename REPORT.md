@@ -159,7 +159,7 @@ The app was renamed Brewmancer and rebuilt around its owner. The process: an int
 
 ## Known problems after the overhaul
 
-- Explore suggestions come from patterns in rules text plus community tags. Some are loose, and new mechanics may have no pattern yet. Each search shows its query in nerd mode, so the owner can adjust it.
+- Explore suggestions come from patterns in rules text plus community tags. Some are loose, and new mechanics may have no pattern yet. To see and adjust a search's query, open it in Discover, then select **Open on Scryfall**.
 - Similar cards uses role, keywords, and type plus cost. It doesn't know a card's own Tagger tags, because those are only in a 6 MB bulk file. Loading that file could make Similar and Synergies much better. See `.artifacts/design-overhaul/research/R6-api.md`.
 - Browse loads 175 cards a page, one request a page, so a big pool takes several Load more steps. Changing the sort reloads from page 1.
 - Saved cards from v1 lack the detail fields. Their details show a note, and the Brawl checks say so, until the owner selects Refresh card data.
@@ -172,4 +172,38 @@ The app was renamed Brewmancer and rebuilt around its owner. The process: an int
 1. Import a Brawl export into MTG Arena, and confirm that Arena accepts the `Commander` and `Deck` headers.
 2. Try the app on the iPhone and iPad, with the app on the Home Screen.
 3. Answer the open questions at the end of `docs/owner-profile.md`.
-4. Consider renaming the repository, for example to `brewmancer`, before turning on GitHub Pages. The README's Pages steps are unchanged.
+4. Consider renaming the repository, for example to `cascade`, before turning on GitHub Pages. The README's Pages steps are unchanged.
+
+# Feedback round: Cascade (7 November 2026)
+
+The owner tried the overhaul and asked for eight changes. `docs/owner-profile.md` lists each request and where it is now.
+
+## What changed
+
+| Area | Change |
+| --- | --- |
+| Name | Cascade, the owner's choice. The icon is three cards cascading down. |
+| Look | A blend of GitHub's Primer and Vercel's Geist: neutral grays, the system font, 6px corners, 1px borders, a blue accent for links, focus, and selection, and black (light mode) or white (dark mode) primary buttons. The gradients, the violet and teal palette, and the colored glows around card frames are gone. Controls are 32px high with a mouse and keep 44px for touch. |
+| Nerd mode | A tooltip says what it does. It shows on hover and on keyboard focus, the switch points to it with `aria-describedby`, and Escape hides it. The native `title` tooltip is gone, so there's only one. |
+| Help | A new **Help** view with seven pages. The text is in `src/docs.js`, a pure module, and the nerd mode tooltip and its help page share one constant. `tests/docs.test.js` checks the pages against the real limits and for removed features. `AGENTS.md` now tells agents to always check every doc surface after a change. |
+| Draw | Up to 30 cards (was 10). Redraws prefer cards that weren't drawn recently for the same search, using the draw history. If the pool has 175 cards or fewer and its size is known, the app draws from one search page, and every new card comes before any recent one. Bigger pools use the random endpoint as before, set recent cards aside, and use them only when the tries run out. The app says how many recent cards it had to use. |
+| Query | The query preview and **Copy query** are gone from Discover. Explore and Recent draws no longer show queries in nerd mode. **Open on Scryfall** stays, next to the match count. |
+| Chips | A search from Explore carries a readable label, for example "Works with Lotus Cobra: Green cards that leverage landfall", and its chip shows that label instead of the syntax. Editing the search by hand drops the label. Typed syntax shows as "Custom search". The filter field is now called **Scryfall search**. |
+
+## Decisions
+
+1. **Recent means the draw history.** The history already stores the query with each card, so "recently drawn for the same query" needs no new storage. The history keeps the last 100 cards, so after a few big draws the oldest drop out. For a small pool this is plenty, and for a big pool repeats are rare anyway.
+2. **Small pools draw from a search page.** The random endpoint can't be told which cards to skip, so in a small pool a redraw would mostly get recent cards back and waste requests. One search page holds the whole pool, costs one request (none if the pool count already fetched it), and lets the draw take every new card first. It also makes the redraw behavior testable in the browser checks.
+3. **The criteria label didn't raise the backup schema.** Criteria now have an optional `rawLabel` string. Older schema 2 apps drop it on import, and this version reads older backups without it, so `BACKUP_SCHEMA_VERSION` stays 2.
+4. **No web font.** Geist uses the Geist typeface, but loading it would add an outside request. The app uses Primer's system font stack instead.
+
+## Tests
+
+- Written first, and seen failing before the code: the unit tests for the 30-card limit, recent keys, the recency rules in a batch draw, small-pool sampling, the readable chip label, the Explore label, and the help pages (`tests/docs.test.js`). Also the browser checks for the name, the tooltip, Help, the hidden query, the 30-card limit, the redraw, the Explore chip, and the clean look.
+- The first browser run stopped at the missing tooltip, so the checks after it didn't run before the code existed. To prove they can fail, I broke the finished code on purpose in a copy of the app, one change for each check, and ran the checks once. Each one failed. The first redraw check passed by chance against that break, because the pool was big enough, but the second redraw check caught it.
+- Changed after the code: the check that nothing covers the card image now scrolls the image into view first. The old check sampled a point above the image when the image started below the middle of the screen, and the new layout exposed that. The Details and inspector checks now read the card name after the redraw check replaces the cards. The image check was seen failing with an element placed over the image.
+
+## Known problems after this round
+
+- A draw of 30 from a big pool takes at least 15 seconds, and longer when it has to skip recent cards. **Cancel** stays available.
+- In a big pool, a redraw can still repeat a recent card when the random endpoint keeps returning recent ones until the tries run out. The app says so when it happens.

@@ -375,6 +375,13 @@ export function explore(snapshot) {
   };
 }
 
+/** How each Explore group names its searches on a filter chip. */
+const GROUP_LABELS = {
+  synergies: (name) => `Works with ${name}`,
+  similar: (name) => `Similar to ${name}`,
+  counters: (name) => `Answers to ${name}`,
+};
+
 /**
  * Criteria for one suggestion. Keeps the format, game, and rebalanced setting
  * from `base`. A "card" suggestion stays in the card's color identity (as
@@ -383,9 +390,11 @@ export function explore(snapshot) {
  * @param {any} base
  * @param {import("./cards.js").CardSnapshot} snapshot
  * @param {ExploreSuggestion} suggestion
+ * @param {"synergies"|"similar"|"counters"} [group] Names the chip, for
+ *   example "Works with Lotus Cobra: …".
  * @returns {import("./query.js").Criteria}
  */
-export function exploreCriteria(base, snapshot, suggestion) {
+export function exploreCriteria(base, snapshot, suggestion, group) {
   const b = normalizeCriteria(base);
   const c = { ...emptyCriteria(), format: b.format, game: b.game, excludeRebalanced: b.excludeRebalanced };
   if (suggestion.colors === "card") {
@@ -398,5 +407,7 @@ export function exploreCriteria(base, snapshot, suggestion) {
   }
   const exclude = snapshot.name && !snapshot.name.includes('"') ? ` -!"${snapshot.name}"` : "";
   c.rawQuery = `${suggestion.query}${exclude}`;
+  const prefix = GROUP_LABELS[group]?.(snapshot.name);
+  c.rawLabel = prefix ? `${prefix}: ${suggestion.label}` : suggestion.label;
   return normalizeCriteria(c);
 }

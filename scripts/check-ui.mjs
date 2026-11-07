@@ -143,17 +143,50 @@ const setValue = (selector, value, event = "input") => `(() => {
   el.dispatchEvent(new Event(${JSON.stringify(event)}, { bubbles: true }));
 })()`;
 
-/** Header, name, and nerd mode. */
+/** The current search, read from the Open on Scryfall link (the page no longer shows the query). */
+const QUERY = `new URL(document.querySelector("#open-scryfall").href).searchParams.get("q")`;
+const CHIPS = `[...document.querySelectorAll(".chips .chip")].map((c) => c.textContent).join(" | ")`;
+
+/** Moves the mouse to the middle of an element, so CSS :hover applies. */
+async function hover(b, selector) {
+  const r = await b.ev(`(() => { const r = document.querySelector(${JSON.stringify(selector)}).getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; })()`);
+  await b.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: r.x, y: r.y });
+}
+
+/** Header, name, nerd mode, and the clean look. */
 async function shell(b, width, check) {
   const { ev } = b;
-  check("the app is named Brewmancer", (await ev("document.title")) === "Brewmancer" && (await ev(`document.querySelector(".brand").textContent.trim()`)) === "Brewmancer");
+  check("the app is named Cascade", (await ev("document.title")) === "Cascade" && (await ev(`document.querySelector(".brand").textContent.trim()`)) === "Cascade",
+    await ev("document.title"));
+  check("the old name is gone from the page", !(await ev(`/Brewmancer/.test(document.documentElement.outerHTML)`)));
   const toggle = "#density-toggle";
+  // Nerd mode tooltip: on hover and on focus, described for screen readers, closed by Escape.
+  const tipVisible = `(() => { const t = document.getElementById(document.querySelector("${toggle}").getAttribute("aria-describedby") ?? ""); return !!t && t.getAttribute("role") === "tooltip" && getComputedStyle(t).display !== "none" && t.getBoundingClientRect().width > 0; })()`;
+  check("nerd mode has a tooltip, hidden at first", (await ev(`!!document.getElementById(document.querySelector("${toggle}").getAttribute("aria-describedby") ?? "")`)) && !(await ev(tipVisible)));
+  check("nerd mode has no second, native tooltip", (await ev(`document.querySelector("${toggle}").hasAttribute("title")`)) === false);
+  await hover(b, toggle);
+  check("hovering nerd mode shows the tooltip", await b.until(tipVisible, 2000));
+  check("the tooltip says what nerd mode shows", /mana value.*price.*legality/is.test(await ev(`document.getElementById("nerd-tip").textContent`)));
+  check("the tooltip stays inside the screen", await ev(`(() => { const r = document.getElementById("nerd-tip").getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth; })()`));
+  await b.key("Escape", 27);
+  check("Escape hides the tooltip", !(await ev(tipVisible)));
+  await b.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: 1, y: 899 });
+  await ev(`document.querySelector("${toggle}").focus()`);
+  check("keyboard focus shows the tooltip", await b.until(tipVisible, 2000));
+  await ev(`document.activeElement.blur()`);
+  check("the tooltip hides when focus leaves", !(await ev(tipVisible)));
   check("nerd mode toggle exists and is off", (await ev(`document.querySelector("${toggle}")?.getAttribute("aria-pressed")`)) === "false");
   await ev(click(toggle));
   check("nerd mode turns on", (await ev(`document.querySelector("${toggle}").getAttribute("aria-pressed")`)) === "true"
     && (await ev(`document.documentElement.dataset.density`)) === "nerd");
   await ev(click(toggle));
   check("nerd mode turns off", (await ev(`document.documentElement.dataset.density`)) === "comfortable");
+  check("the views include Help", await ev(`[...document.querySelectorAll("nav.views a")].map((a) => a.textContent.trim()).join("|") === "Discover|Lists|Data|Help"`));
+  check("clean look: system font, no page gradient, small corners on buttons", await ev(`(() => {
+    const body = getComputedStyle(document.body);
+    const btn = getComputedStyle(document.querySelector("#filters-toggle"));
+    return /-apple-system|system-ui/.test(body.fontFamily) && !/gradient/.test(body.backgroundImage) && parseFloat(btn.borderTopLeftRadius) <= 8;
+  })()`));
   if (width < 500) {
     check("phone: the view tabs are in the header and never float over the page", await ev(`(() => {
       const nav = document.querySelector("nav.views");
@@ -179,17 +212,18 @@ async function discover(b, check) {
     return before !== after;
   })());
   check("active filters show as chips", await ev(`[...document.querySelectorAll(".chips .chip")].some((c) => /Standard/.test(c.textContent))`));
+  check("the full query isn't shown, and there's no Copy query button", await ev(`!document.querySelector("#view-discover code") && ![...document.querySelectorAll("#view-discover button")].some((x) => /copy query/i.test(x.textContent))`));
+  check("Open on Scryfall opens the current search", await ev(`(() => { const a = document.querySelector("#open-scryfall"); return !!a && a.textContent.trim() === "Open on Scryfall" && a.href.startsWith("https://scryfall.com/search?q=") && a.target === "_blank"; })()`));
+  check("Draw allows up to 30 cards", (await ev(`document.querySelector("#draw-count").max`)) === "30");
   await ev(setValue("#view-discover .preset-row select", "builtin-arena-brawl", "change"));
   await ev(clickText("#view-discover button", "Apply"));
-  check("the Arena Brawl preset uses Brawl and color identity", await ev(`(() => {
-    const q = document.querySelector("code.query").textContent;
-    return /f:brawl/.test(q) && [...document.querySelectorAll(".chips .chip")].some((c) => /^Brawl/.test(c.textContent));
-  })()`));
+  check("the Arena Brawl preset uses Brawl and color identity", /f:brawl/.test(await ev(QUERY))
+    && await ev(`[...document.querySelectorAll(".chips .chip")].some((c) => /^Brawl/.test(c.textContent))`));
   await ev(setValue("#view-discover .preset-row select", "builtin-arena-standard", "change"));
   await ev(clickText("#view-discover button", "Apply"));
   await ev(setValue("#view-discover textarea", "t:goblin t:creature"));
-  check("raw query reaches the query preview", await until(`document.querySelector("code.query").textContent.includes("(t:goblin t:creature)")`, 3000));
-  check("a raw query chip has a remove button", await ev(`[...document.querySelectorAll(".chips .chip button")].some((x) => /raw query/i.test(x.getAttribute("aria-label")))`));
+  check("a Scryfall search reaches the query", await until(`${QUERY}.includes("(t:goblin t:creature)")`, 3000));
+  check("a typed search shows as a Custom search chip with a remove button", await ev(`[...document.querySelectorAll(".chips .chip button")].some((x) => /Custom search/.test(x.getAttribute("aria-label")))`), await ev(CHIPS));
   await until(`/match/.test(document.querySelector(".pool").textContent)`);
   await ev(click("#mode-draw"));
   await ev(clickText("#view-discover button", "Draw"));
@@ -202,10 +236,12 @@ async function discover(b, check) {
   check("nothing sits on top of the card image", await ev(`(() => {
     const img = document.querySelector(".results .tile img");
     if (!img) return true;
+    img.scrollIntoView({ block: "center" });
     const r = img.getBoundingClientRect();
-    const hit = document.elementFromPoint(r.left + r.width / 2, r.top + Math.min(r.height / 2, innerHeight / 2 - r.top - 1));
+    const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
     const s = getComputedStyle(img);
-    return (hit === img || !hit || r.top > innerHeight) && s.filter === "none" && s.transform === "none" && s.objectFit !== "cover";
+    window.scrollTo(0, 0);
+    return hit === img && s.filter === "none" && s.transform === "none" && s.objectFit !== "cover";
   })()`));
 
   // Add to a new list, then the tile says it's saved.
@@ -216,7 +252,38 @@ async function discover(b, check) {
     document.querySelector("dialog button[type=submit]").click();
   })()`);
   check("the tile shows where the card is saved", await until(`/Saved in UI check/.test(document.querySelector(".results .tile .tile-saved")?.textContent ?? "")`, 3000));
-  return name;
+  await redraw(b, check);
+  // The redraw replaced the cards, so the later checks use the new first card.
+  return await ev(`document.querySelector(".results .tile .tile-name").textContent`) ?? name;
+}
+
+/**
+ * Redraws prefer cards that weren't drawn recently for the same search. A
+ * small pool (175 cards or fewer) is drawn from one search page, so a redraw
+ * with enough new cards repeats none, and it sends no random-card requests.
+ */
+async function redraw(b, check) {
+  const { ev, until } = b;
+  const names = `[...document.querySelectorAll(".results .tile .tile-name")].map((n) => n.textContent)`;
+  const pool = Number((await ev(`document.querySelector(".pool strong")?.textContent ?? "0"`)).replace(/\D/g, ""));
+  if (!(pool >= 4 && pool <= 175)) {
+    check("the goblin pool is small enough for the redraw check", false, `pool ${pool}`);
+    return;
+  }
+  const first = await ev(names);
+  const count = Math.min(10, Math.floor((pool - first.length) / 2));
+  await ev(setValue("#draw-count", String(count)));
+  const randomBefore = await ev(`performance.getEntriesByType("resource").filter((r) => r.name.includes("/cards/random")).length`);
+  await ev(clickText("#view-discover button", "Draw"));
+  await until(`${names}.length === ${count} && !document.querySelector("#draw-btn").disabled`, 20000);
+  const second = await ev(names);
+  await ev(clickText("#view-discover button", "Draw"));
+  await until(`${names}.length === ${count} && !document.querySelector("#draw-btn").disabled`, 20000);
+  const third = await ev(names);
+  const overlap = (a, c) => a.filter((n) => c.includes(n));
+  check("a redraw repeats no recent card while new ones are left", second.length === count && overlap(second, first).length === 0, `${overlap(second, first).join(", ")}`);
+  check("the next redraw skips both earlier draws", third.length === count && overlap(third, [...first, ...second]).length === 0, `${overlap(third, [...first, ...second]).join(", ")}`);
+  check("a small pool draws without random-card requests", (await ev(`performance.getEntriesByType("resource").filter((r) => r.name.includes("/cards/random")).length`)) === randomBefore);
 }
 
 /** Details sheet, hover inspector, and rulings button. */
@@ -269,6 +336,7 @@ async function exploreFlow(b, check) {
   await ev(`document.querySelector(".results .tile button[aria-label^='Explore']").click()`);
   await sleep(300);
   check("Explore opens with three tabs", (await ev(`[...document.querySelectorAll("dialog[open] [role=tab]")].map((t) => t.firstChild.textContent.trim()).join("|")`)) === "Synergies|Similar|Counters");
+  check("Explore shows no query syntax", await ev(`!document.querySelector("dialog[open] code")`));
   check("the Synergies tab is selected", (await ev(`document.querySelector("dialog[open] [role=tab][aria-selected=true]").firstChild.textContent.trim()`)) === "Synergies");
   await ev(`document.querySelector("dialog[open] [role=tab][aria-selected=true]").focus()`);
   await key("ArrowRight", 39);
@@ -286,7 +354,8 @@ async function exploreFlow(b, check) {
   }
   await ev(`document.querySelector("dialog[open] [role=tabpanel]:not([hidden]) .suggestion button").click()`);
   await sleep(300);
-  check("Search loads the query without the card itself", (await ev(`document.querySelector("code.query").textContent`)).includes(' -!"'));
+  check("Search loads the query without the card itself", (await ev(QUERY)).includes(' -!"'));
+  check("the Explore chip says where the search came from, not the query", await ev(`[...document.querySelectorAll(".chips .chip")].some((c) => /^(Works with|Similar to|Answers to) /.test(c.textContent) && !/otag:|-!/.test(c.textContent))`), await ev(CHIPS));
   check("Search switches to Browse", (await ev(`document.querySelector("#mode-browse").getAttribute("aria-pressed")`)) === "true");
   check("Discover explains where the search came from", /Cards that may work with|Similar to|Answers to/.test(await ev(`document.querySelector(".draw-notes").textContent`)));
   const browsed = await until(`/Showing|No cards/.test(document.querySelector(".browse-status")?.textContent ?? "")`, 30000);
@@ -360,6 +429,24 @@ async function lists(b, check) {
     await ev(`[...document.querySelectorAll("body *")].filter((n) => ["fixed", "sticky"].includes(getComputedStyle(n).position)).map((n) => n.tagName + "." + n.className).join(", ")`));
 }
 
+/** Help: the pages built into the app. */
+async function help(b, check) {
+  const { ev, until } = b;
+  await ev(clickText("nav.views a", "Help"));
+  check("Help opens", await until(`location.hash.startsWith("#help") && !document.querySelector("#view-help").hidden`, 3000));
+  check("Help lists its pages", await ev(`document.querySelectorAll("#view-help .help-nav a").length >= 6`));
+  check("Help starts on Get started", (await ev(`document.querySelector("#help-page-title")?.textContent`)) === "Get started");
+  await ev(`[...document.querySelectorAll("#view-help .help-nav a")].find((a) => a.textContent.trim() === "Nerd mode").click()`);
+  check("a Help link opens its page", await until(`document.querySelector("#help-page-title")?.textContent === "Nerd mode"`, 3000));
+  check("focus moves to the page heading", await until(`document.activeElement?.id === "help-page-title"`, 1000), await ev(FOCUS));
+  check("the Nerd mode page matches the tooltip", await ev(`document.querySelector("#view-help article").textContent.includes(document.getElementById("nerd-tip").textContent)`));
+  check("the current page is marked in the Help list", (await ev(`document.querySelector("#view-help .help-nav a[aria-current=page]")?.textContent.trim()`)) === "Nerd mode");
+  await ev(`location.hash = "#help/explore"`);
+  check("a link straight to a Help page works", await until(`document.querySelector("#help-page-title")?.textContent === "Explore"`, 3000));
+  check("Help marks UI labels in bold", await ev(`!!document.querySelector("#view-help article strong")`));
+  check("Help has no horizontal scroll", !(await ev("document.documentElement.scrollWidth > window.innerWidth")));
+}
+
 // Runner ---------------------------------------------------------------------------
 const server = await startServer();
 const base = `http://127.0.0.1:${server.address().port}`;
@@ -386,6 +473,7 @@ for (const { width, scheme } of CONFIGS) {
     await exploreFlow(b, check);
     await browse(b, check);
     await lists(b, check);
+    await help(b, check);
     check("no horizontal page scroll", !(await b.ev("document.documentElement.scrollWidth > window.innerWidth")));
     check("no console errors", b.errors.length === 0, b.errors.join(" | "));
   } catch (e) {

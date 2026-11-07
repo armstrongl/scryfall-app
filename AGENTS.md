@@ -2,13 +2,13 @@
 
 These instructions are for coding agents that work in this repository. Read `README.md` for what the app does and how the code is laid out. `PLAN.md` is the full v1 specification, and `REPORT.md` records where the build differs from it and lists known problems.
 
-The app, Brewmancer, is built for its owner first. `docs/owner-profile.md` records who she is and what she asked for. Her stated wants outrank research and guesses about other players. When she asks for something new, add it to that file.
+The app, Cascade, is built for its owner first. `docs/owner-profile.md` records who she is and what she asked for. Her stated wants outrank research and guesses about other players. When she asks for something new, add it to that file.
 
 ## How agents work here
 
 Agents lead this project. The owner gives direction and feedback; she doesn't approve each step. Take a task all the way through on your own: plan it, build it test first, review it, and ship it.
 
-- **Ship it yourself.** Work on a branch, commit, push, and open a pull request. Merge it yourself once `npm test` and `node scripts/check-ui.mjs` pass. Don't wait for the owner to review it.
+- **Ship it yourself, always.** Every change ends merged: work on a branch, commit, push, open a pull request, and merge it yourself once `npm test` and `node scripts/check-ui.mjs` pass. Don't stop at a local commit, and don't wait for the owner to review it.
 - **Decide, don't ask.** When this file or `PLAN.md` doesn't cover a detail, pick the most conservative option that keeps the hard rules below, note the choice in the pull request description, and keep going. If the choice departs from `PLAN.md`, record it in `REPORT.md`.
 - **Ask the owner only about:**
   - Taste and feel: what she wants, how the app looks, its tone, and the open questions in `docs/owner-profile.md`.
@@ -21,7 +21,7 @@ Agents lead this project. The owner gives direction and feedback; she doesn't ap
 
 - Run the tests: `npm test` (or `node --test`). Node.js 20 or later. There are no packages to install.
 - Run the app: `python3 -m http.server 8000`, then open <http://localhost:8000/>. ES modules don't load from `file://`.
-- Run the browser tests: `node scripts/check-ui.mjs`. It needs Chrome (set `CHROME_PATH` if it's not in the usual place) and network access, because the app sends real Scryfall requests through its queue. It starts its own static server and a fresh browser profile, so you don't need the `http.server` command above. It runs at 390 px and 1280 px, in light and dark mode, and takes about a minute. To run one width, set `ONLY=390` or `ONLY=1280`, and optionally `SCHEME=dark`.
+- Run the browser tests: `node scripts/check-ui.mjs`. It needs Chrome (set `CHROME_PATH` if it's not in the usual place) and network access, because the app sends real Scryfall requests through its queue. It starts its own static server and a fresh browser profile, so you don't need the `http.server` command above. It runs at 390 px and 1280 px, in light and dark mode, and takes a few minutes. To run one width, set `ONLY=390` or `ONLY=1280`, and optionally `SCHEME=dark`.
 - Repeat the live API checks: `node scripts/check-api.mjs`.
 - Fetch the test fixtures again: `scripts/fetch-fixtures.sh`.
 - Redraw the PNG icons after changing the design: `node scripts/make-icons.js`. Keep it in step with `icons/icon.svg`.
@@ -77,16 +77,31 @@ Where tests go:
 
 ## Code conventions
 
-- The modules `query.js`, `cards.js`, `lists.js`, `deck-rules.js`, `export.js`, `draw.js`, `synergy.js`, `explore.js`, `browse.js`, `saved.js`, `stats.js`, `links.js`, and `glossary.js` in `src/` are pure: they don't use the DOM, the network, or storage. Put new logic in a pure module, and test it with `node --test`.
+- The modules `query.js`, `cards.js`, `lists.js`, `deck-rules.js`, `export.js`, `draw.js`, `synergy.js`, `explore.js`, `browse.js`, `saved.js`, `stats.js`, `links.js`, `glossary.js`, and `docs.js` in `src/` are pure: they don't use the DOM, the network, or storage. Put new logic in a pure module, and test it with `node --test`.
 - UI code is in `src/ui/`. Build elements with the `h()` helper in `src/ui/dom.js`. Don't use `innerHTML` with card data or user text.
 - Don't use browser dialogs (`alert`, `confirm`, `prompt`). Use `confirmBox()` from `src/ui/dom.js`.
 - Keep the app usable by keyboard and screen reader: label every control, and send status messages through `announce()`.
 - The app name is `APP_NAME` in `src/config.js`. `README.md` lists the other places where the name appears.
 - `.artifacts/` is gitignored. Put plans, screenshots, and review reports there, not in the tracked tree.
+- The look follows GitHub's Primer and Vercel's Geist design systems: neutral grays, the system font, 6px corners, 1px borders, a blue accent for links and focus, and black (light mode) or white (dark mode) primary buttons. Use the color tokens at the top of `styles.css`. Don't add gradients, glows, or decorative color. Color comes from the cards.
+- Don't show raw Scryfall query syntax in the interface. Name searches in plain words, as filter chips do, and link to the search with **Open on Scryfall**.
+
+## Keep the docs in step
+
+After every change, ALWAYS check whether each of these needs an update, and update it in the same change. Do this even when the change looks small or internal, and check them all, not only the ones you expect.
+
+| What | Where |
+| --- | --- |
+| Agent instructions | `AGENTS.md` (`CLAUDE.md` only points here) |
+| README and other repository docs | `README.md`, `REPORT.md`, and `docs/owner-profile.md`. `PLAN.md` is the v1 plan: don't edit it. Record differences from it in `REPORT.md`. |
+| Interface copy | Every text the user sees or hears: labels, buttons, hints, messages, `title` and `aria-label` text, `announce()` messages, and tooltips such as the nerd mode tooltip (`NERD_MODE_TIP` in `src/docs.js`). Search `src/ui/`, `src/main.js`, and `index.html`. |
+| Help pages built into the app | `DOC_PAGES` in `src/docs.js`, shown in the **Help** view. |
+
+`tests/docs.test.js` checks the help pages against the app's real limits and catches some removed features and old names. When you remove or rename something in the app, add the old wording to its list of words that must not appear. The tests can't catch everything, so read the pages too.
 
 ## Before you finish
 
 - The tests were written before the code, and they pass.
 - If you changed anything in the UI, `node scripts/check-ui.mjs` passes, and its checks cover the change.
-- If you changed what the app does, update `README.md`.
+- You checked every place in "Keep the docs in step" and updated each one that the change affects: `AGENTS.md`, `README.md`, `REPORT.md`, `docs/owner-profile.md`, the interface copy and tooltips, and the help pages in `src/docs.js`.
 - Your pull request is merged. If something blocks the merge, tell the owner what it is.

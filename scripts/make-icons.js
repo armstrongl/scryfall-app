@@ -5,7 +5,7 @@ import { writeFileSync } from "node:fs";
 import { deflateSync } from "node:zlib";
 
 const hex = (s) => [1, 3, 5].map((i) => parseInt(s.slice(i, i + 2), 16));
-const BG = hex("#3b1f6e"), BACK = hex("#b48cff"), FRONT = hex("#fff7ea"), DOT = hex("#2fd3a6");
+const BG = hex("#1f2328"), BACK = hex("#59636e"), MIDDLE = hex("#afb8c1"), FRONT = hex("#ffffff"), DOT = hex("#0969da");
 
 function inRoundRect(x, y, rx, ry, w, h, r) {
   if (x < rx || y < ry || x > rx + w || y > ry + h) return false;
@@ -26,14 +26,12 @@ function sample(x, y, maskable) {
   return art(x, y) ?? BG;
 }
 
+/** Three cards cascading down to the right, with a blue dot on the front card. */
 function art(x, y) {
-  if ((x - 36) ** 2 + (y - 34) ** 2 <= 49) return DOT;
-  if (inRoundRect(x, y, 22, 14, 28, 40, 4)) return FRONT;
-  // Back card: rotate the point by +12 degrees around (28, 30).
-  const a = (12 * Math.PI) / 180, dx = x - 28, dy = y - 30;
-  const bx = 28 + dx * Math.cos(a) - dy * Math.sin(a);
-  const by = 30 + dx * Math.sin(a) + dy * Math.cos(a);
-  if (inRoundRect(bx, by, 14, 10, 28, 40, 4)) return BACK;
+  if ((x - 37) ** 2 + (y - 39) ** 2 <= 25) return DOT;
+  if (inRoundRect(x, y, 25, 22, 24, 34, 3)) return FRONT;
+  if (inRoundRect(x, y, 18, 15, 24, 34, 3)) return MIDDLE;
+  if (inRoundRect(x, y, 11, 8, 24, 34, 3)) return BACK;
   return null;
 }
 

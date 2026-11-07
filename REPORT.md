@@ -63,8 +63,8 @@ Not checked: a real phone, Safari, a screen reader, and the reduced-motion setti
 | Rebalanced cards | `f:standard game:arena` and `f:standard game:arena -is:rebalanced` both return 5,164 cards. `is:rebalanced` alone returns 404 (no cards), and no Standard Arena card name starts with `A-`. `-is:rebalanced` causes no warning. | `-is:rebalanced` stays in the default, as the plan says. It does not change the count today. |
 | Query syntax | One real search for each table row (19 searches). None returned `warnings`. | No change. |
 | Error responses | `mv>abc` returns status 404, code `not_found`, with the details "Your query didn't match any cards…" and no warnings. `c=q` returns status 400, code `bad_request`, details "All of your terms were ignored.", with one warning. | Mapping kept. Note that an invalid query like `mv>abc` gets the no-match message, because Scryfall reports it as a 404 `not_found`. |
-| Arena import (owner task) | Not tested. | Owner task. |
-| Names that differ on Arena (owner task) | No name field other than `name` appeared in 20 random draws. `game:arena has:flavorname` matches 134 cards with a `flavor_name`, for example Adeline, Resplendent Cathar with the flavor name "Hero of Light" (`fca`), and Marvel printings such as Arasta of the Endless Web. `printed_name` appears only on non-English printings. | The export uses `frontName` (the oracle name). The owner confirms in Arena that oracle names import for these cards. |
+| Arena import (my task) | Not tested. | My task. |
+| Names that differ on Arena (my task) | No name field other than `name` appeared in 20 random draws. `game:arena has:flavorname` matches 134 cards with a `flavor_name`, for example Adeline, Resplendent Cathar with the flavor name "Hero of Light" (`fca`), and Marvel printings such as Arasta of the Endless Web. `printed_name` appears only on non-English printings. | The export uses `frontName` (the oracle name). I confirm in Arena that oracle names import for these cards. |
 
 ## Changes from the plan
 
@@ -92,7 +92,7 @@ Not checked: a real phone, Safari, a screen reader, and the reduced-motion setti
 - A batch draw with a small pool can stop early and say so. This is expected behavior, but the attempts still count against the rate limit.
 - The repository is named `scryfall-app`. The app name rule in section 2 is about the app, but a GitHub Pages URL such as `https://<user>.github.io/scryfall-app/` contains "Scryfall". Consider renaming the repository before you turn on Pages.
 
-## Tasks for the owner
+## My tasks
 
 1. Turn on GitHub Pages. The steps are in the README.
 2. Test an Arena import. Paste an export that has a sideboard, a transform card, a modal double-faced card, and a split card into MTG Arena. Confirm that Arena accepts the `Sideboard` header and the front-face names (for a split card, the export writes only the left half, for example `Fire`).
@@ -102,7 +102,7 @@ Not checked: a real phone, Safari, a screen reader, and the reduced-motion setti
 
 # Design overhaul: Brewmancer (November 2026)
 
-The app was renamed Brewmancer and rebuilt around its owner. The process: an interview and a use session with the owner, six research agents, and an independent review. The research covered the tools she uses, what she might want, UI and UX practice, platform needs, an audit of v1, and the Scryfall API. `docs/owner-profile.md` records what she asked for and where each request is in the app. The working files (research, screenshots, and the plan) are in `.artifacts/design-overhaul/`, which git ignores.
+The app was renamed Brewmancer and rebuilt around what I want. The process: an interview and a use session with me, six research agents, and an independent review. The research covered the tools I use, what I might want, UI and UX practice, platform needs, an audit of v1, and the Scryfall API. `docs/about-me.md` records what I asked for and where each request is in the app. The working files (research, screenshots, and the plan) are in `.artifacts/design-overhaul/`, which git ignores.
 
 ## What changed
 
@@ -113,7 +113,7 @@ The app was renamed Brewmancer and rebuilt around its owner. The process: an int
 | Discover | Filter chips with remove buttons, and filters behind a Filters button. **Draw random** or **Browse all**: Browse lists every match in one of 11 orders, 175 cards at a time, with Load more. The first page in name order comes from the pool count, so that page costs no extra request. |
 | Card details | A details sheet, and on screens 1200 px and wider, an inspector beside the results that follows the pointer or keyboard focus. They show rules text, a keyword glossary with MTG Wiki links, rulings on request, legality, printing, prices, buy links, and related links. Pointing at a card sends no request. |
 | Explore | Replaces Find synergies. Three tabs: Synergies (for example "Green cards that leverage landfall"), Similar, and Counters. Searches combine Scryfall Tagger tags with keyword and rules-text terms. Search opens the results in Browse, most popular first. |
-| Saved marker | Every card shows "Saved in" and the list name when one of the owner's lists holds it, in any printing. |
+| Saved marker | Every card shows "Saved in" and the list name when one of my lists holds it, in any printing. |
 | Lists | Export for Arena is the main button. Open on Scryfall opens a list (in parts for long lists). Rename, Refresh, and Delete are under More. Lists are collections or decks, and decks have a format: Standard, Standard Brawl, or Brawl. Brawl checks cover the commander, size, singleton, color identity, and legality. The Arena export for Brawl writes Commander and Deck blocks. Deck stats show the curve, colored mana symbols, and types. Remove leaves an Undo row where the card was. |
 | Presets | A second built-in preset: Arena Brawl, with color identity. |
 | Data | Snapshots keep detail fields (legalities, keywords, prices, buy links, and more). Backups are schema 2, and schema 1 backups still import. The IndexedDB schema didn't change. |
@@ -123,7 +123,7 @@ The app was renamed Brewmancer and rebuilt around its owner. The process: an int
 1. **Nothing floats over the page.** The research recommended a bottom tab bar on phones and a floating toast. Both would cover card images while the page scrolls, which v1 ruled out (item 10 above). The phone tabs are a row in the header, and the toast is in the page flow. The only sticky element is the inspector, which sits in its own column beside the cards. A browser check fails if anything else is fixed or sticky.
 2. **Tagger tags with fallbacks.** Scryfall Tagger tags make synergy searches much tighter. For example, `otag:landfall c:g` found 46 cards in Standard on Arena, against 37 for `kw:landfall`. Tags are community data, so each search ORs the tag with keyword or rules-text terms, and every tag the app uses was checked live. `scripts/check-api.mjs` checks them again.
 3. **Explore results open in Browse, sorted by EDHREC rank.** A synergy search is a list to look through, not a lottery. EDHREC rank measures paper Commander popularity, which is a rough guide for Arena.
-4. **Counters ignore color.** Answers can come from any color, and the owner can add a color filter.
+4. **Counters ignore color.** Answers can come from any color, and I can add a color filter.
 5. **Rulings load on request.** One request per card, cached for the session, so pointing at cards never sends requests.
 6. **Brawl rules.** Brawl is Arena's 100-card format (Scryfall key `brawl`), and Standard Brawl is 60 cards (`standardbrawl`). The commander must be a legendary creature or planeswalker, or a card that says it can be a commander. The sideboard isn't exported for Brawl. On 2026-11-05 the API listed no rebalanced card as legal in Brawl.
 7. **The glossary is short text, with links.** Each entry follows reminder text or the Comprehensive Rules, shortened. The details also link to the MTG Wiki and show the card's official rulings.
@@ -162,27 +162,27 @@ The app was renamed Brewmancer and rebuilt around its owner. The process: an int
 - Explore suggestions come from patterns in rules text plus community tags. Some are loose, and new mechanics may have no pattern yet. To see and adjust a search's query, open it in Discover, then select **Open on Scryfall**.
 - Similar cards uses role, keywords, and type plus cost. It doesn't know a card's own Tagger tags, because those are only in a 6 MB bulk file. Loading that file could make Similar and Synergies much better. See `.artifacts/design-overhaul/research/R6-api.md`.
 - Browse loads 175 cards a page, one request a page, so a big pool takes several Load more steps. Changing the sort reloads from page 1.
-- Saved cards from v1 lack the detail fields. Their details show a note, and the Brawl checks say so, until the owner selects Refresh card data.
+- Saved cards from v1 lack the detail fields. Their details show a note, and the Brawl checks say so, until I select Refresh card data.
 - The inspector appears only at 1200 px and wider. On an iPad in portrait, use Details.
 - Prices are as of the moment the card was fetched. Saved cards keep old prices until a refresh.
 - The repository name still contains "Scryfall". See the v1 problem above.
 
-## Tasks for the owner (overhaul)
+## My tasks (overhaul)
 
 1. Import a Brawl export into MTG Arena, and confirm that Arena accepts the `Commander` and `Deck` headers.
 2. Try the app on the iPhone and iPad, with the app on the Home Screen.
-3. Answer the open questions at the end of `docs/owner-profile.md`.
+3. Answer the open questions at the end of `docs/about-me.md`.
 4. Consider renaming the repository, for example to `cascade`, before turning on GitHub Pages. The README's Pages steps are unchanged.
 
 # Feedback round: Cascade (7 November 2026)
 
-The owner tried the overhaul and asked for eight changes. `docs/owner-profile.md` lists each request and where it is now.
+I tried the overhaul and asked for eight changes. `docs/about-me.md` lists each request and where it is now.
 
 ## What changed
 
 | Area | Change |
 | --- | --- |
-| Name | Cascade, the owner's choice. The icon is three cards cascading down. |
+| Name | Cascade, my choice. The icon is three cards cascading down. |
 | Look | A blend of GitHub's Primer and Vercel's Geist: neutral grays, the system font, 6px corners, 1px borders, a blue accent for links, focus, and selection, and black (light mode) or white (dark mode) primary buttons. The gradients, the violet and teal palette, and the colored glows around card frames are gone. Controls are 32px high with a mouse and keep 44px for touch. |
 | Nerd mode | A tooltip says what it does. It shows on hover and on keyboard focus, the switch points to it with `aria-describedby`, and Escape hides it. The native `title` tooltip is gone, so there's only one. |
 | Help | A new **Help** view with seven pages. The text is in `src/docs.js`, a pure module, and the nerd mode tooltip and its help page share one constant. `tests/docs.test.js` checks the pages against the real limits and for removed features. `AGENTS.md` now tells agents to always check every doc surface after a change. |
@@ -196,6 +196,7 @@ The owner tried the overhaul and asked for eight changes. `docs/owner-profile.md
 2. **Small pools draw from a search page.** The random endpoint can't be told which cards to skip, so in a small pool a redraw would mostly get recent cards back and waste requests. One search page holds the whole pool, costs one request (none if the pool count already fetched it), and lets the draw take every new card first. It also makes the redraw behavior testable in the browser checks.
 3. **The criteria label didn't raise the backup schema.** Criteria now have an optional `rawLabel` string. Older schema 2 apps drop it on import, and this version reads older backups without it, so `BACKUP_SCHEMA_VERSION` stays 2.
 4. **No web font.** Geist uses the Geist typeface, but loading it would add an outside request. The app uses Primer's system font stack instead.
+5. **The docs speak in my voice.** Every doc, including `PLAN.md`, now refers to me in the first person, and my profile moved to `docs/about-me.md`. The `PLAN.md` edit changes only how it refers to me, not what it specifies. A test in `tests/docs.test.js` fails if a doc talks about me in the third person.
 
 ## Tests
 

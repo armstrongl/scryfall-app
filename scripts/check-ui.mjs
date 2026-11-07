@@ -220,7 +220,6 @@ async function discoverTips(b, check) {
   check("the filters link to their help page", await ev(`!!document.querySelector("#filters-panel a[href='#help/find-cards']")`));
   const n = await tooltipsIn(b, "#view-discover", "Discover", check);
   check("Discover has tooltips on its buttons and filters", n >= 12, String(n));
-  check("the Explore button names all four tabs for screen readers", /combos/.test(await ev(`document.querySelector(".results .tile button[aria-label^='Explore']").getAttribute("aria-label")`)));
 }
 
 /** Header, name, nerd mode, and the clean look. */
@@ -407,6 +406,7 @@ async function exploreFlow(b, check) {
   const { ev, until, key } = b;
   await ev(`document.querySelector(".results .tile button[aria-label^='Explore']").click()`);
   await sleep(300);
+  check("the Explore button's label names all four tabs", /synergies, similar cards, counters, and combos/.test(await ev(`document.querySelector(".results .tile button[aria-label^='Explore']").getAttribute("aria-label")`)));
   check("Explore opens with four tabs", (await ev(`[...document.querySelectorAll("dialog[open] [role=tab]")].map((t) => t.firstChild.textContent.trim()).join("|")`)) === "Synergies|Similar|Counters|Combos");
   check("Explore links to its help page", await ev(`[...document.querySelectorAll("dialog[open] a[href='#help/explore']")].some((a) => /^Learn more/.test(a.textContent.trim()))`));
   check("Explore shows no query syntax", await ev(`!document.querySelector("dialog[open] code")`));

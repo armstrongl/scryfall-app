@@ -97,7 +97,7 @@ export const DOC_PAGES = [
     sections: [
       {
         blocks: [
-          { p: `${APP_NAME} helps you discover ${link("Magic: The Gathering", MTG)} cards, learn what they do, and see how they work together. It runs in your browser and gets card data and images from ${link("Scryfall", SCRYFALL_SITE)}. It has no server and no accounts.` },
+          { p: `${APP_NAME} helps you discover ${link("Magic: The Gathering", MTG)} cards, learn what they do, and see how they work together. On any card, **Explore** finds synergies, similar cards, counters, and combos. It runs in your browser and gets card data and images from ${link("Scryfall", SCRYFALL_SITE)}. It has no server and no accounts.` },
           { p: `It's made for ${link("MTG Arena", ARENA)}, the digital version of the game, and its ${format("Standard", "standard")} and ${format("Brawl", "brawl")} formats. You can still search every card.` },
         ],
       },
@@ -107,7 +107,7 @@ export const DOC_PAGES = [
           {
             terms: [
               ["Discover", "Draw random cards, or browse every card that matches your filters."],
-              ["Lists", "Your collections and decks, with deck checks, stats, and export for MTG Arena."],
+              ["Lists", "Your collections and decks, with deck checks, stats, export for MTG Arena, and **Find combos**."],
               ["Data", "Back up your lists, restore a backup, and see how your data is stored."],
               ["Help", `These pages. The ${help("Glossary", "glossary")} explains the Magic terms the app uses.`],
             ],
@@ -121,7 +121,7 @@ export const DOC_PAGES = [
           {
             steps: [
               "Open **Discover**.",
-              "Keep the **Arena Standard** preset, or choose another one.",
+              "Keep the **Arena Standard** preset, or choose another one and select **Apply**.",
               "Select **Draw**.",
               "On a card, select **Details** to read everything about it, or **Add** to save it to a list.",
             ],
@@ -149,7 +149,7 @@ export const DOC_PAGES = [
           {
             steps: [
               "Choose a preset, then select **Apply**.",
-              `To narrow the search, select **Filters**. You can filter by ${wiki("format", "Format")}, game, colors, ${wiki("card types", "Card type")}, ${wiki("mana value", "Mana value")}, ${wiki("rarity", "Rarity")}, ${wiki("keywords", "Keyword ability")}, and ${wiki("rules text", "Oracle")}.`,
+              `To narrow the search, select **Filters**. You can filter by ${wiki("format", "Format")}, game, colors, ${wiki("card types", "Card type")}, ${wiki("type line", "Type line")} text, ${wiki("mana value", "Mana value")}, ${wiki("rarity", "Rarity")}, ${wiki("keywords", "Keyword ability")}, ${wiki("rules text", "Oracle")}, and Scryfall search syntax.`,
               "To keep your filters for later, select **Save as preset** and enter a name.",
             ],
           },
@@ -253,7 +253,7 @@ export const DOC_PAGES = [
               ["Synergies", `Cards that work with this one, such as "Green cards that leverage ${wiki("landfall", "Landfall")}". They stay in the card's colors.`],
               ["Similar", `Cards that do the same job for a similar cost, share its ${wiki("keywords", "Keyword ability")}, or share its type and cost.`],
               ["Counters", `Cards that answer this one, such as creature ${wiki("removal", "Removal")} or cards that punish fliers. They're in every color.`],
-              ["Combos", `Links to combos with this card on Commander Spellbook, in the format of your current search. A ${wiki("legendary", "Legendary")} creature or planeswalker also gets a link to combos in its colors, for a deck it leads. See the ${help("Combos", "combos")} help page.`],
+              ["Combos", `Links to combos with this card on Commander Spellbook, in the format of your current search, or Commander when the search has no format. A ${wiki("legendary", "Legendary")} creature or planeswalker also gets a link to combos in its colors, for a deck it leads. See the ${help("Combos", "combos")} help page.`],
             ],
           },
           { p: "The search keeps your format and game, and leaves out the card itself. Its chip in Discover says where it came from." },
@@ -269,7 +269,7 @@ export const DOC_PAGES = [
     sections: [
       {
         blocks: [
-          { p: `A combo is a set of cards that work together to do something big, such as making infinite mana or winning the game. Cascade finds combos with ${link("Commander Spellbook", SPELLBOOK_SITE)}, a free combo database. It's a separate site: Cascade links to it and shows none of its data.` },
+          { p: `A combo is a set of cards that work together to do something big, such as making infinite mana or winning the game. ${APP_NAME} finds combos with ${link("Commander Spellbook", SPELLBOOK_SITE)} (commanderspellbook.com), a free combo database. It's a separate site: ${APP_NAME} links to it and shows none of its data.` },
         ],
       },
       {
@@ -277,7 +277,7 @@ export const DOC_PAGES = [
         blocks: [
           {
             terms: [
-              ["Combos tab", "In **Explore**, the **Combos** tab links to combos with the card, legal in the format of your current search."],
+              ["Combos tab", "In **Explore**, the **Combos** tab links to combos with the card, legal in the format of your current search, or in Commander when the search has no format."],
               ["Card details", "**Combos on Commander Spellbook**, under Links, opens the same search."],
               ["Find combos", `On a list, **Find combos** gets the list ready for Commander Spellbook's ${link("Find My Combos", FIND_MY_COMBOS_URL)} page.`],
             ],
@@ -332,7 +332,7 @@ export const DOC_PAGES = [
       {
         heading: "Credit",
         blocks: [
-          { p: `Combo searches and Find My Combos are by ${link("Commander Spellbook", SPELLBOOK_SITE)}. Cascade isn't made by or endorsed by Commander Spellbook.` },
+          { p: `Combo searches and Find My Combos are by ${link("Commander Spellbook", SPELLBOOK_SITE)} (commanderspellbook.com). ${APP_NAME} isn't made by or endorsed by Commander Spellbook.` },
         ],
       },
     ],
@@ -424,7 +424,7 @@ export const DOC_PAGES = [
               "To restore it, or to move your data to another device, choose the file under **Import backup**, then select **Import**.",
             ],
           },
-          { p: `The app reminds you to back up when your lists changed and your last backup is more than ${BACKUP_REMINDER_DAYS} days old.` },
+          { p: `The app reminds you to back up after your lists or presets change, if you've never backed up or your last backup is more than ${BACKUP_REMINDER_DAYS} days old.` },
         ],
       },
       {

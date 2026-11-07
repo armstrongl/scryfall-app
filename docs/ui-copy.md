@@ -56,7 +56,7 @@ This index lists every text the app shows or announces, so the copy can be check
 | Page | Address | Summary | Links |
 | --- | --- | --- | --- |
 | Get started | `#help/get-started` | What Cascade does and where things are. | 6 |
-| Find cards | `#help/find-cards` | Presets, filters, random draws, and Browse all. | 20 |
+| Find cards | `#help/find-cards` | Presets, filters, random draws, and Browse all. | 21 |
 | Card details | `#help/card-details` | Rules text, keywords, rulings, legality, and prices. | 19 |
 | Explore | `#help/explore` | Synergies, similar cards, counters, and combos for any card. | 7 |
 | Combos | `#help/combos` | Find card combos on Commander Spellbook, and learn what bracket tags mean. | 16 |

@@ -120,3 +120,46 @@ test("the Combos page explains bracket tags and credits Commander Spellbook", ()
 test("the Explore page mentions the Combos tab", () => {
   assert.match(pageText(docPage("explore")), /Combos/);
 });
+
+test("the help pages use APP_NAME, never the name written out", () => {
+  const source = readFileSync(new URL("src/docs.js", ROOT), "utf8");
+  const lines = source.split("\n").map((l, i) => [i + 1, l]).filter(([, l]) => l.includes(APP_NAME));
+  assert.deepEqual(lines, []);
+});
+
+test("the help lists every link in a card's details", () => {
+  const text = pageText(docPage("card-details"));
+  for (const name of ["Scryfall", "EDHREC", "Gatherer", "Commander Spellbook"]) assert.ok(text.includes(name), name);
+});
+
+test("Get started mentions Explore, combos, and the Apply step", () => {
+  const text = pageText(docPage("get-started"));
+  for (const word of ["Explore", "combos", "Find combos", "Apply"]) assert.ok(text.includes(word), word);
+});
+
+test("the backup reminder matches the rule in export.js", () => {
+  const text = pageText(docPage("your-data"));
+  assert.match(text, /never backed up/);
+  assert.match(text, /presets/);
+});
+
+test("the help says combo links use Commander when a search has no format", () => {
+  assert.match(pageText(docPage("explore")), /no format/);
+});
+
+test("code comments speak as me too", () => {
+  // This file is left out: it names the words it looks for.
+  const files = ["index.html", "styles.css",
+    ...["src", "src/ui", "src/storage", "scripts", "tests"].flatMap((d) =>
+      readdirSync(new URL(`${d}/`, ROOT)).filter((f) => /\.(js|mjs)$/.test(f)).map((f) => `${d}/${f}`))]
+    .filter((f) => f !== "tests/docs.test.js");
+  const found = [];
+  for (const file of files) {
+    readFileSync(new URL(file, ROOT), "utf8").split("\n").forEach((line, i) => {
+      // Card rules text says "its owner" and "owner's control", which is
+      // about players in the game, so only "the owner" counts here.
+      if (/\bthe owner\b|\bshe(?:'s)?\b|\bherself\b/i.test(line)) found.push(`${file}:${i + 1}`);
+    });
+  }
+  assert.deepEqual(found, []);
+});

@@ -36,7 +36,7 @@ Breaking these rules can get the user's IP address blocked by Scryfall or break 
 
 ### Platform
 
-- No build step, no framework, and no runtime dependencies. `package.json` holds only the `test` script and `"type": "module"`.
+- No build step, no framework, and no runtime dependencies. `package.json` holds no dependencies: only `name`, `private`, `"type": "module"`, and the `test` script.
 - Use relative URLs for every local file. The app is served from a subpath on GitHub Pages.
 - Don't change repository settings or GitHub Pages settings. I do that.
 

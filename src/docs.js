@@ -29,7 +29,7 @@ export const DOC_PAGES = [
     sections: [
       {
         blocks: [
-          { p: `${APP_NAME} helps you discover Magic: The Gathering cards, learn what they do, and see how they work together. It runs in your browser and gets card data and images from Scryfall. It has no server and no accounts.` },
+          { p: `${APP_NAME} helps you discover Magic: The Gathering cards, learn what they do, and see how they work together. On any card, **Explore** finds synergies, similar cards, counters, and combos. It runs in your browser and gets card data and images from Scryfall. It has no server and no accounts.` },
         ],
       },
       {
@@ -38,7 +38,7 @@ export const DOC_PAGES = [
           {
             terms: [
               ["Discover", "Draw random cards, or browse every card that matches your filters."],
-              ["Lists", "Your collections and decks, with deck checks, stats, and export for MTG Arena."],
+              ["Lists", "Your collections and decks, with deck checks, stats, export for MTG Arena, and **Find combos**."],
               ["Data", "Back up your lists, restore a backup, and see how your data is stored."],
               ["Help", "These pages."],
             ],
@@ -52,7 +52,7 @@ export const DOC_PAGES = [
           {
             steps: [
               "Open **Discover**.",
-              "Keep the **Arena Standard** preset, or choose another one.",
+              "Keep the **Arena Standard** preset, or choose another one and select **Apply**.",
               "Select **Draw**.",
               "On a card, select **Details** to read everything about it, or **Add** to save it to a list.",
             ],
@@ -73,7 +73,7 @@ export const DOC_PAGES = [
           {
             steps: [
               "Choose a preset, then select **Apply**.",
-              "To narrow the search, select **Filters**. You can filter by format, game, colors, card types, mana value, rarity, keywords, and rules text.",
+              "To narrow the search, select **Filters**. You can filter by format, game, colors, card types, type line text, mana value, rarity, keywords, rules text, and Scryfall search syntax.",
               "To keep your filters for later, select **Save as preset** and enter a name.",
             ],
           },
@@ -132,7 +132,7 @@ export const DOC_PAGES = [
               "The official rulings. Select **Show rulings** to load them.",
               "Legality in the MTG Arena formats.",
               "The printing, prices, and links to buy the card.",
-              "Links to Scryfall and EDHREC.",
+              "Links to Scryfall, EDHREC, Gatherer, and the card's combos on Commander Spellbook.",
             ],
           },
           { p: "On a wide screen, point at a card, or move the keyboard focus to it, to see the same details in the panel beside the cards." },
@@ -160,7 +160,7 @@ export const DOC_PAGES = [
               ["Synergies", "Cards that work with this one, such as \"Green cards that leverage landfall\". They stay in the card's colors."],
               ["Similar", "Cards that do the same job for a similar cost, share its keywords, or share its type and cost."],
               ["Counters", "Cards that answer this one, such as creature removal or cards that punish fliers. They're in every color."],
-              ["Combos", "Links to combos with this card on Commander Spellbook, in the format of your current search. A legendary creature or planeswalker also gets a link to combos in its colors, for a deck it leads. See the Combos help page."],
+              ["Combos", "Links to combos with this card on Commander Spellbook, in the format of your current search, or Commander when the search has no format. A legendary creature or planeswalker also gets a link to combos in its colors, for a deck it leads. See the Combos help page."],
             ],
           },
           { p: "The search keeps your format and game, and leaves out the card itself. Its chip in Discover says where it came from." },
@@ -176,7 +176,7 @@ export const DOC_PAGES = [
     sections: [
       {
         blocks: [
-          { p: "A combo is a set of cards that work together to do something big, such as making infinite mana or winning the game. Cascade finds combos with Commander Spellbook (commanderspellbook.com), a free combo database. It's a separate site: Cascade links to it and shows none of its data." },
+          { p: `A combo is a set of cards that work together to do something big, such as making infinite mana or winning the game. ${APP_NAME} finds combos with Commander Spellbook (commanderspellbook.com), a free combo database. It's a separate site: ${APP_NAME} links to it and shows none of its data.` },
         ],
       },
       {
@@ -184,7 +184,7 @@ export const DOC_PAGES = [
         blocks: [
           {
             terms: [
-              ["Combos tab", "In **Explore**, the **Combos** tab links to combos with the card, legal in the format of your current search."],
+              ["Combos tab", "In **Explore**, the **Combos** tab links to combos with the card, legal in the format of your current search, or in Commander when the search has no format."],
               ["Card details", "**Combos on Commander Spellbook**, under Links, opens the same search."],
               ["Find combos", "On a list, **Find combos** gets the list ready for Commander Spellbook's Find My Combos page."],
             ],
@@ -239,7 +239,7 @@ export const DOC_PAGES = [
       {
         heading: "Credit",
         blocks: [
-          { p: "Combo searches and Find My Combos are by Commander Spellbook (commanderspellbook.com). Cascade isn't made by or endorsed by Commander Spellbook." },
+          { p: `Combo searches and Find My Combos are by Commander Spellbook (commanderspellbook.com). ${APP_NAME} isn't made by or endorsed by Commander Spellbook.` },
         ],
       },
     ],
@@ -328,7 +328,7 @@ export const DOC_PAGES = [
               "To restore it, or to move your data to another device, choose the file under **Import backup**, then select **Import**.",
             ],
           },
-          { p: `The app reminds you to back up when your lists changed and your last backup is more than ${BACKUP_REMINDER_DAYS} days old.` },
+          { p: `The app reminds you to back up after your lists or presets change, if you've never backed up or your last backup is more than ${BACKUP_REMINDER_DAYS} days old.` },
         ],
       },
       {

@@ -167,7 +167,7 @@ export function cardTile(snapshot, opts = {}) {
     opts.extra ?? null),
   h("div", { class: "tile-actions" },
     opts.onDetails ? h("button", { type: "button", class: "ghost", text: "Details", "aria-label": `Details for ${snapshot.name}`, onclick: opts.onDetails }) : null,
-    opts.onExplore ? h("button", { type: "button", class: "ghost", text: "Explore", "aria-label": `Explore ${snapshot.name}: synergies, similar cards, and counters`, onclick: opts.onExplore }) : null,
+    opts.onExplore ? h("button", { type: "button", class: "ghost", text: "Explore", "aria-label": `Explore ${snapshot.name}: synergies, similar cards, counters, and combos`, onclick: opts.onExplore }) : null,
     opts.onAdd ? h("button", { type: "button", class: "primary", text: "Add", "aria-label": `Add ${snapshot.name} to a list`, onclick: opts.onAdd }) : null));
   return tile;
 }

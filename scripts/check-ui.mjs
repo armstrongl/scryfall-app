@@ -336,6 +336,7 @@ async function exploreFlow(b, check) {
   const { ev, until, key } = b;
   await ev(`document.querySelector(".results .tile button[aria-label^='Explore']").click()`);
   await sleep(300);
+  check("the Explore button's label names all four tabs", /synergies, similar cards, counters, and combos/.test(await ev(`document.querySelector(".results .tile button[aria-label^='Explore']").getAttribute("aria-label")`)));
   check("Explore opens with four tabs", (await ev(`[...document.querySelectorAll("dialog[open] [role=tab]")].map((t) => t.firstChild.textContent.trim()).join("|")`)) === "Synergies|Similar|Counters|Combos");
   check("Explore shows no query syntax", await ev(`!document.querySelector("dialog[open] code")`));
   check("the Synergies tab is selected", (await ev(`document.querySelector("dialog[open] [role=tab][aria-selected=true]").firstChild.textContent.trim()`)) === "Synergies");

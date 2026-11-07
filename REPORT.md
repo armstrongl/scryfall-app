@@ -84,8 +84,8 @@ Not checked: a real phone, Safari, a screen reader, and the reduced-motion setti
 
 ## Known problems
 
-- In history rows, a long query can wrap at the hyphen in `-is:rebalanced`. The query preview wraps between terms, but history rows do not yet.
-- Removing an entry from a list happens at once, with no confirmation and no undo. The plan asks for confirmations only for deleting lists and presets and clearing history.
+- In history rows, a long query can wrap at the hyphen in `-is:rebalanced`. The query preview wraps between terms, but history rows do not yet. (No longer applies: history rows don't show queries since the feedback round.)
+- Removing an entry from a list happens at once, with no confirmation and no undo. The plan asks for confirmations only for deleting lists and presets and clearing history. (Fixed in the overhaul: Remove leaves an **Undo** row.)
 - After the Lists view re-renders (for example after a quantity change), the app tries to keep focus on the same control. If a row moves because of sorting, focus can land on a different row.
 - The refresh shows "Not found on Scryfall" only for the current session. After a reload, that marker is gone, but the old snapshots stay.
 - Pool size requests for old queries are cancelled. If the debounce fires during a 30-second pause, the count waits until the pause ends.
@@ -240,3 +240,20 @@ I asked for a combo feature like [Commander Spellbook](https://commanderspellboo
 
 - Find My Combos shows combos legal in Commander unless I change its filter on their site. The panel says so.
 - The links can't tell me how many combos a card has, because the app has no combo data.
+
+# Docs audit (7 November 2026)
+
+I had every doc checked against the code. Most of the fixes were small: missing links and labels, the backup reminder rule, and the app name written out in the help pages instead of using `APP_NAME`. I also removed my profile doc. The audit found four changes from `PLAN.md` that this report never recorded:
+
+| Area | `PLAN.md` | Now |
+| --- | --- | --- |
+| Draw count | The default is 1. | The default is 3. |
+| Card tiles | The set name, the rarity, a **View on Scryfall** link, and an **Add to list** button. | **Details**, **Explore**, and **Add**. The set and rarity show in nerd mode, and **View on Scryfall** is in the details. |
+| Prices | Out of scope. | Prices and buy links in the details, and the price in nerd mode, all from Scryfall. |
+| Modules | The file layout in section 3.2. | New pure modules: `synergy.js`, `explore.js`, `browse.js`, `saved.js`, `stats.js`, `links.js`, `glossary.js`, `docs.js`, and `combos.js`. New UI modules: `details.js`, `explore-panel.js`, and `help-view.js`. `README.md` lists them all. |
+
+## Tests
+
+- Written first, and seen failing before the fixes: the help page tests for `APP_NAME`, Get started, the backup reminder, and the combo format note, and the browser check for the **Explore** button's label.
+- Fixed after the fix: the test for the details links first read the wrong help page. I pointed it at the right one after fixing the docs, so I broke the docs on purpose to see it fail.
+- Added after the code: the test that no doc points to a profile doc, and the test that code comments speak in my voice. Neither found anything wrong in today's comments, so I added a bad line on purpose to see each one fail.

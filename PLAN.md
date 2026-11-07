@@ -524,7 +524,7 @@ interface Storage {
 
 - Every record has a UUID and an `updatedAt` date, so a sync service can merge records.
 - v1 deletes records permanently. A sync version must add deletion markers, so that a delete on one device reaches other devices.
-- A sync option is chosen later. Two candidates are a hosted database with built-in sign-in (for example [Supabase](https://supabase.com)), or a small server on an always-on machine that only the app's own devices can reach through a private network.
+- A sync option is chosen later. Two candidates are a hosted database with built-in sign-in (for example [Supabase](https://supabase.com)), or a small server on an always-on machine that only the user's devices can reach through a private network.
 
 ## 7. Build order
 

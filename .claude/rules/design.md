@@ -17,7 +17,7 @@ Cascade's look is a blend of GitHub's [Primer](https://primer.style) and Vercel'
 
 ## Shape and color
 
-- Corners: 6px on controls, 8px on panels. Borders: 1px.
+- Corners: 6px on controls (`--radius`), 8px on panels (`--radius-lg`), and 12px on dialogs and sheets (`--radius-xl`). Borders: 1px.
 - No gradients, glows, or decorative color. Shadows are quiet, and only on raised layers such as menus and tooltips.
 - Blue is for links, focus, and selection only. Status colors (success, warning, error) are for status only.
 

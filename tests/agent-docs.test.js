@@ -5,17 +5,34 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { existsSync, lstatSync, readFileSync, readlinkSync } from "node:fs";
+import { existsSync, lstatSync, mkdtempSync, readdirSync, readFileSync, readlinkSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { DOC_PAGES, pageText } from "../src/docs.js";
 
 const ROOT = new URL("../", import.meta.url);
-const read = (path) => readFileSync(new URL(path, ROOT), "utf8");
+const read = (path) => readFileSync(new URL(path, ROOT), "utf8").replace(/\r\n/g, "\n");
 const exists = (path) => existsSync(new URL(path, ROOT));
 
+const CWD = new URL(".", ROOT);
+const git = (args, opts = {}) => execFileSync("git", args, { cwd: CWD, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], ...opts });
+let HAS_GIT = true;
+try { git(["rev-parse", "--is-inside-work-tree"]); } catch { HAS_GIT = false; }
+
+/** Every file under the root, for a copy with no git, such as a ZIP download. */
+function walk(dir = "") {
+  const skip = new Set([".git", ".artifacts", "node_modules", ".DS_Store"]);
+  return readdirSync(new URL(dir || ".", ROOT), { withFileTypes: true }).flatMap((e) => {
+    if (skip.has(e.name)) return [];
+    const path = dir + e.name;
+    return e.isDirectory() ? walk(path + "/") : [path];
+  });
+}
+
 // Tracked files plus new files that are not ignored, so a test also sees
-// files that are not committed yet.
-const FILES = execFileSync("git", ["ls-files", "--cached", "--others", "--exclude-standard"], { cwd: new URL(".", ROOT), encoding: "utf8" })
-  .split("\n").filter((f) => f && exists(f));
+// files that are not committed yet. Without git, every file on disk.
+const FILES = (HAS_GIT ? git(["ls-files", "--cached", "--others", "--exclude-standard"]).split("\n") : walk())
+  .filter((f) => f && exists(f));
 
 const RULES = {
   "github-voice.md": null,
@@ -157,12 +174,18 @@ test("the help pages never use the first person", () => {
 
 test("interface copy never uses the first person", () => {
   const found = [];
-  for (const file of FILES.filter((f) => /^src\/(ui\/.*|main)\.js$/.test(f) || f === "index.html")) {
-    read(file).split("\n").forEach((line, i) => {
-      for (const [, s] of line.matchAll(/"([^"]*)"|'([^']*)'|`([^`]*)`/g)) {
-        if (s && FIRST_PERSON.test(s.replace(NAMES, "").replace(/\bi\b/g, "i_"))) found.push(`${file}:${i + 1}: ${s.slice(0, 60)}`);
-      }
-    });
+  // Every string in every module under src/, and the text of index.html.
+  // Template literals can span lines, so each file is read whole.
+  for (const file of FILES.filter((f) => /^src\/.*\.js$/.test(f) || f === "index.html")) {
+    const text = read(file).replace(/^\s*(?:\/\/|\*|\/\*).*$/gm, "");
+    const strings = file.endsWith(".html")
+      ? [...text.replace(/<!--[\s\S]*?-->/g, "").replace(/<[^>]*>/g, "\n").matchAll(/[^\n]+/g)].map((m) => m[0])
+      : [...text.matchAll(/"((?:[^"\\\n]|\\.)*)"|'((?:[^'\\\n]|\\.)*)'|`((?:[^`\\]|\\.)*)`/g)].map((m) => m[1] ?? m[2] ?? m[3]);
+    for (const s of strings) {
+      // Paths and URLs, such as find-my-combos, are not copy.
+      const copy = s.replace(/\S*\/\S*/g, "").replace(NAMES, "").replace(/\bi\b/g, "i_");
+      if (FIRST_PERSON.test(copy)) found.push(`${file}: ${s.trim().slice(0, 60)}`);
+    }
   }
   assert.deepEqual(found, []);
 });
@@ -177,10 +200,21 @@ test("code comments never use the first person", () => {
   assert.deepEqual(found, []);
 });
 
-test("git keeps the shared .claude files, even with a global ignore for .claude", () => {
-  const shared = [".claude/settings.json", ".claude/skills", ...Object.keys(RULES).map((n) => `.claude/rules/${n}`)];
-  const ignored = shared.filter((f) => {
-    try { execFileSync("git", ["check-ignore", "-q", f], { cwd: new URL(".", ROOT) }); return true; } catch { return false; }
-  });
-  assert.deepEqual(ignored, []);
+test("git keeps the shared .claude files, even with a global ignore for .claude", { skip: !HAS_GIT && "needs git" }, () => {
+  // A global ignore file like the one on the development machines. With
+  // --no-index, git checks the rules even for files that are committed.
+  const dir = mkdtempSync(join(tmpdir(), "cascade-ignore-"));
+  const excludes = join(dir, "gitignore");
+  writeFileSync(excludes, ".claude\n**/.claude\n");
+  const isIgnored = (f) => {
+    try { git(["-c", `core.excludesFile=${excludes}`, "check-ignore", "-q", "--no-index", f]); return true; } catch { return false; }
+  };
+  try {
+    const shared = [".claude/settings.json", ".claude/skills", ...Object.keys(RULES).map((n) => `.claude/rules/${n}`)];
+    assert.deepEqual(shared.filter(isIgnored), [], "shared files are kept");
+    const personal = [".claude/settings.local.json", ".claude/log/notes.md"];
+    assert.deepEqual(personal.filter((f) => !isIgnored(f)), [], "personal files stay ignored");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });

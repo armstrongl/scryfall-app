@@ -111,7 +111,7 @@ Where tests go:
 - `tests/helpers.js` has `fixture(name)` (loads `tests/fixtures/<name>.json`), `snap(name, changes)` (a saved-card snapshot from a fixture), and `fakeClock()`. Pass dependencies in rather than mocking globals: functions take a `clock` argument, `createClient()` in `src/scryfall.js` takes `fetchImpl`, and storage tests use `createMemoryBackend()` from `src/storage/memory.js` in place of IndexedDB.
 - UI behavior gets a check in `scripts/check-ui.mjs`: the control exists, it does the right thing, focus goes where it should, and nothing scrolls sideways. Add the check before you build the UI.
 - When a test is added after the code, break the code on purpose, see the test fail, then restore the code.
-- Agent instructions have tests too: `tests/agent-docs.test.js` checks this file's length, the rules files and their paths, the skills, the Claude settings, and the voice of every file.
+- Agent instructions have tests too: `tests/agent-docs.test.js` checks this file's length, the rules files and their paths, the skills, the Claude settings, session links, and the first person in docs, help pages, strings in `src/`, and code comments. `tests/docs.test.js` checks the third person. Both skip quoted text, so read quotes yourself.
 
 ## Code conventions
 

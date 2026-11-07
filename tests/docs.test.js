@@ -86,10 +86,12 @@ const ROOT = new URL("../", import.meta.url);
 const DOC_FILES = [
   "README.md", "AGENTS.md", "CLAUDE.md", "REPORT.md", "PLAN.md",
   ...readdirSync(new URL(".claude/rules/", ROOT)).filter((f) => f.endsWith(".md")).map((f) => `.claude/rules/${f}`),
-  ...readdirSync(new URL(".agents/skills/", ROOT)).map((d) => `.agents/skills/${d}/SKILL.md`),
+  ...readdirSync(new URL(".agents/skills/", ROOT), { withFileTypes: true })
+    .filter((d) => d.isDirectory() && existsSync(new URL(`.agents/skills/${d.name}/SKILL.md`, ROOT)))
+    .map((d) => `.agents/skills/${d.name}/SKILL.md`),
   ...(existsSync(new URL("docs/", ROOT)) ? readdirSync(new URL("docs/", ROOT)).filter((f) => f.endsWith(".md")).map((f) => `docs/${f}`) : []),
 ];
-const THIRD_PERSON = /\bowner(?:'s|s)?\b|\bshe(?:'s)?\b|\bher\b|\bhers\b|\bherself\b/i;
+const THIRD_PERSON = /\bowner(?:'s|s)?\b|\bshe(?:'s)?\b|\bher\b|\bhers\b|\bherself\b|\bthe developer\b|\bLarah\b/i;
 const unquoted = (line) => line.replace(/"[^"]*"|“[^”]*”/g, "");
 
 test("the docs never use the third person", () => {

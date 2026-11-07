@@ -42,9 +42,11 @@ Link out freely: to card pages on [Scryfall](https://scryfall.com), API docs, he
 - Write plainly, like a friendly technical writer. Use sentence case for headings and titles.
 - Don't use "just", "simply", "obviously", "leverage", or marketing language.
 
+The voice tests skip text in quotes, so that a rule can name the words it bans. Check quoted text yourself.
+
 ## Fixing old text
 
-When you find first-person, third-person, or session text in a file or in a pull request that is already merged, fix it as part of your change: edit the file, or edit the pull request title and description with `gh pr edit`. Rewrite git history only to remove a session link or trailer. That needs a force push, which `.claude/settings.json` sets to ask first.
+When you find first-person, third-person, or session text in a file or in a pull request that is already merged, fix it as part of your change: edit the file, or edit the pull request title and description with `gh pr edit`. Rewrite git history only to remove a session link or trailer. That needs a force push, which `.claude/settings.json` sets to ask first. The setting matches `git push --force` and `git push -f` only. It doesn't catch `git push origin +main` or `git -C <path> push --force`, so never use those forms.
 
 ## Outside this repository
 

@@ -292,6 +292,11 @@ The agent instructions were rebuilt so that every agent gets the same rules: Cla
 - Written first, and seen failing before the change: `tests/agent-docs.test.js`, for the rules, their paths, the links in the agent docs, the skills, the settings, session links, and the first person in docs, help pages, interface copy, and code comments.
 - Passed before the change, so they were proved able to fail by breaking the code on purpose: the length of `AGENTS.md`, the `CLAUDE.md` import, rule paths that match files, links that resolve, no session links, and no first person in help pages.
 - Added after the code: the test that git keeps the shared `.claude` files. It failed with the old `.gitignore`.
+- Fixed after an Opus review, each bug reproduced first:
+  - The `.gitignore` test passed for committed files no matter what. It now checks with `--no-index` and a global ignore like the one on the development machines, and it also checks that personal files stay ignored.
+  - `tests/agent-docs.test.js` crashed in a copy with no git, such as a ZIP download. It now walks the folder instead.
+  - A stray file, such as `.DS_Store`, in `.agents/skills/` broke `tests/docs.test.js`.
+  - The interface copy test missed strings in the pure modules and strings that span lines. It now reads every module in `src/` whole.
 - Changed: the third-person test in `tests/docs.test.js` now also reads the rules and skills, and leaves out quoted words, so that a rule can name the words it bans. A rule with an unquoted "she" made it fail.
 
 ## Known problems

@@ -17,7 +17,8 @@ import { cardMedia, glowClass, manaCost } from "./card-view.js";
 import { openDetails } from "./details.js";
 import { openExplore } from "./explore-panel.js";
 import { openAddPanel } from "./add-panel.js";
-import { announce, confirmBox, copyText, field, formatDate, h, message, plural, replace } from "./dom.js";
+import { TIPS } from "../docs.js";
+import { announce, confirmBox, copyText, field, formatDate, h, helpLink, message, plural, replace, withTip } from "./dom.js";
 
 const KIND_LABEL = (list) => (list.kind === "deck" ? `${DECK_FORMAT_NAMES[list.format] ?? "Standard"} deck` : "Collection");
 const COLOR_ORDER = ["W", "U", "B", "R", "G"];
@@ -176,18 +177,19 @@ export function createListsView(app) {
             h("ul", { class: "plain" }, combos.searches.map((c) => h("li", {},
               h("a", { href: c.url, target: "_blank", rel: "noopener", text: c.label }),
               h("span", { class: "hint", text: ` ${c.reason}` }))))) : null,
-          h("p", { class: "hint", text: "Commander Spellbook is a separate site. Links open it in a new tab." })));
+          h("p", { class: "hint", text: "Commander Spellbook is a separate site. Links open it in a new tab." }),
+          h("p", { class: "hint" }, helpLink("combos", "Learn more about combos and bracket tags"))));
         copy.focus();
       },
     });
     const urls = scryfallListUrls(list.entries.map((e) => e.card.frontName ?? e.card.name));
-    const scryfallLinks = urls.map((u, i) => h("a", {
+    const scryfallLinks = urls.map((u, i) => withTip(h("a", {
       href: u,
       target: "_blank",
       rel: "noopener",
       class: "button",
       text: urls.length > 1 ? `Open on Scryfall (part ${i + 1} of ${urls.length})` : "Open on Scryfall",
-    }));
+    }), TIPS.openList));
 
     const renameBtn = h("button", {
       type: "button",
@@ -230,7 +232,7 @@ export function createListsView(app) {
         onCancel: () => { slot.replaceChildren(); moreBtn.focus(); },
       })),
     });
-    const moreMenu = h("div", { id: "list-more", class: "more-menu", hidden: true }, renameBtn, refreshBtn, deleteBtn);
+    const moreMenu = h("div", { id: "list-more", class: "more-menu", hidden: true }, renameBtn, withTip(refreshBtn, TIPS.refresh), deleteBtn);
     const moreBtn = h("button", {
       type: "button",
       id: "list-more-btn",
@@ -278,7 +280,8 @@ export function createListsView(app) {
           r.legalityAsOf
             ? h("p", { class: "hint" }, `Legality as of ${formatDate(r.legalityAsOf)}. Formats change over time. `,
               h("button", { type: "button", class: "link", text: "Refresh card data", disabled: refreshing !== null, onclick: () => refresh(list.id) }))
-            : null),
+            : null,
+          h("p", { class: "hint" }, helpLink("lists-and-decks", "Learn more about deck checks"))),
         statsPanel(list));
     }
 
@@ -307,10 +310,10 @@ export function createListsView(app) {
         h("p", { class: "tagline" }, h("span", { class: "badge", text: KIND_LABEL(list) }), ` ${plural(totalQuantity(list.entries), "card")}`)),
       app.storageOk ? null : message("warn", "Storage is not available in this browser window. Lists are lost when you close the page."),
       reminder(),
-      h("div", { class: "list-actions" }, exportBtn, combosBtn, scryfallLinks, moreBtn),
+      h("div", { class: "list-actions" }, withTip(exportBtn, TIPS.exportArena), withTip(combosBtn, TIPS.findCombos), scryfallLinks, moreBtn),
       moreMenu,
       slot,
-      h("div", { class: "toolbar" }, field("Kind", kindSelect), formatField, field("Sort by", sortSelect)),
+      h("div", { class: "toolbar" }, field("Kind", kindSelect, undefined, TIPS.listKind), formatField, field("Sort by", sortSelect)),
       refreshNote(list.id),
       deckPanel,
       sectionEls);

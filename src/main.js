@@ -8,8 +8,8 @@ import { createDiscoverView } from "./ui/discover.js";
 import { createListsView } from "./ui/lists-view.js";
 import { createDataView } from "./ui/data-view.js";
 import { createHelpView } from "./ui/help-view.js";
-import { NERD_MODE_TIP } from "./docs.js";
-import { announce, h, message, replace } from "./ui/dom.js";
+import { TIPS } from "./docs.js";
+import { announce, h, message, replace, wireTip } from "./ui/dom.js";
 import { savedIndex, savedIn } from "./saved.js";
 
 /**
@@ -225,21 +225,17 @@ function showPause(until) {
 
 // Nerd mode tooltip -------------------------------------------------------------
 /**
- * The tooltip shows on hover and on keyboard focus (CSS), and Escape hides it
- * until the pointer or focus leaves, so it never blocks anything.
+ * The tooltip is in index.html. It works like every other tooltip
+ * (wireTip in src/ui/dom.js): hover and keyboard focus show it, and Escape
+ * hides it.
  * @param {HTMLElement|null} button
  */
 function setUpTooltip(button) {
   const wrap = button?.closest(".tip-wrap");
   const tip = document.getElementById(button?.getAttribute("aria-describedby") ?? "");
-  if (!wrap || !tip) return;
-  tip.textContent = NERD_MODE_TIP;
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && getComputedStyle(tip).display !== "none") wrap.classList.add("tip-off");
-  });
-  const reset = () => wrap.classList.remove("tip-off");
-  wrap.addEventListener("mouseleave", reset);
-  wrap.addEventListener("focusout", reset);
+  if (!wrap || !tip || !button) return;
+  tip.textContent = TIPS.nerdMode;
+  wireTip(wrap, button, tip);
 }
 
 // Views and navigation -----------------------------------------------------------

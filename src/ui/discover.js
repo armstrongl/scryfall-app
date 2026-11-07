@@ -14,7 +14,8 @@ import { openExplore } from "./explore-panel.js";
 import { createInspector, openDetails } from "./details.js";
 import { cardMedia, cardTile, fillSaved } from "./card-view.js";
 import { createCriteriaForm } from "./criteria-form.js";
-import { announce, confirmBox, field, formatDate, formatNumber, h, message, plural, replace } from "./dom.js";
+import { TIPS } from "../docs.js";
+import { announce, confirmBox, field, formatDate, formatNumber, h, message, plural, replace, withTip } from "./dom.js";
 
 export const BUILT_IN_PRESET = Object.freeze({
   id: "builtin-arena-standard",
@@ -600,15 +601,15 @@ export function createDiscoverView(app) {
       h("div", { class: "search-top" },
         h("div", { class: "preset-row" },
           field("Preset", presetSelect),
-          h("div", { class: "row wrap" }, applyBtn, saveBtn, renameBtn, deleteBtn)),
+          h("div", { class: "row wrap" }, withTip(applyBtn, TIPS.applyPreset), withTip(saveBtn, TIPS.savePreset), renameBtn, deleteBtn)),
         filtersToggle),
       presetSlot,
       chipList,
       filtersPanel,
       previewNotes,
-      h("div", { class: "pool-line" }, poolLine, openLink),
+      h("div", { class: "pool-line" }, poolLine, withTip(openLink, TIPS.openSearch)),
       h("div", { class: "mode-row" },
-        h("div", { class: "segmented", role: "group", "aria-label": "How to see cards" }, modeDraw, modeBrowse),
+        h("div", { class: "segmented", role: "group", "aria-label": "How to see cards" }, withTip(modeDraw, TIPS.drawMode), withTip(modeBrowse, TIPS.browseMode)),
         drawControls,
         browseControls,
         cancelBtn),

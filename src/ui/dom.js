@@ -81,13 +81,158 @@ export function confirmBox({ message, confirmLabel, onConfirm, onCancel }) {
   return box;
 }
 
-/** A labeled field: label above a control. */
-export function field(label, control, hint) {
+/**
+ * A labeled field: label above a control. With `tip`, a ? button beside the
+ * label explains the field.
+ * @param {string} label
+ * @param {HTMLElement} control
+ * @param {string} [hint] Text under the control.
+ * @param {string} [tip] Tooltip text, from TIPS in src/docs.js.
+ */
+export function field(label, control, hint, tip) {
   const id = control.id || uid();
   control.id = id;
   const hintEl = hint ? h("p", { class: "hint", id: `${id}-hint`, text: hint }) : null;
   if (hintEl) control.setAttribute("aria-describedby", hintEl.id);
-  return h("div", { class: "field" }, h("label", { for: id, text: label }), control, hintEl);
+  const labelEl = h("label", { for: id, text: label });
+  return h("div", { class: "field" }, tip ? h("div", { class: "label-row" }, labelEl, infoTip(label, tip)) : labelEl, control, hintEl);
+}
+
+// Tooltips ------------------------------------------------------------------------
+// A tooltip shows on hover and on keyboard focus, and a ? button also shows
+// its tooltip on click or tap. Escape hides open tooltips, so they never block
+// anything (WCAG 1.4.13); in a dialog, a second Escape closes the dialog. A
+// tooltip goes below its control, or above it when below would leave the
+// screen or cover a card image.
+
+/** @type {Set<{wrap: HTMLElement, hide: () => void}>} */
+const openTips = new Set();
+let tipEventsReady = false;
+
+function setUpTipEvents() {
+  if (tipEventsReady) return;
+  tipEventsReady = true;
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape" || openTips.size === 0) return;
+    for (const t of [...openTips]) t.hide();
+    e.preventDefault();
+    e.stopPropagation();
+  }, true);
+  document.addEventListener("pointerdown", (e) => {
+    for (const t of [...openTips]) if (!(e.target instanceof Node && t.wrap.contains(e.target))) t.hide();
+  }, true);
+}
+
+const overlaps = (a, b) => !(a.right <= b.left || a.left >= b.right || a.bottom <= b.top || a.top >= b.bottom);
+
+/** Puts an open tooltip where it fits, inside the screen or dialog and off every card image. */
+function placeTip(wrap, tip) {
+  const gap = 6;
+  const edge = 8;
+  tip.classList.remove("tip-above");
+  tip.style.left = "0px";
+  const a = wrap.getBoundingClientRect();
+  const dialog = wrap.closest("dialog")?.getBoundingClientRect();
+  const box = {
+    left: Math.max(0, dialog?.left ?? 0) + edge,
+    right: Math.min(document.documentElement.clientWidth, dialog?.right ?? Infinity) - edge,
+    top: Math.max(0, dialog?.top ?? 0),
+    bottom: Math.min(window.innerHeight, dialog?.bottom ?? Infinity),
+  };
+  const w = tip.offsetWidth;
+  const ht = tip.offsetHeight;
+  let left = 0;
+  if (a.left + w > box.right) left = box.right - w - a.left;
+  if (a.left + left < box.left) left = box.left - a.left;
+  tip.style.left = `${Math.round(left)}px`;
+  const x = { left: a.left + left, right: a.left + left + w };
+  const below = { ...x, top: a.bottom + gap, bottom: a.bottom + gap + ht };
+  const above = { ...x, top: a.top - gap - ht, bottom: a.top - gap };
+  const cards = [...document.querySelectorAll(".card-media img, .card-media .card-text")]
+    .map((el) => el.getBoundingClientRect()).filter((r) => r.width > 0);
+  const fits = (r) => r.top >= box.top && r.bottom <= box.bottom && !cards.some((c) => overlaps(r, c));
+  if (!fits(below) && fits(above)) tip.classList.add("tip-above");
+}
+
+/**
+ * Wires a tooltip to its control. The tooltip and control are inside `wrap`.
+ * @param {HTMLElement} wrap
+ * @param {HTMLElement} anchor The control.
+ * @param {HTMLElement} tip The tooltip element, with role="tooltip".
+ * @param {{toggle?: boolean}} [opts] toggle: a click shows or hides it.
+ */
+export function wireTip(wrap, anchor, tip, opts = {}) {
+  setUpTipEvents();
+  let pinned = false;
+  const api = {
+    wrap,
+    show() {
+      if (wrap.classList.contains("tip-open")) return;
+      wrap.classList.add("tip-open");
+      openTips.add(api);
+      placeTip(wrap, tip);
+    },
+    hide() {
+      pinned = false;
+      wrap.classList.remove("tip-open");
+      openTips.delete(api);
+    },
+  };
+  // A tap on a touch screen isn't a hover, so it shows nothing.
+  wrap.addEventListener("pointerenter", (e) => { if (e.pointerType !== "touch") api.show(); });
+  wrap.addEventListener("pointerleave", (e) => { if (e.pointerType !== "touch" && !pinned) api.hide(); });
+  anchor.addEventListener("focus", () => { if (anchor.matches(":focus-visible")) api.show(); });
+  anchor.addEventListener("blur", () => api.hide());
+  if (opts.toggle) {
+    anchor.addEventListener("click", () => {
+      if (pinned) return api.hide();
+      api.show();
+      pinned = true;
+    });
+  }
+  return api;
+}
+
+/**
+ * A control with a tooltip that says what it does.
+ * @param {HTMLElement} anchor
+ * @param {string} text From TIPS in src/docs.js.
+ * @param {{toggle?: boolean}} [opts]
+ */
+export function withTip(anchor, text, opts = {}) {
+  const tip = h("span", { class: "tooltip", role: "tooltip", id: uid("tip"), text });
+  const wrap = h("span", { class: "tip-wrap" }, anchor, tip);
+  anchor.setAttribute("aria-describedby", [anchor.getAttribute("aria-describedby"), tip.id].filter(Boolean).join(" "));
+  wireTip(wrap, anchor, tip, opts);
+  return wrap;
+}
+
+/**
+ * A ? button that explains a field or setting.
+ * @param {string} name What it explains, for the button's name: "About {name}".
+ * @param {string} text From TIPS in src/docs.js.
+ */
+export function infoTip(name, text) {
+  return withTip(h("button", { type: "button", class: "info-tip", "aria-label": `About ${name}`, text: "?" }), text, { toggle: true });
+}
+
+// Help links ------------------------------------------------------------------------
+
+/**
+ * A "Learn more" link to a help page. tests/docs.test.js checks that each
+ * page ID exists.
+ * @param {string} page A page ID in DOC_PAGES.
+ * @param {string} text Starts with "Learn more about".
+ */
+export function helpLink(page, text) {
+  return h("a", { href: `#help/${page}`, class: "help-link", text });
+}
+
+/** A help link in a dialog closes the dialog first, so the help page shows. */
+export function closeOnHelpLink(dialog, close) {
+  dialog.addEventListener("click", (e) => {
+    if (e.target instanceof Element && e.target.closest('a[href^="#help/"]')) close();
+  });
 }
 
 /** A checkbox with its label to the right. */

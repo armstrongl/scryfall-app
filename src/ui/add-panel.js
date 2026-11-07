@@ -3,6 +3,7 @@
 
 import { DECK_FORMAT_NAMES, SECTION_NAMES } from "../config.js";
 import { addCard, createList } from "../lists.js";
+import { TIPS } from "../docs.js";
 import { announce, checkbox, field, h, message } from "./dom.js";
 
 /**
@@ -75,7 +76,7 @@ export function openAddPanel(app, snapshot) {
       ? h("fieldset", { class: "checks list-checks" }, h("legend", { text: "Lists" }), boxes.map((b) => b.el))
       : h("p", { class: "hint", text: "You have no lists yet. Enter a name to make one." }),
     field("New list", newName, "Optional. The app makes this list and adds the card to it."),
-    h("div", { class: "grid-2" }, field("Quantity", quantity), field("Section", section)),
+    h("div", { class: "grid-2" }, field("Quantity", quantity), field("Section", section, undefined, TIPS.section)),
     app.storageOk ? null : message("warn", "Storage is not available, so lists are lost when you close the page."),
     errorSlot,
     h("div", { class: "row" },

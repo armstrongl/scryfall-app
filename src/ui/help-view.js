@@ -1,13 +1,19 @@
 // The Help view: the help pages from src/docs.js, with a list of pages
 // beside them on wide screens and above them on phones. Each page has its
 // own address, such as #help/nerd-mode. Text is built with h(), never HTML.
+// Links to other sites open in a new tab; links to help pages don't.
 
 import { DOC_PAGES, docPage, inlineParts } from "../docs.js";
 import { h, replace } from "./dom.js";
 
-/** Text with **bold** UI labels, as nodes. */
+/** Text with **bold** UI labels and links, as nodes. */
 function rich(text) {
-  return inlineParts(text).map((p) => (p.strong ? h("strong", { text: p.text }) : p.text));
+  return inlineParts(text).map((p) => {
+    const node = !p.href ? p.text
+      : p.href.startsWith("#") ? h("a", { href: p.href, text: p.text })
+        : h("a", { href: p.href, target: "_blank", rel: "noopener" }, p.text, h("span", { class: "visually-hidden", text: " (opens in a new tab)" }));
+    return p.strong ? h("strong", {}, node) : node;
+  });
 }
 
 /** @param {import("../docs.js").DocBlock} block */

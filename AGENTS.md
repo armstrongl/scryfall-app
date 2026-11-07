@@ -2,22 +2,29 @@
 
 These instructions are for coding agents that work in this repository. Read `README.md` for what the app does and how the code is laid out. `PLAN.md` is the full v1 specification, and `REPORT.md` records where the build differs from it and lists known problems.
 
-I'm building Cascade for myself first. `docs/about-me.md` records who I am and what I've asked for. What I say I want outranks research and guesses about other players. When I ask for something new, add it to that file.
+Cascade is built first to fit the player profile in `docs/about-me.md`. That page records every request so far. A request there outranks research and guesses about other players. Add each new request to it.
 
-You work on my behalf, as me. Write everything for this project in my voice, in the first person: docs, code comments, commit messages, pull requests, and comments on GitHub. Never refer to me in the third person or by a role. `tests/docs.test.js` fails if a doc does.
+How to write for this project:
+
+- Docs, help pages, tooltips, interface copy, and code comments never use the first person singular. Write them the way good technical writing and interface copy do: speak to the reader as "you", use the imperative for steps, and call the app "the app" or by its name.
+- Never refer to a person in the third person or by a role. "The user" means anyone who uses the app.
+- `docs/about-me.md` is the one doc in the first person. It's the player profile, in its own words.
+- Commit messages, pull requests, and comments on GitHub are in the first person, as the account that posts them.
+
+`tests/docs.test.js` fails if a doc or the app's text breaks these rules.
 
 ## How agents work here
 
-Agents lead this project. I give direction and feedback; I don't approve each step. Take a task all the way through on your own: plan it, build it test first, review it, and ship it.
+Agents lead this project. Direction and feedback come with each task, and no one approves each step. Take a task all the way through on your own: plan it, build it test first, review it, and ship it.
 
-- **Ship it yourself, always.** Every change ends merged: work on a branch, commit, push, open a pull request, and merge it yourself once `npm test` and `node scripts/check-ui.mjs` pass. Don't stop at a local commit, and don't wait for me to review it.
+- **Ship it yourself, always.** Every change ends merged: work on a branch, commit, push, open a pull request, and merge it yourself once `npm test` and `node scripts/check-ui.mjs` pass. Don't stop at a local commit, and don't wait for a review.
 - **Decide, don't ask.** When this file or `PLAN.md` doesn't cover a detail, pick the most conservative option that keeps the hard rules below, note the choice in the pull request description, and keep going. If the choice departs from `PLAN.md`, record it in `REPORT.md`.
-- **Ask me only about:**
-  - Taste and feel: what I want, how the app looks, its tone, and the open questions in `docs/about-me.md`.
-  - Removing a feature I asked for, or changing one significantly.
+- **Ask first only about:**
+  - Taste and feel: what the app should do for the player, how it looks, its tone, and the open questions in `docs/about-me.md`.
+  - Removing a requested feature, or changing one significantly.
   - Any change that could lose or damage saved lists, such as IndexedDB schema or backup format changes.
-- **When you're not sure I need to weigh in**, don't ask me yet. First get a second opinion from an Opus subagent (in Claude Code, the Agent tool with `model: "opus"`). Give it the decision, the options, and this section. Ask me only if it says I should decide. Otherwise go ahead and record the choice.
-- While you wait for my answer, keep working on anything that doesn't depend on it.
+- **When you're not sure a decision needs asking**, don't ask yet. First get a second opinion from an Opus subagent (in Claude Code, the Agent tool with `model: "opus"`). Give it the decision, the options, and this section. Ask only if it says the decision needs asking. Otherwise go ahead and record the choice.
+- While you wait for an answer, keep working on anything that doesn't depend on it.
 
 ## Commands
 
@@ -25,6 +32,8 @@ Agents lead this project. I give direction and feedback; I don't approve each st
 - Run the app: `python3 -m http.server 8000`, then open <http://localhost:8000/>. ES modules don't load from `file://`.
 - Run the browser tests: `node scripts/check-ui.mjs`. It needs Chrome (set `CHROME_PATH` if it's not in the usual place) and network access, because the app sends real Scryfall requests through its queue. It starts its own static server and a fresh browser profile, so you don't need the `http.server` command above. It runs at 390 px and 1280 px, in light and dark mode, and takes a few minutes. To run one width, set `ONLY=390` or `ONLY=1280`, and optionally `SCHEME=dark`.
 - Repeat the live API checks: `node scripts/check-api.mjs`.
+- Rebuild the interface copy index, `docs/ui-copy.md`: `node scripts/ui-copy.mjs`. `npm test` fails when it's out of date.
+- Check every link in the help pages against the live web: `node scripts/check-links.mjs`.
 - Fetch the test fixtures again: `scripts/fetch-fixtures.sh`.
 - Redraw the PNG icons after changing the design: `node scripts/make-icons.js`. Keep it in step with `icons/icon.svg`.
 
@@ -38,7 +47,7 @@ Breaking these rules can get the user's IP address blocked by Scryfall or break 
 
 - No build step, no framework, and no runtime dependencies. `package.json` holds only the `test` script and `"type": "module"`.
 - Use relative URLs for every local file. The app is served from a subpath on GitHub Pages.
-- Don't change repository settings or GitHub Pages settings. I do that.
+- Don't change repository settings or GitHub Pages settings. Those are changed by hand.
 
 ### Scryfall API
 
@@ -53,7 +62,7 @@ Breaking these rules can get the user's IP address blocked by Scryfall or break 
 - Combos come from [Commander Spellbook](https://commanderspellbook.com), and for now the app only links to it (`src/combos.js`). Never `fetch` its API from the browser: it allows requests only from its own site and from localhost, so a call would pass the local browser tests and fail on GitHub Pages. Don't add a proxy.
 - Name every search in plain words. The search terms appear only in link URLs. Every search names a format, because their site adds Commander when a search doesn't.
 - Keep the credit to Commander Spellbook in the **Combos** help page and in `README.md`.
-- Issue #5 has my plan for bringing their combo data into the app. Read it before you work on combos.
+- Issue #5 has the plan for bringing their combo data into the app. Read it before you work on combos.
 
 ### Card images and branding
 
@@ -93,6 +102,9 @@ Where tests go:
 - The app name is `APP_NAME` in `src/config.js`. `README.md` lists the other places where the name appears.
 - `.artifacts/` is gitignored. Put plans, screenshots, and review reports there, not in the tracked tree.
 - The look follows GitHub's Primer and Vercel's Geist design systems: neutral grays, the system font, 6px corners, 1px borders, a blue accent for links and focus, and black (light mode) or white (dark mode) primary buttons. Use the color tokens at the top of `styles.css`. Don't add gradients, glows, or decorative color. Color comes from the cards.
+- Give a button or link a tooltip with `withTip()`, and explain a field or setting with a ? button from `infoTip()`, both in `src/ui/dom.js`. Put the text in `TIPS` in `src/docs.js`: one or two short sentences that say what the control does or what the field means. A tooltip never holds the only copy of something: the help pages say it too. Don't put a tooltip on a card tile, where it would cover a card image.
+- Link from the app to a help page with `helpLink()` in `src/ui/dom.js`, with text that starts with "Learn more about". In a dialog, call `closeOnHelpLink()` so the dialog closes and the page shows.
+- In the help pages, link the sites, apps, formats, mechanics, and cards a page mentions, with `[label](url)` markup. Use the helpers at the top of `src/docs.js`: `link()`, `format()` for a format page on the Wizards of the Coast site, `wiki()` for the MTG Wiki, `card()` for a card on Scryfall, and `help()` for another help page. Prefer official sources first: Wizards of the Coast, Scryfall, and Commander Spellbook. When in doubt, add the link. After you add or change one, run `node scripts/check-links.mjs`.
 - Don't show raw Scryfall query syntax in the interface. Name searches in plain words, as filter chips do, and link to the search with **Open on Scryfall**.
 
 ## Keep the docs in step
@@ -103,14 +115,16 @@ After every change, ALWAYS check whether each of these needs an update, and upda
 | --- | --- |
 | Agent instructions | `AGENTS.md` (`CLAUDE.md` only points here) |
 | README and other repository docs | `README.md`, `REPORT.md`, and `docs/about-me.md`. `PLAN.md` is the v1 plan: don't change what it specifies. Record differences from it in `REPORT.md`. |
-| Interface copy | Every text the user sees or hears: labels, buttons, hints, messages, `title` and `aria-label` text, `announce()` messages, and tooltips such as the nerd mode tooltip (`NERD_MODE_TIP` in `src/docs.js`). Search `src/ui/`, `src/main.js`, and `index.html`. |
-| Help pages built into the app | `DOC_PAGES` in `src/docs.js`, shown in the **Help** view. |
+| Interface copy | Every text the user sees or hears: labels, buttons, hints, messages, `title` and `aria-label` text, and `announce()` messages. `docs/ui-copy.md` indexes all of it, with a table of where each kind of copy lives. Rebuild it with `node scripts/ui-copy.mjs`, and read its diff to review every text the change adds or changes. |
+| Tooltips | `TIPS` in `src/docs.js`, including the nerd mode tooltip (`NERD_MODE_TIP`). Add a tooltip where a control or field isn't obvious. |
+| Help pages built into the app | `DOC_PAGES` in `src/docs.js`, shown in the **Help** view, including the **Glossary**. Link what each page mentions, and add new Magic terms to the Glossary. Run `node scripts/check-links.mjs` after a link changes. |
 
-`tests/docs.test.js` checks the help pages against the app's real limits and catches some removed features and old names. When you remove or rename something in the app, add the old wording to its list of words that must not appear. The tests can't catch everything, so read the pages too.
+`tests/docs.test.js` checks the help pages against the app's real limits, checks their links and tooltips, and catches some removed features, old names, and first-person text. `tests/ui-copy.test.js` fails when `docs/ui-copy.md` is out of date. When you remove or rename something in the app, add the old wording to its list of words that must not appear. The tests can't catch everything, so read the pages too.
 
 ## Before you finish
 
 - The tests were written before the code, and they pass.
 - If you changed anything in the UI, `node scripts/check-ui.mjs` passes, and its checks cover the change.
 - You checked every place in "Keep the docs in step" and updated each one that the change affects: `AGENTS.md`, `README.md`, `REPORT.md`, `docs/about-me.md`, the interface copy and tooltips, and the help pages in `src/docs.js`.
-- Your pull request is merged. If something blocks the merge, tell me what it is.
+- `docs/ui-copy.md` is rebuilt, and you read its diff.
+- Your pull request is merged. If something blocks the merge, say what it is.

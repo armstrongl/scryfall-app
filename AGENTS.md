@@ -48,6 +48,13 @@ Breaking these rules can get the user's IP address blocked by Scryfall or break 
 - Never set `User-Agent` in browser code. Scripts that run in a terminal send `CardDiscoveryDev/0.1`, with no email address.
 - Don't fetch saved cards again on your own. Saved cards are snapshots, and they're refreshed only when the user selects **Refresh card data**.
 
+### Commander Spellbook
+
+- Combos come from [Commander Spellbook](https://commanderspellbook.com), and for now the app only links to it (`src/combos.js`). Never `fetch` its API from the browser: it allows requests only from its own site and from localhost, so a call would pass the local browser tests and fail on GitHub Pages. Don't add a proxy.
+- Name every search in plain words. The search terms appear only in link URLs. Every search names a format, because their site adds Commander when a search doesn't.
+- Keep the credit to Commander Spellbook in the **Combos** help page and in `README.md`.
+- Issue #5 has my plan for bringing their combo data into the app. Read it before you work on combos.
+
 ### Card images and branding
 
 - Never crop, clip, cover, stretch, filter, or overlay card images. Don't apply CSS `filter`, `transform`, `clip-path`, or `object-fit: cover` to them, and don't put any element over them.
@@ -79,7 +86,7 @@ Where tests go:
 
 ## Code conventions
 
-- The modules `query.js`, `cards.js`, `lists.js`, `deck-rules.js`, `export.js`, `draw.js`, `synergy.js`, `explore.js`, `browse.js`, `saved.js`, `stats.js`, `links.js`, `glossary.js`, and `docs.js` in `src/` are pure: they don't use the DOM, the network, or storage. Put new logic in a pure module, and test it with `node --test`.
+- The modules `query.js`, `cards.js`, `lists.js`, `deck-rules.js`, `export.js`, `draw.js`, `synergy.js`, `explore.js`, `browse.js`, `saved.js`, `stats.js`, `links.js`, `glossary.js`, `docs.js`, and `combos.js` in `src/` are pure: they don't use the DOM, the network, or storage. Put new logic in a pure module, and test it with `node --test`.
 - UI code is in `src/ui/`. Build elements with the `h()` helper in `src/ui/dom.js`. Don't use `innerHTML` with card data or user text.
 - Don't use browser dialogs (`alert`, `confirm`, `prompt`). Use `confirmBox()` from `src/ui/dom.js`.
 - Keep the app usable by keyboard and screen reader: label every control, and send status messages through `announce()`.

@@ -143,7 +143,7 @@ export const DOC_PAGES = [
   {
     id: "explore",
     title: "Explore",
-    summary: "Synergies, similar cards, and counters for any card.",
+    summary: "Synergies, similar cards, counters, and combos for any card.",
     sections: [
       {
         blocks: [
@@ -152,6 +152,7 @@ export const DOC_PAGES = [
               "Select **Explore** on any card, in Discover or in a list.",
               "Choose a tab.",
               "Select **Search** next to an idea. Discover opens that search in Browse all, most popular first.",
+              "On the **Combos** tab, select **Open** instead. Commander Spellbook opens in a new tab.",
             ],
           },
           {
@@ -159,10 +160,86 @@ export const DOC_PAGES = [
               ["Synergies", "Cards that work with this one, such as \"Green cards that leverage landfall\". They stay in the card's colors."],
               ["Similar", "Cards that do the same job for a similar cost, share its keywords, or share its type and cost."],
               ["Counters", "Cards that answer this one, such as creature removal or cards that punish fliers. They're in every color."],
+              ["Combos", "Links to combos with this card on Commander Spellbook, in the format of your current search. A legendary creature or planeswalker also gets a link to combos in its colors, for a deck it leads. See the Combos help page."],
             ],
           },
           { p: "The search keeps your format and game, and leaves out the card itself. Its chip in Discover says where it came from." },
           { p: "The ideas come from the card's rules text and from Scryfall Tagger tags, which the community maintains. Check the results before you build around them." },
+        ],
+      },
+    ],
+  },
+  {
+    id: "combos",
+    title: "Combos",
+    summary: "Find card combos on Commander Spellbook, and learn what bracket tags mean.",
+    sections: [
+      {
+        blocks: [
+          { p: "A combo is a set of cards that work together to do something big, such as making infinite mana or winning the game. Cascade finds combos with Commander Spellbook (commanderspellbook.com), a free combo database. It's a separate site: Cascade links to it and shows none of its data." },
+        ],
+      },
+      {
+        heading: "Find combos",
+        blocks: [
+          {
+            terms: [
+              ["Combos tab", "In **Explore**, the **Combos** tab links to combos with the card, legal in the format of your current search."],
+              ["Card details", "**Combos on Commander Spellbook**, under Links, opens the same search."],
+              ["Find combos", "On a list, **Find combos** gets the list ready for Commander Spellbook's Find My Combos page."],
+            ],
+          },
+          {
+            steps: [
+              "Open a list in **Lists**.",
+              "Select **Find combos**, then select **Copy**.",
+              "Select **Open Find My Combos**.",
+              "Paste the list into the decklist box, then select **Find New Combos**.",
+            ],
+          },
+          { p: "Find My Combos shows the combos in your list, and the combos you're one card away from. It shows combos legal in Commander unless you change its filter. A Brawl deck with a commander also gets links to combos with the commander and to combos in its colors." },
+          { p: "Commander Spellbook doesn't track every format. For Historic, Timeless, and other formats it doesn't track, the links show combos legal in Commander." },
+        ],
+      },
+      {
+        heading: "Bracket tags",
+        blocks: [
+          { p: "Commander Spellbook gives each combo a bracket tag: the Commander brackets it suits, from 1 (any deck) to 5 (cEDH). The tags are estimated from each combo's cards and results, as a guideline." },
+          {
+            terms: [
+              ["Ruthless", "Bracket 4 and up. Usually a fast two-card combo, or one with infinite turns, mass land denial, or control of opponents' turns."],
+              ["Spicy", "Probably bracket 3 or 4, but hard to classify. It could be Ruthless, but it needs a third card, doesn't produce a relevant result, or stalls the game."],
+              ["Powerful", "Bracket 3 and up. It uses a game changer, or it's a slow but relevant two-card combo."],
+              ["Oddball", "Probably bracket 2 or 3, but hard to classify. It could be Powerful, but it needs a third card or doesn't produce a relevant result."],
+              ["Core", "Bracket 2 and up. It uses an extra-turn card without taking extra turns, or it's a two-card combo too fast for bracket 1."],
+              ["Exhibition", "Any deck. Combos that don't fit the other tags."],
+              ["Not legal", "It uses a card that's banned in Commander."],
+            ],
+          },
+        ],
+      },
+      {
+        heading: "Combo terms",
+        blocks: [
+          {
+            terms: [
+              ["Loop", "A set of actions that ends where it started, so you can do it again."],
+              ["Infinite", "A loop you can repeat as many times as you like, such as untapping a creature for mana again and again. When you do it, you say how many times."],
+              ["Two-card combo", "A combo that needs only two specific cards."],
+              ["Prerequisites", "What must be true before you start, such as a creature on the battlefield or mana to spend."],
+              ["Sac outlet", "A card that lets you sacrifice permanents whenever you like, usually for free."],
+              ["ETB", "Short for \"enters the battlefield\". An ETB effect happens when a permanent enters."],
+              ["Variant", "The same combo with a different card that does the same job."],
+              ["Salt", "How unfun a combo is to play against, rated 0 to 4 by Commander Spellbook's users."],
+              ["Game changer", "A card on the Commander Game Changers list. Decks with game changers belong in bracket 3 or higher."],
+            ],
+          },
+        ],
+      },
+      {
+        heading: "Credit",
+        blocks: [
+          { p: "Combo searches and Find My Combos are by Commander Spellbook (commanderspellbook.com). Cascade isn't made by or endorsed by Commander Spellbook." },
         ],
       },
     ],
@@ -210,6 +287,7 @@ export const DOC_PAGES = [
               "In MTG Arena, open **Decks**, then select **Import**.",
             ],
           },
+          { p: "To find combos in a list, select **Find combos**. The Combos help page explains how." },
           { p: "To see a whole list on the Scryfall website, select **Open on Scryfall**. A long list opens in two or more parts, because Scryfall searches have a length limit." },
         ],
       },
@@ -237,7 +315,7 @@ export const DOC_PAGES = [
         heading: "Where your data is",
         blocks: [
           { p: "Your lists, presets, draw history, and settings are stored only in this browser, on this device. They don't sync between devices or browsers. If you clear the browser's site data for the app, they're deleted." },
-          { p: "The app sends Scryfall your card searches, and the Scryfall IDs of cards when you refresh a list or show rulings. It doesn't send list names, notes, or anything else about you." },
+          { p: "The app sends Scryfall your card searches, and the Scryfall IDs of cards when you refresh a list or show rulings. It doesn't send list names, notes, or anything else about you. The app sends Commander Spellbook nothing: its links put a card name or colors in the address, and you paste a list there yourself." },
         ],
       },
       {

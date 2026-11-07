@@ -1,8 +1,10 @@
-// The Explore panel: synergies, similar cards, and counters for one card,
-// in three tabs. Choosing a search opens it in Discover, in Browse mode,
-// sorted by popularity. The panel itself sends no requests. It uses a
+// The Explore panel: synergies, similar cards, counters, and combos for one
+// card, in four tabs. Choosing a search opens it in Discover, in Browse mode,
+// sorted by popularity. The Combos tab has links to Commander Spellbook
+// instead, which open in a new tab. The panel itself sends no requests. It uses a
 // <dialog> element, which is part of the page, not a browser dialog.
 
+import { exploreCombos } from "../combos.js";
 import { explore, exploreCriteria } from "../explore.js";
 import { announce, h, message } from "./dom.js";
 
@@ -10,6 +12,7 @@ const GROUPS = [
   { key: "synergies", label: "Synergies", intro: "Cards that work with this one. Searches use Scryfall's community tags and the card's rules text, so check the results.", empty: "The app found nothing in this card's rules text to build on. Try Similar.", note: (name, label) => `Cards that may work with ${name}: ${label}.` },
   { key: "similar", label: "Similar", intro: "Cards that do the same job, share keywords, or share a type and cost.", empty: "The app found nothing to compare this card with.", note: (name, label) => `Similar to ${name}: ${label}.` },
   { key: "counters", label: "Counters", intro: "Cards that answer this one. They're in every color, so add a color filter to fit your deck.", empty: "The app found no specific answers to this card.", note: (name, label) => `Answers to ${name}: ${label}.` },
+  { key: "combos", label: "Combos", intro: "Combos with this card on Commander Spellbook, a separate combo database. Each link opens a search on their site in a new tab, in the format of your current search.", empty: "", external: true },
 ];
 
 /**
@@ -18,7 +21,7 @@ const GROUPS = [
  */
 export function openExplore(app, snapshot) {
   const returnFocus = document.activeElement;
-  const result = explore(snapshot);
+  const result = { ...explore(snapshot), combos: exploreCombos(snapshot, app.settings.lastCriteria?.format ?? null) };
   const dialog = h("dialog", { class: "panel explore", "aria-labelledby": "explore-title" });
   const close = (restore = true) => {
     dialog.close();
@@ -64,7 +67,9 @@ export function openExplore(app, snapshot) {
           h("div", { class: "suggestion-body" },
             h("h3", { text: s.label }),
             h("p", { class: "hint", text: s.reason })),
-          h("button", { type: "button", class: "primary", text: "Search", "aria-label": `Search: ${s.label}`, onclick: () => use(g, s) }))))
+          g.external
+            ? h("a", { href: s.url, target: "_blank", rel: "noopener", class: "button primary", text: "Open", "aria-label": `Open on Commander Spellbook: ${s.label}` })
+            : h("button", { type: "button", class: "primary", text: "Search", "aria-label": `Search: ${s.label}`, onclick: () => use(g, s) }))))
       : message("info", g.empty));
     tabs.push(tab);
     panels.push(panel);
@@ -105,5 +110,5 @@ export function openExplore(app, snapshot) {
   document.body.append(dialog);
   dialog.showModal();
   tabs[0].focus();
-  announce(`Explore ${snapshot.name}. ${GROUPS.map((g) => `${result[g.key].length} ${g.label.toLowerCase()}`).join(", ")}.`);
+  announce(`Explore ${snapshot.name}. ${GROUPS.filter((g) => !g.external).map((g) => `${result[g.key].length} ${g.label.toLowerCase()}`).join(", ")}, and links to combos.`);
 }

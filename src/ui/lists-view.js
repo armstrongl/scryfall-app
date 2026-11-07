@@ -9,6 +9,7 @@ import {
   applyRefresh, createList, groupBySection, isBrawlFormat, removeEntry, renameList, restoreEntry, scryfallIds,
   sectionsFor, setFormat, setKind, totalQuantity, updateEntry,
 } from "../lists.js";
+import { FIND_MY_COMBOS_URL, listCombos } from "../combos.js";
 import { scryfallListUrls } from "../links.js";
 import { deckStats } from "../stats.js";
 import { errorMessage } from "../scryfall.js";
@@ -146,6 +147,39 @@ export function createListsView(app) {
         copy.focus();
       },
     });
+    const combosBtn = h("button", {
+      type: "button",
+      text: "Find combos",
+      disabled: list.entries.length === 0,
+      onclick: () => {
+        const combos = listCombos(list, app.settings.lastCriteria?.format ?? null);
+        const area = h("textarea", { readOnly: true, rows: String(Math.min(12, combos.text.split("\n").length + 1)), class: "mono", value: combos.text, "aria-label": "Decklist for Commander Spellbook" });
+        const copy = h("button", {
+          type: "button",
+          class: "primary",
+          text: "Copy",
+          onclick: async () => {
+            const ok = await copyText(combos.text, area);
+            announce(ok ? "Copied the decklist. Paste it into Find My Combos." : "Can't copy automatically. The text is selected, so copy it by hand.");
+          },
+        });
+        replace(slot, h("section", { class: "panel-box", "aria-labelledby": "combos-title" },
+          h("h2", { id: "combos-title", text: "Find combos" }),
+          h("p", { class: "hint", text: "Commander Spellbook's Find My Combos page finds the combos in a decklist, and the combos it's one card away from. Copy this list, open Find My Combos, paste the list into its decklist box, and select Find New Combos. It shows combos legal in Commander unless you change its filter." }),
+          area,
+          h("div", { class: "row wrap" },
+            copy,
+            h("a", { href: FIND_MY_COMBOS_URL, target: "_blank", rel: "noopener", class: "button", text: "Open Find My Combos" }),
+            h("button", { type: "button", text: "Close", onclick: () => { slot.replaceChildren(); combosBtn.focus(); } })),
+          combos.searches.length ? h("div", {},
+            h("h3", { text: "Combos for your commander" }),
+            h("ul", { class: "plain" }, combos.searches.map((c) => h("li", {},
+              h("a", { href: c.url, target: "_blank", rel: "noopener", text: c.label }),
+              h("span", { class: "hint", text: ` ${c.reason}` }))))) : null,
+          h("p", { class: "hint", text: "Commander Spellbook is a separate site. Links open it in a new tab." })));
+        copy.focus();
+      },
+    });
     const urls = scryfallListUrls(list.entries.map((e) => e.card.frontName ?? e.card.name));
     const scryfallLinks = urls.map((u, i) => h("a", {
       href: u,
@@ -273,7 +307,7 @@ export function createListsView(app) {
         h("p", { class: "tagline" }, h("span", { class: "badge", text: KIND_LABEL(list) }), ` ${plural(totalQuantity(list.entries), "card")}`)),
       app.storageOk ? null : message("warn", "Storage is not available in this browser window. Lists are lost when you close the page."),
       reminder(),
-      h("div", { class: "list-actions" }, exportBtn, scryfallLinks, moreBtn),
+      h("div", { class: "list-actions" }, exportBtn, combosBtn, scryfallLinks, moreBtn),
       moreMenu,
       slot,
       h("div", { class: "toolbar" }, field("Kind", kindSelect), formatField, field("Sort by", sortSelect)),

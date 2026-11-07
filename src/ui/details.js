@@ -3,6 +3,7 @@
 
 import { FORMAT_NAMES } from "../config.js";
 import { legalityName, rarityName } from "../cards.js";
+import { cardComboSearch } from "../combos.js";
 import { glossaryFor, wikiUrl } from "../glossary.js";
 import { errorMessage } from "../scryfall.js";
 import { cardMedia, glowClass, manaCost, savedText } from "./card-view.js";
@@ -141,7 +142,8 @@ export function cardDetails(app, snapshot, opts = {}) {
       h("p", { class: "row wrap links" },
         link(s.scryfallUri, "View on Scryfall"),
         link(s.relatedUris?.edhrec, "EDHREC"),
-        link(s.relatedUris?.gatherer, "Gatherer"))));
+        link(s.relatedUris?.gatherer, "Gatherer"),
+        link(cardComboSearch(s, app.settings.lastCriteria?.format ?? null).url, "Combos on Commander Spellbook"))));
 }
 
 /**

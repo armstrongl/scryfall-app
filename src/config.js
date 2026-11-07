@@ -93,6 +93,13 @@ export const FORMAT_NAMES = {
   predh: "PreDH",
 };
 
+/**
+ * Commander Spellbook, a combo database. The app only links to its site and
+ * never sends it requests: its API refuses browser requests from other
+ * sites. See src/combos.js.
+ */
+export const SPELLBOOK_SITE = "https://commanderspellbook.com";
+
 export const CARD_TYPES = [
   "artifact", "battle", "creature", "enchantment", "instant", "land",
   "planeswalker", "sorcery",

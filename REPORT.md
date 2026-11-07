@@ -252,6 +252,10 @@ I had every doc checked against the code. Most of the fixes were small: missing 
 | Prices | Out of scope. | Prices and buy links in the details, and the price in nerd mode, all from Scryfall. |
 | Modules | The file layout in section 3.2. | New pure modules: `synergy.js`, `explore.js`, `browse.js`, `saved.js`, `stats.js`, `links.js`, `glossary.js`, `docs.js`, and `combos.js`. New UI modules: `details.js`, `explore-panel.js`, and `help-view.js`. `README.md` lists them all. |
 
+## Decisions
+
+1. **Query syntax stays out of the main interface only.** The **Scryfall search** field's hint shows example syntax, and Scryfall's warnings quote the typed query. Both help someone writing a query, so they stay. Chips, Explore, results, and history use plain words. `AGENTS.md` has the rule.
+
 ## Tests
 
 - Written first, and seen failing before the fixes: the help page tests for `APP_NAME`, Get started, the backup reminder, and the combo format note, and the browser check for the **Explore** button's label.

@@ -93,7 +93,7 @@ Where tests go:
 - The app name is `APP_NAME` in `src/config.js`. `README.md` lists the other places where the name appears.
 - `.artifacts/` is gitignored. Put plans, screenshots, and review reports there, not in the tracked tree.
 - The look follows GitHub's Primer and Vercel's Geist design systems: neutral grays, the system font, 6px corners, 1px borders, a blue accent for links and focus, and black (light mode) or white (dark mode) primary buttons. Use the color tokens at the top of `styles.css`. Don't add gradients, glows, or decorative color. Color comes from the cards.
-- Don't show raw Scryfall query syntax in the interface. Name searches in plain words, as filter chips do, and link to the search with **Open on Scryfall**.
+- Keep raw Scryfall query syntax out of the main interface: filter chips, Explore, results, and history. Name searches in plain words, as filter chips do, and link to the search with **Open on Scryfall**. Syntax is fine where it helps someone who writes queries: the **Scryfall search** field and its hint, and Scryfall's warnings about a typed query.
 
 ## Keep the docs in step
 

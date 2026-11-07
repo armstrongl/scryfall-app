@@ -1,6 +1,6 @@
 # Cascade
 
-Cascade helps you discover Magic: The Gathering cards, learn what they do, and see how they work together. You can draw random cards or browse every card that matches your filters. You can find synergies, similar cards, and counters for any card, save cards to lists, check Standard and Brawl decks, and export decks for MTG Arena. The app runs in your browser and gets card data and images from the [Scryfall API](https://scryfall.com/docs/api). It has no server and no accounts.
+Cascade helps you discover Magic: The Gathering cards, learn what they do, and see how they work together. You can draw random cards or browse every card that matches your filters. You can find synergies, similar cards, and counters for any card, find combos on [Commander Spellbook](https://commanderspellbook.com), save cards to lists, check Standard and Brawl decks, and export decks for MTG Arena. The app runs in your browser and gets card data and images from the [Scryfall API](https://scryfall.com/docs/api). It has no server and no accounts.
 
 I'm building the app for myself first. I play Standard on MTG Arena, I'm starting Brawl, and I love discovering cards and how they interact. `docs/about-me.md` records what I've asked for.
 
@@ -46,20 +46,33 @@ Select **Details** on a card. The details show:
 - The card's official rulings. Select **Show rulings** to load them.
 - Legality in the Arena formats.
 - The printing, prices, and links to buy the card.
-- Links to Scryfall and EDHREC.
+- Links to Scryfall, EDHREC, and the card's combos on Commander Spellbook.
 
 On a wide screen, point at a card or move the keyboard focus to it to see the same details in the panel beside the cards.
 
-### Find synergies, similar cards, and counters
+### Find synergies, similar cards, counters, and combos
 
 1. Select **Explore** on any card, in Discover or in a list.
 2. Choose a tab:
    - **Synergies**: cards that work with this one, such as "Green cards that leverage landfall" or "White cards that benefit from enchantments". They stay in the card's colors.
    - **Similar**: cards that do the same job for a similar cost, share its keywords, or share its type and cost.
    - **Counters**: cards that answer this one, such as creature removal or cards that punish fliers. They're in every color.
+   - **Combos**: links to combos with this card on Commander Spellbook, legal in the format of your current search. A legendary creature or planeswalker also gets a link to combos in its colors.
 3. Select **Search**. Discover opens with that search in Browse mode, most popular first. It keeps your format and game and leaves out the card itself. Its filter chip names the search, for example "Works with Lotus Cobra: Green cards that leverage landfall".
 
 The searches use [Scryfall Tagger](https://tagger.scryfall.com/) tags, which the community maintains, together with keywords and rules text. Check the results before you build around them.
+
+On the **Combos** tab, select **Open** instead of **Search**. Commander Spellbook opens in a new tab. Formats it doesn't track, such as Historic, show combos legal in Commander.
+
+### Find combos in a list
+
+[Commander Spellbook](https://commanderspellbook.com) is a separate combo database. Its API only accepts browser requests from its own site, so the app links to it and shows none of its data.
+
+1. Open a list in **Lists**, then select **Find combos**.
+2. Select **Copy**, then **Open Find My Combos**.
+3. Paste the list into the decklist box on their site, then select **Find New Combos**.
+
+Find My Combos shows the combos in the list and the combos it's one card away from. The copied text leaves out the **Maybe** section and puts a Brawl deck's commander after a `// Commanders` line. A Brawl deck with a commander also gets links to combos with the commander and to combos in its colors. The **Combos** help page explains bracket tags, such as Spicy, and combo terms.
 
 ### Save cards to a list
 
@@ -92,7 +105,7 @@ Your lists, presets, history, and settings are stored only in your browser, on y
 
 If you clear your browser's site data for the app, your data is deleted. To keep a copy, open **Data** and select **Export backup**. To restore it, select a backup file under **Import backup**. You can also use a backup to move your data to another device.
 
-The app sends Scryfall your card searches. It also sends Scryfall IDs: those of a list's cards when you refresh the list, and a card's ID when you select **Show rulings**. It doesn't send list names, notes, or anything else about you. Backups made by this version use backup schema 2. This version also imports schema 1 backups from earlier versions.
+The app sends Scryfall your card searches. It also sends Scryfall IDs: those of a list's cards when you refresh the list, and a card's ID when you select **Show rulings**. It doesn't send list names, notes, or anything else about you. The app sends Commander Spellbook nothing: its links put a card name or colors in the address, and you paste a list there yourself. Backups made by this version use backup schema 2. This version also imports schema 1 backups from earlier versions.
 
 ## Project layout
 
@@ -102,7 +115,7 @@ The app sends Scryfall your card searches. It also sends Scryfall IDs: those of 
 | `src/main.js` | App startup and navigation between views. |
 | `src/config.js` | The app name, API settings, and other constants. |
 | `src/scryfall.js` | The Scryfall API client. All API requests go through its queue, which spaces requests at least 500 ms apart. |
-| `src/query.js`, `src/cards.js`, `src/lists.js`, `src/deck-rules.js`, `src/export.js`, `src/draw.js`, `src/synergy.js`, `src/explore.js`, `src/browse.js`, `src/saved.js`, `src/stats.js`, `src/links.js`, `src/glossary.js` | App logic with no DOM code. The tests cover these modules. |
+| `src/query.js`, `src/cards.js`, `src/lists.js`, `src/deck-rules.js`, `src/export.js`, `src/draw.js`, `src/synergy.js`, `src/explore.js`, `src/browse.js`, `src/saved.js`, `src/stats.js`, `src/links.js`, `src/glossary.js`, `src/docs.js`, `src/combos.js` | App logic with no DOM code. The tests cover these modules. |
 | `src/docs.js` | The help pages shown in the **Help** view, and the nerd mode tooltip text. |
 | `src/storage/` | Data storage in IndexedDB, with a memory fallback. |
 | `src/ui/` | The views, including the Help view (`help-view.js`), and the DOM helpers. |
@@ -166,5 +179,7 @@ The name must not contain "Scryfall". Don't change `APP_ID` in `src/config.js`, 
 ## Credits
 
 Card data and images are from [Scryfall](https://scryfall.com). Cascade is not made by or endorsed by Scryfall.
+
+Combo searches link to [Commander Spellbook](https://commanderspellbook.com). Cascade is not made by or endorsed by Commander Spellbook.
 
 Cascade is unofficial Fan Content permitted under the Fan Content Policy. Not approved/endorsed by Wizards. Portions of the materials used are property of Wizards of the Coast. ©Wizards of the Coast LLC.

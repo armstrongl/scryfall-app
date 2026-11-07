@@ -208,3 +208,36 @@ I tried the overhaul and asked for eight changes. `docs/about-me.md` lists each 
 
 - A draw of 30 from a big pool takes at least 15 seconds, and longer when it has to skip recent cards. **Cancel** stays available.
 - In a big pool, a redraw can still repeat a recent card when the random endpoint keeps returning recent ones until the tries run out. The app says so when it happens.
+
+# Combos, first version: links to Commander Spellbook (7 November 2026)
+
+I asked for a combo feature like [Commander Spellbook](https://commanderspellbook.com). I went through every feature their site has, chose what I want, and picked links only for the first version. Issue #5 has my plan for the rest. `docs/about-me.md` lists my picks.
+
+## What changed
+
+| Area | Change |
+| --- | --- |
+| Explore | A fourth tab, **Combos**, with links to Commander Spellbook searches: combos with the card, and for a legendary creature or planeswalker, combos in its colors. Links open in a new tab. |
+| Details | **Combos on Commander Spellbook** under Links. |
+| Lists | **Find combos** copies the list in the format their Find My Combos page reads, with a link to that page. A Brawl deck with a commander also gets links for its commander. |
+| Help | A new **Combos** page: how to find combos, what each bracket tag means (Ruthless, Spicy, Powerful, Oddball, Core, Exhibition, Not legal), combo terms, and the credit. |
+| Code | `src/combos.js`, a pure module, builds the links and the decklist text. `SPELLBOOK_SITE` is in `src/config.js`. |
+
+## Decisions
+
+1. **Links only, for now.** Their API allows browser requests only from commanderspellbook.com and from localhost, so it would work in local tests and fail on GitHub Pages, and a proxy would break the no-server rule. Their bulk data file can be read from any site, but it's about 730 MB unpacked, and I couldn't find a license for the data. `PLAN.md` says Scryfall is the only data source. That still holds: the app only links to another site, as it already does for EDHREC.
+2. **Every search names a format.** Without one, their site adds Commander. Searches use the format of the current Discover search, or a deck's own format on a list. Formats they don't track, such as Historic and Timeless, fall back to Commander, and the link says so.
+3. **Full card names.** Their names match Scryfall's full names, including both faces of a double-faced card. I checked this and the search terms on their live site.
+4. **No Combos view yet.** I want a Combos view of its own, but with links only it would hold nothing the other three places don't already have. It's in issue #5, with the combo search and random combos it will hold.
+5. **Find My Combos takes pasted text.** Their page can't be filled in from a link, so the app copies the list for me to paste. Their own site writes the decklist the same way: commanders go after a `// Commanders` line.
+
+## Tests
+
+- Written first, and seen failing before the code: the unit tests in `tests/combos.test.js`, the help page tests in `tests/docs.test.js`, and the browser checks for the Combos tab, the details link, Find combos, and the Combos help page.
+- The first browser run failed on the four tabs, the Combos links, and the details link. Then it stopped at the missing **Find combos** button, so the Find combos and Help checks didn't run before the code existed. The "no query syntax" check passed then only because the tab didn't exist yet.
+- To prove those checks can fail, I broke the finished code on purpose and ran the checks once. I put a search term in a Combos reason, pointed the Find My Combos link at the wrong page, removed the focus move, sent focus to the wrong button on Close, and renamed the help page. All five checks failed. Then I restored the code.
+
+## Known problems
+
+- Find My Combos shows combos legal in Commander unless I change its filter on their site. The panel says so.
+- The links can't tell me how many combos a card has, because the app has no combo data.

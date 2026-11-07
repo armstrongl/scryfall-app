@@ -60,6 +60,23 @@ Finding cards felt clunky, Find synergies was too loose, lists and decks were aw
 | Always push, open a pull request, and merge. | `AGENTS.md`, under "Ship it yourself, always". |
 | Never refer to me in the third person. Write everything as me. | This page, `AGENTS.md`, and a test in `tests/docs.test.js` that fails if a doc talks about me in the third person. |
 
+### Combos on 7 November 2026
+
+I asked for a combo feature like [Commander Spellbook](https://commanderspellbook.com), with similar combos and the "spicy" info (bracket tags). I went through every feature their site has, and picked what I want. The first version only links to their site. Issue #5 has my plan for the rest, with every feature I picked.
+
+| My request | In the app |
+| --- | --- |
+| Combos, starting with links only. | The **Combos** tab in Explore, **Combos on Commander Spellbook** in the details, and **Find combos** on each list. |
+| Bracket tags and combo terms explained. | The **Combos** help page. |
+| Bring the combo data into the app, with steps, starting positions, results, variants, one card away, and more. | Not yet. Issue #5. |
+
+How I want combos to fit, for when the data comes in:
+
+- Combos show up in Explore, in the details, in a Combos view of their own, and on each list and deck.
+- Searches use the format of the deck I'm working on.
+- Combo results are compact rows. A single combo shows big cards.
+- Bracket tags, salt, popularity, price, and legality outside my Arena formats show only in nerd mode.
+
 ## Open questions
 
 I haven't answered these yet:

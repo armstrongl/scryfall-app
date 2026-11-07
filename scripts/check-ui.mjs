@@ -298,6 +298,7 @@ async function details(b, width, name, check) {
     const d = document.querySelector("dialog[open]");
     return !!d.querySelector(".legal-list") && [...d.querySelectorAll("a")].some((a) => /scryfall\.com/.test(a.href));
   })()`));
+  check("details sheet links to the card's combos on Commander Spellbook", await ev(`[...document.querySelectorAll("dialog[open] a")].some((a) => a.textContent.trim() === "Combos on Commander Spellbook" && a.href.startsWith("https://commanderspellbook.com/search/?q=") && a.target === "_blank")`));
   check("details sheet has a Show rulings button", await ev(`[...document.querySelectorAll("dialog[open] button")].some((x) => x.textContent.trim() === "Show rulings")`));
   check("focus starts inside the sheet", await ev(`document.querySelector("dialog[open]")?.contains(document.activeElement) ?? false`));
   // Rulings: one request per card, even if the sheet is reopened while it runs.
@@ -335,7 +336,7 @@ async function exploreFlow(b, check) {
   const { ev, until, key } = b;
   await ev(`document.querySelector(".results .tile button[aria-label^='Explore']").click()`);
   await sleep(300);
-  check("Explore opens with three tabs", (await ev(`[...document.querySelectorAll("dialog[open] [role=tab]")].map((t) => t.firstChild.textContent.trim()).join("|")`)) === "Synergies|Similar|Counters");
+  check("Explore opens with four tabs", (await ev(`[...document.querySelectorAll("dialog[open] [role=tab]")].map((t) => t.firstChild.textContent.trim()).join("|")`)) === "Synergies|Similar|Counters|Combos");
   check("Explore shows no query syntax", await ev(`!document.querySelector("dialog[open] code")`));
   check("the Synergies tab is selected", (await ev(`document.querySelector("dialog[open] [role=tab][aria-selected=true]").firstChild.textContent.trim()`)) === "Synergies");
   await ev(`document.querySelector("dialog[open] [role=tab][aria-selected=true]").focus()`);
@@ -344,6 +345,13 @@ async function exploreFlow(b, check) {
     && (await ev(`document.querySelector("dialog[open] [role=tab][aria-selected=true]").firstChild.textContent.trim()`)) === "Similar");
   await key("ArrowRight", 39);
   check("Counters tab lists answers", await ev(`document.querySelectorAll("dialog[open] [role=tabpanel]:not([hidden]) .suggestion").length > 0`));
+  await key("ArrowRight", 39);
+  check("the Combos tab links to Commander Spellbook in a new tab", await ev(`(() => {
+    const links = [...document.querySelectorAll("dialog[open] [role=tabpanel]:not([hidden]) .suggestion a")];
+    return links.length > 0 && links.every((a) => a.href.startsWith("https://commanderspellbook.com/search/?q=") && a.target === "_blank" && a.rel.includes("noopener") && /Commander Spellbook/.test(a.getAttribute("aria-label") ?? ""));
+  })()`));
+  check("the Combos tab shows no query syntax", await ev(`!/card=|legal:|coloridentity/.test(document.querySelector("dialog[open] [role=tabpanel]:not([hidden])").textContent)`));
+  await key("ArrowLeft", 37);
   await key("ArrowLeft", 37);
   await key("ArrowLeft", 37);
   await sleep(100);
@@ -400,6 +408,15 @@ async function lists(b, check) {
   await ev(clickText("#view-lists button", "Export for Arena"));
   await sleep(300);
   check("export text has the card", /^1 \S/.test(await ev(`document.querySelector("textarea[aria-label='Arena deck text']")?.value ?? ""`)));
+  await ev(clickText("#view-lists button", "Find combos"));
+  await sleep(300);
+  check("Find combos shows the list as decklist text", /^1 \S/.test(await ev(`document.querySelector("textarea[aria-label='Decklist for Commander Spellbook']")?.value ?? ""`)));
+  check("Find combos has Copy and a link to Find My Combos", await ev(`[...document.querySelectorAll("#view-lists .panel-box button")].some((x) => x.textContent.trim() === "Copy")
+    && [...document.querySelectorAll("#view-lists .panel-box a")].some((a) => a.href === "https://commanderspellbook.com/find-my-combos/" && a.target === "_blank")`));
+  check("focus moves to Copy in the Find combos panel", await ev(`document.activeElement?.textContent.trim() === "Copy" && !!document.activeElement.closest(".panel-box")`), await ev(FOCUS));
+  await ev(clickText("#view-lists .panel-box button", "Close"));
+  await sleep(200);
+  check("closing Find combos returns focus to it", await ev(`document.activeElement?.textContent.trim() === "Find combos"`), await ev(FOCUS));
   await ev(clickText("#view-lists button", "More"));
   await ev(clickText("#list-more button", "Refresh card data"));
   await until(`!/Refreshing/.test(document.querySelector("#view-lists").textContent)`, 15000);
@@ -435,6 +452,7 @@ async function help(b, check) {
   await ev(clickText("nav.views a", "Help"));
   check("Help opens", await until(`location.hash.startsWith("#help") && !document.querySelector("#view-help").hidden`, 3000));
   check("Help lists its pages", await ev(`document.querySelectorAll("#view-help .help-nav a").length >= 6`));
+  check("Help has a Combos page", await ev(`[...document.querySelectorAll("#view-help .help-nav a")].some((a) => a.textContent.trim() === "Combos")`));
   check("Help starts on Get started", (await ev(`document.querySelector("#help-page-title")?.textContent`)) === "Get started");
   await ev(`[...document.querySelectorAll("#view-help .help-nav a")].find((a) => a.textContent.trim() === "Nerd mode").click()`);
   check("a Help link opens its page", await until(`document.querySelector("#help-page-title")?.textContent === "Nerd mode"`, 3000));

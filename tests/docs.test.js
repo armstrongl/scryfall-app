@@ -39,7 +39,7 @@ test("docPage finds a page by ID and falls back to the first page", () => {
 
 test("the help covers every view and the main features", () => {
   const ids = DOC_PAGES.map((p) => p.id);
-  for (const id of ["get-started", "find-cards", "explore", "lists-and-decks", "nerd-mode", "your-data"]) {
+  for (const id of ["get-started", "find-cards", "explore", "combos", "lists-and-decks", "nerd-mode", "your-data"]) {
     assert.ok(ids.includes(id), id);
   }
 });
@@ -102,4 +102,15 @@ test("the docs speak as me, never about me in the third person", () => {
 test("my profile is docs/about-me.md", () => {
   assert.ok(DOC_FILES.includes("docs/about-me.md"));
   assert.ok(!DOC_FILES.includes("docs/owner-profile.md"));
+});
+
+test("the Combos page explains bracket tags and credits Commander Spellbook", () => {
+  const text = pageText(docPage("combos"));
+  for (const tag of ["Ruthless", "Spicy", "Powerful", "Oddball", "Core", "Exhibition"]) assert.ok(text.includes(tag), tag);
+  assert.match(text, /commanderspellbook\.com/);
+  for (const label of ["Combos", "Combos on Commander Spellbook", "Find combos", "Find My Combos"]) assert.ok(text.includes(label), label);
+});
+
+test("the Explore page mentions the Combos tab", () => {
+  assert.match(pageText(docPage("explore")), /Combos/);
 });

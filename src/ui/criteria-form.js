@@ -57,6 +57,7 @@ export function createCriteriaForm(onChange) {
   const oracleText = h("input", { type: "text", autocomplete: "off", oninput: emit });
   const rawQuery = h("textarea", { rows: "2", autocomplete: "off", spellcheck: "false", oninput: () => { rawLabel = ""; emit(); } });
 
+  const mvLegendId = uid("legend");
   const hintSlots = {
     colors: h("p", { class: "hint field-hint", id: uid("hint") }),
     typeText: h("p", { class: "hint field-hint", id: uid("hint") }),
@@ -149,8 +150,10 @@ export function createCriteriaForm(onChange) {
     types.el,
     field("Type line text", typeText, undefined, TIPS.typeLine),
     hintSlots.typeText,
-    h("fieldset", { class: "mv" },
-      h("legend", {}, "Mana value", infoTip("Mana value", TIPS.manaValue)),
+    // The group is named by the legend's text only, so the ? button's name
+    // doesn't join it.
+    h("fieldset", { class: "mv", "aria-labelledby": mvLegendId },
+      h("legend", {}, h("span", { id: mvLegendId, text: "Mana value" }), infoTip("Mana value", TIPS.manaValue)),
       h("div", { class: "grid-2" }, field("Minimum", mvMin), field("Maximum", mvMax))),
     hintSlots.mv,
     rarities.el,

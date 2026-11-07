@@ -46,7 +46,7 @@ export const TIPS = {
   listKind: "A deck gets deck checks and stats for its format. A collection is a plain list of cards.",
   section: "Maybe holds cards you're considering, and the Arena export leaves it out. Commander holds a Brawl deck's commander.",
   edhrecRank: "How popular the card is in Commander decks on EDHREC. Rank 1 is in the most decks.",
-  storage: "Persistent storage means the browser keeps the app's data even when the device runs low on space.",
+  storage: "Persistent storage means the browser keeps the app's data even when the device runs low on space. Otherwise, the browser can clear it to free up space.",
 };
 
 // Links ------------------------------------------------------------------------------
@@ -131,7 +131,7 @@ export const DOC_PAGES = [
       {
         heading: "Help in the app",
         blocks: [
-          { p: "Point at a button, or move the keyboard focus to it, to see a tooltip that says what it does. To see what a filter or setting means, select **?** next to it. Press Escape to hide a tooltip." },
+          { p: "Many buttons show a tooltip that says what they do when you point at them or move the keyboard focus to them. To see what a filter or setting means, select **?** next to it. Press Escape to hide a tooltip." },
           { p: "A **Learn more** link opens the help page about that part of the app." },
         ],
       },
@@ -165,7 +165,7 @@ export const DOC_PAGES = [
             terms: [
               ["Game", `Where you can play the card: on MTG Arena, on ${link("Magic Online", MTGO)} (MTGO), or in paper.`],
               ["Exclude rebalanced cards", `Leaves out ${wiki("rebalanced cards", "Rebalanced card")}: digital-only versions that MTG Arena changed for balance. Their names start with A-.`],
-              ["Color mode", "**Exactly** finds cards with only the colors you choose. **At least** finds cards with those colors and maybe more. **At most** finds cards with no other colors."],
+              ["Color mode", "**Exactly** finds cards with only the colors you choose. **At least** finds cards with those colors and maybe more. **At most** finds cards with no other colors. **Any** doesn't filter by color."],
               ["Use color identity", `Reads colors as ${wiki("color identity", "Color identity")}, which counts the mana symbols in a card's rules text too. Use it for ${format("Commander", "commander")} and Brawl decks.`],
             ],
           },
@@ -459,7 +459,7 @@ export const DOC_PAGES = [
               [wiki("Legendary"), "You can control only one legendary permanent with the same name. A commander is usually a legendary creature."],
               [wiki("Double-faced card"), "A card with a face on each side. Select **Show other face** to see the back."],
               [wiki("Token"), "A permanent that an effect creates, which isn't a card. **Related cards and tokens**, in the details, lists the ones a card makes."],
-              [wiki("Rarity"), "How rare a card is in packs: common, uncommon, rare, or mythic rare."],
+              [wiki("Rarity"), "How rare a card is in packs: common, uncommon, rare, or mythic rare. A few cards are special or bonus."],
               [wiki("Rebalanced card"), "A digital-only version of a card that MTG Arena changed for balance. Its name starts with A-. **Exclude rebalanced cards** leaves these out of searches."],
               [link("EDHREC rank", EDHREC), "How popular a card is in Commander decks on EDHREC. Rank 1 is in the most decks."],
             ],
@@ -506,7 +506,7 @@ export const DOC_PAGES = [
           {
             terms: [
               [wiki("Sideboard"), "Up to 15 extra cards for a Standard deck, which you can swap in between games of a match."],
-              [wiki("Basic land"), "Plains, Island, Swamp, Mountain, Forest, and Wastes. A deck can have any number of them."],
+              [wiki("Basic land"), "Plains, Island, Swamp, Mountain, Forest, Wastes, and their snow-covered versions. A deck can have any number of them."],
               [wiki("Singleton"), "A deck with only one copy of each card, except basic lands. Brawl and Commander decks are singleton."],
               [wiki("Synergy"), "Cards that are stronger together than apart. **Explore** finds cards with synergy."],
               [wiki("Removal"), "A card that destroys, exiles, or otherwise gets rid of an opponent's permanent. The **Counters** tab in Explore finds removal and other answers."],

@@ -56,3 +56,20 @@ test("the copy index lists every tooltip", () => {
   const index = buildIndex(ROOT);
   for (const key of Object.keys(TIPS)) assert.ok(index.includes(`\`TIPS.${key}\``), key);
 });
+
+test("JavaScript copy decodes \\u escapes", () => {
+  assert.deepEqual(texts(extractJsCopy('h("button", { text: "\\u00d7 Remove" });')), ["× Remove"]);
+});
+
+test("the extractor finds every announce() and aria-label in the UI", () => {
+  // A check that the tokenizer didn't lose its place, for example on a regex.
+  const index = buildIndex(ROOT);
+  for (const file of ["src/ui/discover.js", "src/ui/lists-view.js", "src/ui/details.js"]) {
+    const src = readFileSync(new URL(file, `file://${ROOT}`), "utf8");
+    const found = new Set(extractJsCopy(src).map((x) => x.text));
+    for (const m of src.matchAll(/(?:announce\(|"aria-label": )"([^"\\]+)"/g)) {
+      assert.ok(found.has(m[1]), `${file}: ${m[1]}`);
+      assert.ok(index.includes(m[1]), `index: ${m[1]}`);
+    }
+  }
+});

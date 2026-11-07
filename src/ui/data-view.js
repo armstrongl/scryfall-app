@@ -101,7 +101,7 @@ export function createDataView(app) {
       h("section", { class: "panel-box", "aria-labelledby": "storage-title" },
         h("h2", { id: "storage-title", text: "Storage" }),
         app.storageOk
-          ? h("p", {}, PERSISTENCE_TEXT[app.persistence] ?? PERSISTENCE_TEXT.unknown, " ", infoTip("storage", TIPS.storage))
+          ? h("p", {}, PERSISTENCE_TEXT[app.persistence] ?? PERSISTENCE_TEXT.unknown, " ", infoTip("Storage", TIPS.storage))
           : message("warn", `Storage is not available, so lists, presets, and history are lost when you close the page. Discovery still works. ${app.storageError ?? ""}`.trim()),
         h("p", { class: "hint", text: `Last backup: ${formatDate(app.settings.lastBackupAt)}.` }),
         h("p", { class: "hint", text: "On iPhone and iPad, Safari deletes this app's data if you don't open it for 7 days of Safari use. To prevent this, add the app to your Home Screen: in Safari, select Share, then Add to Home Screen. Open the app from the Home Screen icon." }),

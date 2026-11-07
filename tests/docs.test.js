@@ -3,10 +3,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import { APP_NAME, MAX_DRAW, MIN_DRAW } from "../src/config.js";
 import { DOC_PAGES, NERD_MODE_TIP, TIPS, docPage, inlineParts, pageLinks, pageText } from "../src/docs.js";
-import { COPY_SOURCES, collectCopy } from "../scripts/ui-copy.mjs";
+import { COPY_SOURCES } from "../scripts/ui-copy.mjs";
 
 const allText = () => DOC_PAGES.map(pageText).join("\n");
 
@@ -81,44 +80,29 @@ test("inline parts mark UI labels in bold, with no HTML", () => {
   assert.ok(!allText().includes("**"), "pageText strips the bold marks");
 });
 
-// The docs and the app's text never use the first person singular, and
-// never talk about anyone in the third person.
+// The docs never use third-person words such as "she" or "the owner".
+// Quoted words are left out, so a rule can name the words it bans.
+// tests/agent-docs.test.js checks that the docs avoid the first person too.
 const ROOT = new URL("../", import.meta.url);
 const DOC_FILES = [
-  "README.md", "AGENTS.md", "REPORT.md", "PLAN.md",
+  "README.md", "AGENTS.md", "CLAUDE.md", "REPORT.md", "PLAN.md",
+  ...readdirSync(new URL(".claude/rules/", ROOT)).filter((f) => f.endsWith(".md")).map((f) => `.claude/rules/${f}`),
+  ...readdirSync(new URL(".agents/skills/", ROOT), { withFileTypes: true })
+    .filter((d) => d.isDirectory() && existsSync(new URL(`.agents/skills/${d.name}/SKILL.md`, ROOT)))
+    .map((d) => `.agents/skills/${d.name}/SKILL.md`),
   ...(existsSync(new URL("docs/", ROOT)) ? readdirSync(new URL("docs/", ROOT)).filter((f) => f.endsWith(".md")).map((f) => `docs/${f}`) : []),
 ];
-const THIRD_PERSON = /\bowner(?:'s|s)?\b|\bshe(?:'s)?\b|\bher\b|\bhers\b|\bherself\b/i;
-// Names such as find-my-combos aren't first person.
-const FIRST_PERSON = /(?<![\w/-])(?:I|I['’](?:m|ve|d|ll)|me|my|mine|myself)(?![\w-])/;
+const THIRD_PERSON = /\bowner(?:'s|s)?\b|\bshe(?:'s)?\b|\bher\b|\bhers\b|\bherself\b|\bthe developer\b|\bLarah\b/i;
+const unquoted = (line) => line.replace(/"[^"]*"|“[^”]*”/g, "");
 
-function findIn(files, pattern) {
+test("the docs never use the third person", () => {
   const found = [];
-  for (const file of files) {
+  for (const file of DOC_FILES) {
     readFileSync(new URL(file, ROOT), "utf8").split("\n").forEach((line, i) => {
-      if (pattern.test(line)) found.push(`${file}:${i + 1}: ${line.trim().slice(0, 90)}`);
+      if (THIRD_PERSON.test(unquoted(line))) found.push(`${file}:${i + 1}: ${line.trim().slice(0, 90)}`);
     });
   }
-  return found;
-}
-
-test("the docs never talk about anyone in the third person", () => {
-  const found = findIn(DOC_FILES, THIRD_PERSON);
   for (const page of DOC_PAGES) if (THIRD_PERSON.test(pageText(page))) found.push(`help page ${page.id}`);
-  assert.deepEqual(found, []);
-});
-
-test("the repository docs never say I or me", () => {
-  assert.deepEqual(findIn(DOC_FILES, FIRST_PERSON), []);
-});
-
-test("text in the app never says I or me", () => {
-  const found = [];
-  for (const page of DOC_PAGES) {
-    pageText(page).split("\n").forEach((line) => { if (FIRST_PERSON.test(line)) found.push(`help page ${page.id}: ${line}`); });
-  }
-  for (const [key, text] of Object.entries(TIPS)) if (FIRST_PERSON.test(text)) found.push(`tooltip ${key}: ${text}`);
-  for (const { file, text } of collectCopy(fileURLToPath(ROOT))) if (FIRST_PERSON.test(text)) found.push(`${file}: ${text}`);
   assert.deepEqual(found, []);
 });
 

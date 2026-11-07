@@ -113,7 +113,11 @@ function setUpTipEvents() {
   if (tipEventsReady) return;
   tipEventsReady = true;
   document.addEventListener("keydown", (e) => {
-    if (e.key !== "Escape" || openTips.size === 0) return;
+    if (e.key !== "Escape") return;
+    // A tooltip removed from the page while open can't be seen, so it
+    // doesn't take the Escape that a dialog needs.
+    for (const t of [...openTips]) if (!t.wrap.isConnected) t.hide();
+    if (openTips.size === 0) return;
     for (const t of [...openTips]) t.hide();
     e.preventDefault();
     e.stopPropagation();
@@ -125,7 +129,11 @@ function setUpTipEvents() {
 
 const overlaps = (a, b) => !(a.right <= b.left || a.left >= b.right || a.bottom <= b.top || a.top >= b.bottom);
 
-/** Puts an open tooltip where it fits, inside the screen or dialog and off every card image. */
+/**
+ * Puts an open tooltip where it fits, inside the screen or dialog. It never
+ * covers a card image: when neither side is clear of cards, it stays hidden.
+ * @returns {boolean} false when it can't be shown.
+ */
 function placeTip(wrap, tip) {
   const gap = 6;
   const edge = 8;
@@ -150,8 +158,14 @@ function placeTip(wrap, tip) {
   const above = { ...x, top: a.top - gap - ht, bottom: a.top - gap };
   const cards = [...document.querySelectorAll(".card-media img, .card-media .card-text")]
     .map((el) => el.getBoundingClientRect()).filter((r) => r.width > 0);
-  const fits = (r) => r.top >= box.top && r.bottom <= box.bottom && !cards.some((c) => overlaps(r, c));
-  if (!fits(below) && fits(above)) tip.classList.add("tip-above");
+  const clear = (r) => !cards.some((c) => overlaps(r, c));
+  const fits = (r) => r.top >= box.top && r.bottom <= box.bottom && clear(r);
+  if (fits(below)) return true;
+  if (fits(above) || (!clear(below) && clear(above))) {
+    tip.classList.add("tip-above");
+    return true;
+  }
+  return clear(below);
 }
 
 /**
@@ -164,16 +178,18 @@ function placeTip(wrap, tip) {
 export function wireTip(wrap, anchor, tip, opts = {}) {
   setUpTipEvents();
   let pinned = false;
+  let byFocus = false;
   const api = {
     wrap,
     show() {
       if (wrap.classList.contains("tip-open")) return;
       wrap.classList.add("tip-open");
       openTips.add(api);
-      placeTip(wrap, tip);
+      if (!placeTip(wrap, tip)) api.hide();
     },
     hide() {
       pinned = false;
+      byFocus = false;
       wrap.classList.remove("tip-open");
       openTips.delete(api);
     },
@@ -181,15 +197,22 @@ export function wireTip(wrap, anchor, tip, opts = {}) {
   // A tap on a touch screen isn't a hover, so it shows nothing.
   wrap.addEventListener("pointerenter", (e) => { if (e.pointerType !== "touch") api.show(); });
   wrap.addEventListener("pointerleave", (e) => { if (e.pointerType !== "touch" && !pinned) api.hide(); });
-  anchor.addEventListener("focus", () => { if (anchor.matches(":focus-visible")) api.show(); });
+  anchor.addEventListener("focus", () => {
+    if (!anchor.matches(":focus-visible")) return;
+    api.show();
+    byFocus = true;
+  });
   anchor.addEventListener("blur", () => api.hide());
-  if (opts.toggle) {
-    anchor.addEventListener("click", () => {
-      if (pinned) return api.hide();
-      api.show();
-      pinned = true;
-    });
-  }
+  anchor.addEventListener("click", () => {
+    // A button's tooltip closes when the button is used, so the cards it
+    // brings never appear under the tooltip.
+    if (!opts.toggle) return api.hide();
+    // A ? button: a click hides a tooltip that's pinned or that keyboard
+    // focus opened, and pins one that hover opened.
+    if (pinned || byFocus) return api.hide();
+    api.show();
+    pinned = true;
+  });
   return api;
 }
 
@@ -231,6 +254,8 @@ export function helpLink(page, text) {
 /** A help link in a dialog closes the dialog first, so the help page shows. */
 export function closeOnHelpLink(dialog, close) {
   dialog.addEventListener("click", (e) => {
+    // A modified click opens a new tab or window, so the dialog stays.
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     if (e.target instanceof Element && e.target.closest('a[href^="#help/"]')) close();
   });
 }

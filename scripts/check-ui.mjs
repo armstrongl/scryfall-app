@@ -187,6 +187,15 @@ async function tooltipsIn(b, scope, label, check) {
     if (await ev(tipOpen(sel))) bad.push(`${name}: open before use`);
     if (info) {
       if (!/^About /.test(name)) bad.push(`${name}: a ? button is named "About …"`);
+      // The tap target is as wide as --tap (44px on touch screens), more than the circle that shows.
+      const wide = await ev(`(() => {
+        const el = document.querySelector(${JSON.stringify(sel)});
+        const half = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--tap")) / 2 - 1;
+        const r = el.getBoundingClientRect();
+        const y = r.top + r.height / 2;
+        return [-half, half].every((dx) => el.contains(document.elementFromPoint(r.left + r.width / 2 + dx, y)));
+      })()`);
+      if (!wide) bad.push(`${name}: tap target narrower than --tap`);
       await ev(click(sel));
       if (!(await until(tipOpen(sel), 1000))) bad.push(`${name}: click doesn't open it`);
       else if (!(await ev(tipPlaced(sel)))) bad.push(`${name}: off screen or over a card`);
@@ -219,6 +228,24 @@ async function discoverTips(b, check) {
     await ev(`[...document.querySelectorAll("#filters-panel .info-tip")].map((x) => x.getAttribute("aria-label")).join(", ")`));
   check("the filters link to their help page", await ev(`!!document.querySelector("#filters-panel a[href='#help/find-cards']")`));
   const n = await tooltipsIn(b, "#view-discover", "Discover", check);
+  check("a ? button in a legend doesn't join the group's name", await ev(`[...document.querySelectorAll("fieldset")].filter((f) => f.querySelector(":scope > legend button")).every((f) => {
+    const name = document.getElementById(f.getAttribute("aria-labelledby") ?? "")?.textContent ?? "";
+    return name !== "" && !/About|[?]/.test(name);
+  })`));
+  // A ? button opened by keyboard focus closes on Enter.
+  await ev(`document.querySelector("#filters-panel .info-tip").focus()`);
+  await b.until(tipOpen("#filters-panel .info-tip"), 1000);
+  for (const type of ["keyDown", "keyUp"]) await b.send("Input.dispatchKeyEvent", { type, key: "Enter", code: "Enter", windowsVirtualKeyCode: 13, text: type === "keyDown" ? "\r" : undefined });
+  check("Enter closes a ? tooltip that focus opened", !(await ev(tipOpen("#filters-panel .info-tip"))));
+  await ev(`document.activeElement.blur()`);
+  // A button's tooltip closes when the button is used, so new cards never appear under it.
+  await ev(`document.querySelector("#view-discover .preset-row button:nth-child(2) button, #view-discover .preset-row .tip-wrap:nth-child(2) button").id = "save-preset-test"`);
+  await hover(b, "#save-preset-test");
+  await b.until(tipOpen("#save-preset-test"), 1000);
+  await ev(click("#save-preset-test"));
+  check("clicking a button closes its tooltip", !(await ev(tipOpen("#save-preset-test"))));
+  await ev(clickText("#view-discover .preset-slot button", "Cancel"));
+  await mouseAway(b);
   check("Discover has tooltips on its buttons and filters", n >= 12, String(n));
 }
 
@@ -503,6 +530,17 @@ async function lists(b, check) {
   check("Brawl checks replace Standard checks", /Brawl deck checks/.test(await ev(`document.querySelector("#checks-title")?.textContent ?? ""`)));
   check("deck checks link to their help page", await ev(`!!document.querySelector("#view-lists a[href='#help/lists-and-decks']")`));
   await tooltipsIn(b, "#view-lists", "Lists", check);
+  // A ? tooltip that's open when the view re-renders must not swallow the next Escape.
+  await ev(`document.querySelector("#view-lists .toolbar .info-tip").click()`);
+  await ev(setValue("#format-select", "standardbrawl", "change"));
+  await sleep(500);
+  await ev(setValue("#format-select", "brawl", "change"));
+  await sleep(500);
+  await ev(`document.querySelector(".entry button[aria-label^='Explore']").click()`);
+  await sleep(300);
+  await b.key("Escape", 27);
+  await sleep(200);
+  check("Escape still closes a dialog after a re-render removed an open tooltip", await ev(`!document.querySelector("dialog[open]")`));
   check("Brawl lists have a Commander section", await ev(`!!document.querySelector("#sec-commander")`));
   const before = await ev(`document.querySelectorAll(".entry").length`);
   await ev(`document.querySelector(".entry button[aria-label^='Remove']").click()`);

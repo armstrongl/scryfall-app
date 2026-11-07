@@ -2,7 +2,7 @@
 
 Cascade helps you discover Magic: The Gathering cards, learn what they do, and see how they work together. You can draw random cards or browse every card that matches your filters. You can find synergies, similar cards, and counters for any card, find combos on [Commander Spellbook](https://commanderspellbook.com), save cards to lists, check Standard and Brawl decks, and export decks for MTG Arena. The app runs in your browser and gets card data and images from the [Scryfall API](https://scryfall.com/docs/api). It has no server and no accounts.
 
-I'm building the app for myself first. I play Standard on MTG Arena, I'm starting Brawl, and I love discovering cards and how they interact.
+Cascade is a personal app first. It's tuned for Standard and [Brawl](https://magic.wizards.com/en/formats/brawl) on [MTG Arena](https://magic.wizards.com/en/mtgarena), and for discovering cards and how they interact.
 
 ## Run the app locally
 
@@ -121,7 +121,11 @@ The app sends Scryfall your card searches. It also sends Scryfall IDs: those of 
 | `src/ui/` | The views, including the Help view (`help-view.js`), and the DOM helpers. |
 | `tests/` | Unit tests and saved Scryfall responses (`tests/fixtures/`). |
 | `scripts/` | Development tools: fixture download, live API checks, browser tests, and icon drawing. |
-| `PLAN.md`, `REPORT.md` | The v1 plan, and the report on what was built, followed by the design overhaul, the feedback round, and the combos work. |
+| `AGENTS.md`, `CLAUDE.md` | Instructions for coding agents. `AGENTS.md` is read by every agent. `CLAUDE.md` imports it and adds notes for Claude Code. |
+| `.claude/rules/` | The detailed rules for agents: GitHub voice, shipping, design, the Scryfall API, storage, and help docs. |
+| `.claude/settings.json` | Shared Claude Code settings: no attribution in commits or pull requests, and a prompt before any force push. |
+| `.agents/skills/` | Shared agent skills for Codex and Claude Code: **ship** and **plan-with-options**. `.claude/skills` links here. |
+| `PLAN.md`, `REPORT.md` | The v1 plan, and the report on what was built, followed by the design overhaul, the feedback round, the combos work, the docs audit, and the agent instructions. |
 
 ## Run the tests
 
@@ -141,7 +145,7 @@ The tests use real Scryfall responses saved in `tests/fixtures/`. To fetch them 
 
 ## Turn on GitHub Pages
 
-I turn on GitHub Pages once, by hand. Agents don't change these settings. For details, see [Creating a GitHub Pages site](https://docs.github.com/en/pages/getting-started-with-github-pages/creating-a-github-pages-site) and [Configuring a publishing source](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site).
+GitHub Pages is turned on once, by hand. Agents don't change these settings. For details, see [Creating a GitHub Pages site](https://docs.github.com/en/pages/getting-started-with-github-pages/creating-a-github-pages-site) and [Configuring a publishing source](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site).
 
 1. On GitHub, open the repository, then select **Settings**.
 2. In the sidebar, select **Pages**.

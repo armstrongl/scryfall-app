@@ -1,1 +1,8 @@
 .artifacts/
+
+# Shared agent files are committed, even where a global ignore hides .claude.
+!.claude/
+.claude/*
+!.claude/rules/
+!.claude/settings.json
+!.claude/skills

@@ -8,14 +8,14 @@ This plan tells a coding agent how to build version 1 (v1) of a web app. The app
 - Build the milestones in section 7 in order. Do not stop for review between milestones.
 - Run the tests before each commit. Make one commit per milestone, or more if a milestone is large.
 - Do not add runtime dependencies, a framework, or a build step.
-- Do not change repository settings, and do not turn on GitHub Pages. I do this. The README tells me how.
+- Do not change repository settings, and do not turn on GitHub Pages. That is a manual task, and the README describes how to do it.
 - If a detail in this plan does not work, choose the most conservative option that keeps all of the rules in section 2, record the decision, and continue.
 - Never invent card data, IDs, or API behavior. Get them from real API responses or from the documentation in section 10.
 - At the end, write the final report that section 7 describes.
 
 ## 1. Goal and scope
 
-The app has one user (me) and two main uses:
+The app has one user and two main uses:
 
 1. Card discovery: The user sets criteria and draws random cards that match them.
 2. Deck building for the Standard format on MTG Arena: The user saves cards to lists, turns a list into a deck, checks the deck against the Standard rules, and exports it as text that MTG Arena can import.
@@ -105,14 +105,14 @@ These rules come from the "Use of Scryfall data and images" part of the [API doc
 
 ### App name
 
-I have not chosen a name. Use the working title "Card discovery" in the interface, the page title, and the Fan Content notice. Keep the name in one constant so I can change it in one place.
+No name is chosen yet. Use the working title "Card discovery" in the interface, the page title, and the Fan Content notice. Keep the name in one constant, so that it can change in one place.
 
 ## 3. Architecture
 
 ### 3.1 Platform
 
 - The app is a static website: plain HTML, CSS, and JavaScript ES modules. It has no build step, no framework, and no runtime dependencies.
-- I will host it on [GitHub Pages](https://docs.github.com/en/pages) as a project site. A project site is served from a subpath (`https://<user>.github.io/<repository>/`). Use relative URLs for every local file, so the app works at any path.
+- The app is hosted on [GitHub Pages](https://docs.github.com/en/pages) as a project site. A project site is served from a subpath (`https://<user>.github.io/<repository>/`). Use relative URLs for every local file, so the app works at any path.
 - The browser calls the Scryfall API directly. There is no proxy.
 - ES modules do not load from `file://` URLs. For local testing, serve the folder with a static server, for example `python3 -m http.server`.
 - Tests use the [Node.js built-in test runner](https://nodejs.org/api/test.html) (`node --test`). Node.js 20 or later is necessary. There is no `package.json` dependency list. A `package.json` with only a `test` script and `"type": "module"` is permitted.
@@ -444,7 +444,7 @@ Sideboard
 - Do not export the "maybe" section.
 - Use `frontName` for each card. Section 9 has a check for multi-face names.
 - The export view shows the text in a read-only text area with a "Copy" button. Call `navigator.clipboard.writeText` in the click handler. If it fails, select all of the text so the user can copy it by hand.
-- The Arena help page does not document the `Sideboard` header. I must test it in Arena (section 9).
+- The Arena help page does not document the `Sideboard` header. It needs a manual test in Arena (section 9).
 
 Acceptance criteria:
 
@@ -524,7 +524,7 @@ interface Storage {
 
 - Every record has a UUID and an `updatedAt` date, so a sync service can merge records.
 - v1 deletes records permanently. A sync version must add deletion markers, so that a delete on one device reaches other devices.
-- I will choose a sync option later. Two candidates are a hosted database with built-in sign-in (for example [Supabase](https://supabase.com)), or a small server on an always-on machine that only my devices can reach through a private network.
+- A sync option is chosen later. Two candidates are a hosted database with built-in sign-in (for example [Supabase](https://supabase.com)), or a small server on an always-on machine that only the user's devices can reach through a private network.
 
 ## 7. Build order
 
@@ -551,7 +551,7 @@ Build the milestones in this order. Each milestone is done when its "Done when" 
 
 ### README
 
-The README tells me:
+The README says:
 
 - What the app does, in two or three sentences.
 - How to run it locally.
@@ -569,7 +569,7 @@ Put the final report in the pull request description, or in `REPORT.md` if there
 - The result of each check in section 9.
 - Each change from this plan, with the reason.
 - Known problems.
-- My tasks: turn on GitHub Pages, test the Arena import (section 9), and choose an app name.
+- Manual tasks: turn on GitHub Pages, test the Arena import (section 9), and choose an app name.
 
 ## 8. Testing
 
@@ -616,8 +616,8 @@ Do each check, record the result in the final report, and follow the decision ru
 | Rebalanced cards | Compare `total_cards` for `f:standard game:arena` and `f:standard game:arena -is:rebalanced`. Confirm that no result name starts with `A-`. | Keep `-is:rebalanced` in the default in all cases. Record whether it changes the count. |
 | Query syntax | For each row in the table in section 4.1, run one real search and confirm that the List object has no `warnings`. | Fix any term that causes a warning. Record each fix. |
 | Error responses | Send a query that is not valid (for example `mv>abc`). Record the status, `code`, `details`, and `warnings`. | Update the error mapping in section 3.4 if needed. |
-| Arena import (my task) | I paste an export with a sideboard, a transform card, a modal double-faced card, and a split card into Arena. | The agent cannot test this. List it as my task. |
-| Names that differ on Arena (my task) | Look in Card objects for name fields other than `name` (for example a printed or flavor name). Record what you find. | Record the result. I confirm in Arena whether the export names work. |
+| Arena import (manual task) | Paste an export with a sideboard, a transform card, a modal double-faced card, and a split card into Arena. | The agent cannot test this. List it as a manual task. |
+| Names that differ on Arena (manual task) | Look in Card objects for name fields other than `name` (for example a printed or flavor name). Record what you find. | Record the result. A manual test in Arena confirms whether the export names work. |
 
 ## 10. References
 

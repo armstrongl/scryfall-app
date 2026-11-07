@@ -65,7 +65,7 @@ export function createDataView(app) {
           message: mode === "replace"
             ? "Replace all of your data with the data in this file? You can't undo this."
             : "Merge this file into your data? Items with the same ID keep the newer copy.",
-          confirmLabel: mode === "replace" ? "Replace my data" : "Merge",
+          confirmLabel: mode === "replace" ? "Replace all data" : "Merge",
           onConfirm: async () => {
             try {
               await app.storage.importAll(pending, mode);

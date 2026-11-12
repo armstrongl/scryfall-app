@@ -44,14 +44,39 @@ export const BACKUP_REMINDER_DAYS = 14;
 
 /**
  * Version 2 added the commander section, deck formats other than Standard,
- * and card detail fields. Version 1 backups still import.
+ * and card detail fields. Version 3 added deletion markers, so that a
+ * delete reaches every synced device. Version 1 and 2 backups still import.
  */
-export const BACKUP_SCHEMA_VERSION = 2;
+export const BACKUP_SCHEMA_VERSION = 3;
 /** Backup versions this app can read. */
-export const READABLE_BACKUP_VERSIONS = [1, 2];
+export const READABLE_BACKUP_VERSIONS = [1, 2, 3];
 
 export const DB_NAME = "card-discovery";
-export const DB_VERSION = 1;
+/** Version 2 added the deletions store. */
+export const DB_VERSION = 2;
+
+// GitHub sync -----------------------------------------------------------------
+
+/** The GitHub REST API. Only src/github.js sends requests to it. */
+export const GITHUB_API = "https://api.github.com";
+export const GITHUB_ACCEPT = "application/vnd.github+json";
+/** The REST API version that the GitHub client was written for. */
+export const GITHUB_API_VERSION = "2022-11-28";
+/** The file that sync keeps in the connected repository. Do not change after release. */
+export const SYNC_FILE_NAME = `${APP_ID}-sync.json`;
+/** Wait this long after the last change before syncing. */
+export const SYNC_DEBOUNCE_MS = 5000;
+/** When the app comes back into view, sync if the last sync is older than this. */
+export const SYNC_ON_SHOW_MS = 60_000;
+/** A sync reads and writes again at most this many times when another device wrote first. */
+export const SYNC_MAX_TRIES = 3;
+/** Deletion markers older than this are removed. */
+export const DELETION_KEEP_DAYS = 90;
+/**
+ * Settings that sync. The others, such as the last search and the last
+ * backup date, belong to one device.
+ */
+export const SYNCED_SETTINGS = ["density", "discoverMode", "browseSort"];
 
 /**
  * Legality keys, copied from the `legalities` object of a real Card object

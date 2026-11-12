@@ -89,8 +89,11 @@ async function connect(port) {
   let id = 0;
   const pending = new Map();
   const errors = [];
+  /** @type {Map<string, (params: any) => void>} */
+  const handlers = new Map();
   ws.onmessage = (e) => {
     const m = JSON.parse(e.data);
+    if (m.method && handlers.has(m.method)) handlers.get(m.method)(m.params);
     if (m.id && pending.has(m.id)) {
       pending.get(m.id)(m);
       pending.delete(m.id);
@@ -129,7 +132,8 @@ async function connect(port) {
   };
   await send("Runtime.enable");
   await send("Page.enable");
-  return { send, ev, until, key, errors, close: () => ws.close() };
+  const on = (method, fn) => handlers.set(method, fn);
+  return { send, ev, until, key, on, errors, close: () => ws.close() };
 }
 
 // Checks ---------------------------------------------------------------------------
@@ -622,6 +626,182 @@ async function help(b, check) {
   check("Help has no horizontal scroll", !(await ev("document.documentElement.scrollWidth > window.innerWidth")));
 }
 
+// Fake GitHub ----------------------------------------------------------------------
+// The checks never reach GitHub. Chrome hands every request to api.github.com
+// to this script through the DevTools Fetch domain, and the script answers
+// it from one fake private repository, "me/cards", that holds the sync file.
+// The answers have the fields the app reads, in the shape of the real
+// responses in tests/fixtures/github-*.json.
+
+const GH_TOKEN = "check-ui-token";
+const GH_FILE = "card-discovery-sync.json";
+const CORS = [
+  { name: "Access-Control-Allow-Origin", value: "*" },
+  { name: "Access-Control-Allow-Headers", value: "Authorization, Content-Type, X-GitHub-Api-Version" },
+  { name: "Access-Control-Allow-Methods", value: "GET, PUT" },
+  { name: "Content-Type", value: "application/json" },
+];
+
+async function fakeGitHub(b) {
+  const gh = {
+    file: null, // { text, sha }
+    shas: 0,
+    requests: [],
+    put(text) {
+      gh.file = { text, sha: `sha-${++gh.shas}` };
+    },
+    remote: () => (gh.file ? JSON.parse(gh.file.text) : null),
+  };
+  const reply = (requestId, status, body) => b.send("Fetch.fulfillRequest", {
+    requestId,
+    responseCode: status,
+    responseHeaders: CORS,
+    body: Buffer.from(body === undefined ? "" : JSON.stringify(body)).toString("base64"),
+  });
+  b.on("Fetch.requestPaused", async ({ requestId, request }) => {
+    const url = new URL(request.url);
+    const auth = request.headers.Authorization ?? request.headers.authorization;
+    gh.requests.push({ method: request.method, path: url.pathname, headers: request.headers });
+    if (request.method === "OPTIONS") return reply(requestId, 204);
+    if (auth !== `Bearer ${GH_TOKEN}`) return reply(requestId, 401, { message: "Bad credentials", status: "401" });
+    if (url.pathname === "/repos/me/cards") return reply(requestId, 200, { name: "cards", full_name: "me/cards", private: true });
+    if (url.pathname !== `/repos/me/cards/contents/${GH_FILE}`) return reply(requestId, 404, { message: "Not Found", status: "404" });
+    if (request.method === "GET") {
+      if (!gh.file) return reply(requestId, 404, { message: "Not Found", status: "404" });
+      return reply(requestId, 200, {
+        name: GH_FILE, path: GH_FILE, sha: gh.file.sha, encoding: "base64",
+        content: Buffer.from(gh.file.text).toString("base64").replace(/(.{60})/g, "$1\n"),
+      });
+    }
+    if (request.method === "PUT") {
+      const body = JSON.parse(request.postData ?? "{}");
+      if ((gh.file?.sha ?? undefined) !== body.sha) return reply(requestId, 409, { message: "Conflict" });
+      gh.put(Buffer.from(body.content, "base64").toString("utf8"));
+      return reply(requestId, 200, { content: { name: GH_FILE, path: GH_FILE, sha: gh.file.sha }, commit: {} });
+    }
+    return reply(requestId, 404, { message: "Not Found", status: "404" });
+  });
+  await b.send("Fetch.enable", { patterns: [{ urlPattern: "https://api.github.com/*", requestStage: "Request" }] });
+  return gh;
+}
+
+/** Sync with GitHub, in Data. */
+async function sync(b, gh, check) {
+  const { ev, until } = b;
+  await ev(`location.hash = "#data"`);
+  await until(`!document.querySelector("#view-data").hidden`, 3000);
+  check("Data has a Sync with GitHub section", await ev(`document.querySelector("#sync-title")?.textContent === "Sync with GitHub"`));
+  check("the repository and token fields have labels", await ev(`["sync-repo", "sync-token"].every((id) => !!document.querySelector("label[for=" + id + "]"))`));
+  check("the token field hides what you type", await ev(`document.querySelector("#sync-token").type === "password" && document.querySelector("#sync-token").autocomplete === "off"`));
+  check("Create a repository opens GitHub in a new tab", await ev(`(() => { const a = [...document.querySelectorAll("#sync-section a")].find((x) => x.textContent.startsWith("Create a repository")); return a?.href === "https://github.com/new" && a.target === "_blank"; })()`));
+  check("sync links to its help page", await ev(`!!document.querySelector("#sync-section a[href='#help/sync']")`));
+
+  await ev(click("#sync-connect"));
+  check("Connect without a repository says what to enter", await until(`/account\\/name/.test(document.querySelector("#sync-section .msg-error")?.textContent ?? "")`, 2000));
+  check("focus moves to the repository field", await ev(`document.activeElement?.id === "sync-repo"`), await ev(FOCUS));
+
+  await ev(setValue("#sync-repo", "https://github.com/me/cards"));
+  check("the token link asks for Contents write for the account", await ev(`(() => { const a = [...document.querySelectorAll("#sync-section a")].find((x) => x.textContent.startsWith("Create a token")); if (!a) return false; const u = new URL(a.href); return a.target === "_blank" && u.searchParams.get("contents") === "write" && u.searchParams.get("target_name") === "me"; })()`));
+
+  await ev(setValue("#sync-token", "wrong-token"));
+  await ev(click("#sync-connect"));
+  check("a refused token is reported", await until(`/refused the token/.test(document.querySelector("#sync-section .msg-error")?.textContent ?? "")`, 5000));
+  check("a refused token doesn't connect", await ev(`!document.querySelector("#sync-now")`));
+  check("the app sends no User-Agent of its own to GitHub", gh.requests.every((r) => !("User-Agent" in r.headers) || !/Cascade|card-?discovery/i.test(r.headers["User-Agent"])));
+
+  await ev(setValue("#sync-token", GH_TOKEN));
+  await ev(click("#sync-connect"));
+  check("Connect syncs and shows the time", await until(`/Last sync:/.test(document.querySelector("#sync-section")?.textContent ?? "")`, 8000));
+  check("focus moves to Sync now after connecting", await until(`document.activeElement?.id === "sync-now"`, 1000), await ev(FOCUS));
+  check("the section names the repository with a link", await ev(`!!document.querySelector("#sync-section a[href='https://github.com/me/cards']")`));
+  check("the token isn't shown anywhere on the page", !(await ev(`document.body.innerHTML.includes(${JSON.stringify(GH_TOKEN)})`)));
+  const appLists = await ev(`(async () => {
+    const db = await new Promise((r, j) => { const q = indexedDB.open("card-discovery"); q.onsuccess = () => r(q.result); q.onerror = () => j(q.error); });
+    const all = await new Promise((r) => { const q = db.transaction("lists").objectStore("lists").getAll(); q.onsuccess = () => r(q.result); });
+    db.close();
+    return all.map((l) => l.name).sort();
+  })()`);
+  check("the first sync puts every list on GitHub", JSON.stringify(gh.remote()?.lists.map((l) => l.name).sort()) === JSON.stringify(appLists), JSON.stringify(gh.remote()?.lists.map((l) => l.name)));
+
+  // Another device adds a list.
+  const remote = gh.remote();
+  const at = new Date().toISOString();
+  remote.lists.push({ id: "from-other-device", name: "From another device", kind: "collection", format: "standard", entries: [], createdAt: at, updatedAt: at });
+  gh.put(JSON.stringify(remote));
+  await ev(`document.querySelector("#sync-now").focus()`);
+  await ev(click("#sync-now"));
+  await until(`/Last sync:/.test(document.querySelector("#sync-section")?.textContent ?? "") && document.querySelector("#sync-now").getAttribute("aria-disabled") !== "true"`, 8000);
+  check("focus stays on Sync now during and after a sync", await ev(`document.activeElement?.id === "sync-now"`), await ev(FOCUS));
+  await ev(`location.hash = "#lists"`);
+  check("Sync now brings in a list from another device", await until(`document.querySelector("#view-lists").textContent.includes("From another device")`, 5000));
+
+  // A synced setting changes, and the app syncs on its own a few seconds later.
+  await ev(click("#density-toggle"));
+  let synced = false;
+  for (let i = 0; i < 60 && !synced; i++) {
+    synced = gh.remote()?.settings.density === "nerd";
+    if (!synced) await sleep(250);
+  }
+  check("a change syncs on its own", synced);
+  await ev(click("#density-toggle"));
+
+  await ev(`location.hash = "#data"`);
+  await until(`!document.querySelector("#view-data").hidden`, 3000);
+  check("the Sync section has no horizontal scroll", await ev(`(() => { const s = document.querySelector("#sync-section"); return s.scrollWidth <= s.clientWidth + 1; })()`));
+  await ev(click("#sync-disconnect"));
+  await ev(clickText("#sync-section .confirm button", "Disconnect"));
+  check("Disconnect shows Connect again", await until(`!!document.querySelector("#sync-connect")`, 3000));
+  check("focus moves to the repository field after Disconnect", await until(`document.activeElement?.id === "sync-repo"`, 1000), await ev(FOCUS));
+  check("Disconnect deletes the token from the browser", !(await ev(`(async () => {
+    const db = await new Promise((r, j) => { const q = indexedDB.open("card-discovery"); q.onsuccess = () => r(q.result); q.onerror = () => j(q.error); });
+    const v = await new Promise((r) => { const q = db.transaction("meta").objectStore("meta").get("sync"); q.onsuccess = () => r(q.result); });
+    db.close();
+    return JSON.stringify(v ?? null).includes(${JSON.stringify(GH_TOKEN)});
+  })()`)));
+}
+
+/**
+ * A browser that saved lists with an older version of the app keeps them:
+ * the IndexedDB upgrade from version 1 adds the deletions store and changes
+ * no data. Runs once, in its own browser profile.
+ */
+async function upgrade(base, check) {
+  const chrome = await launchChrome();
+  const b = await connect(chrome.port);
+  try {
+    await b.send("Page.navigate", { url: `${base}/icons/icon.svg` });
+    await b.until(`document.readyState === "complete"`, 5000);
+    const at = "2026-11-01T00:00:00.000Z";
+    await b.ev(`new Promise((resolve, reject) => {
+      const q = indexedDB.open("card-discovery", 1);
+      q.onupgradeneeded = () => {
+        const db = q.result;
+        db.createObjectStore("lists", { keyPath: "id" });
+        db.createObjectStore("presets", { keyPath: "id" });
+        db.createObjectStore("history", { keyPath: "id" }).createIndex("drawnAt", "drawnAt");
+        db.createObjectStore("meta", { keyPath: "key" });
+      };
+      q.onsuccess = () => {
+        const db = q.result;
+        const tx = db.transaction("lists", "readwrite");
+        tx.objectStore("lists").put({ id: "saved-before", name: "Saved before sync", kind: "collection", format: "standard", entries: [], createdAt: ${JSON.stringify(at)}, updatedAt: ${JSON.stringify(at)} });
+        tx.oncomplete = () => { db.close(); resolve(true); };
+        tx.onerror = () => reject(tx.error);
+      };
+      q.onerror = () => reject(q.error);
+    })`);
+    await b.send("Page.navigate", { url: `${base}/#lists` });
+    check("upgrade: a list saved by the older version still shows", await b.until(`document.querySelector("#view-lists")?.textContent.includes("Saved before sync")`, 10000));
+    check("upgrade: the database is version 2 with a deletions store", await b.ev(`new Promise((r) => { const q = indexedDB.open("card-discovery"); q.onsuccess = () => { const db = q.result; const ok = db.version === 2 && db.objectStoreNames.contains("deletions"); db.close(); r(ok); }; })`));
+    check("upgrade: no console errors", b.errors.length === 0, b.errors.join(" | "));
+  } catch (e) {
+    check("upgrade: run without errors", false, e.message);
+  } finally {
+    b.close();
+    await chrome.close();
+  }
+}
+
 // Runner ---------------------------------------------------------------------------
 const server = await startServer();
 const base = `http://127.0.0.1:${server.address().port}`;
@@ -640,6 +820,7 @@ for (const { width, scheme } of CONFIGS) {
   try {
     await b.send("Emulation.setDeviceMetricsOverride", { width, height: 900, deviceScaleFactor: 1, mobile: width < 500 });
     await b.send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-color-scheme", value: scheme }] });
+    const gh = await fakeGitHub(b);
     await b.send("Page.navigate", { url: `${base}/#discover` });
     check("app starts", await b.until(`!!document.querySelector("#view-discover h1")`));
     await shell(b, width, check);
@@ -650,6 +831,7 @@ for (const { width, scheme } of CONFIGS) {
     await browse(b, check);
     await lists(b, check);
     await data(b, check);
+    await sync(b, gh, check);
     await dialogTip(b, check);
     await learnMore(b, check);
     await help(b, check);
@@ -662,6 +844,13 @@ for (const { width, scheme } of CONFIGS) {
     await chrome.close();
   }
 }
+
+console.log("\n## IndexedDB upgrade");
+await upgrade(base, (name, ok, detail = "") => {
+  total++;
+  if (!ok) failed++;
+  console.log(`${ok ? "PASS" : "FAIL"} ${name}${!ok && detail ? ` (${detail})` : ""}`);
+});
 
 server.close();
 console.log(`\n${total - failed} of ${total} checks passed.`);

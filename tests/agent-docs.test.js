@@ -41,6 +41,7 @@ const RULES = {
   "scryfall-api.md": ["src/scryfall.js", "src/explore.js", "scripts/check-api.mjs", "scripts/fetch-fixtures.sh"],
   "storage-and-backups.md": ["src/storage/**", "src/export.js", "src/config.js"],
   "help-docs.md": ["src/docs.js", "README.md", "REPORT.md"],
+  "github-sync.md": ["src/github.js", "src/sync.js", "src/storage/sync.js"],
 };
 const SKILLS = ["ship", "plan-with-options"];
 

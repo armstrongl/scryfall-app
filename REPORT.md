@@ -346,3 +346,52 @@ The requests: link the help pages to useful sites, add more tooltips, keep an in
 - Cardmarket and Cardhoarder answer scripts with 403, so the link check can't verify them. It lists them as unchecked.
 - The help pages and the app's keyword links point to the MTG Wiki on Fandom (`mtg.fandom.com`), while `.claude/rules/help-docs.md` names `mtg.wiki`. Both sites work. Moving every link to one host is still open.
 - The Glossary and the tooltips explain terms in the app's own words. Check them against the linked sources when the rules change.
+
+# GitHub sync (12 November 2026)
+
+The request: persistent storage that works across devices. The plan was agreed on a page with inputs, and every item was kept: a private GitHub repository, a pasted token, pull, merge, and push, deletion markers, sync status in **Data**, a rules file, and the docs. The answers chose sync on open, a few seconds after each change, and from **Sync now**; lists, presets, and settings; and the newer change winning.
+
+## What changed
+
+| Area | Change |
+| --- | --- |
+| Sync | **Data** has a **Sync with GitHub** section. It connects to a private repository with a fine-grained token, and shows the last sync time or the error. The app keeps one file, `card-discovery-sync.json`, in the repository. `src/storage/sync.js` reads it, merges it with the device's data, saves the result on the device, and writes it back. |
+| GitHub client | `src/github.js` is the only code that calls `api.github.com`. It uses the repository contents API and sends the old sha with every write. When GitHub refuses a write because the file changed, the sync reads, merges, and writes again, up to 3 times. |
+| Merge | `src/sync.js` (pure). Lists and presets merge by ID with the newer `updatedAt`. The synced settings (nerd mode, Draw or Browse, and the Browse sort) come from the side that changed them last. History, the last search, the last list used, and the backup date stay on each device. |
+| Deletes | A delete now leaves a marker (ID, kind, and date) in a new `deletions` store, so a delete reaches other devices. Saving the item again, such as with Undo, removes the marker. Markers older than 90 days are removed at sync. |
+| Storage | IndexedDB version 2 adds the `deletions` store. The version 1 step is unchanged. The GitHub connection and token are in the `sync` record of the `meta` store, apart from the settings, so they are never in a backup. An import that replaces everything keeps the connection. |
+| Backups | Backup schema 3 adds `deletions`. Schema 1 and 2 backups still import. A schema 3 backup is also a valid sync file, and the sync file imports as a backup. |
+| Docs | A **Sync with GitHub** help page, a tooltip for the token field, the **Your data** page and `README.md` updated, a new rules file (`.claude/rules/github-sync.md`), and new lines in `AGENTS.md` and the storage rules. |
+
+## Changes from the plan
+
+1. **`PLAN.md` section 1 puts sync out of v1 scope, and section 6 names two candidates: a hosted database with sign-in, or a small private server.** Sync now uses neither: it uses a private GitHub repository that belongs to the user, with no server. Reason: it adds no service, account, or server to run, and the data stays in a place the user controls.
+2. **Deletes are no longer permanent.** `PLAN.md` section 6 asks a sync version to add deletion markers, and this change does.
+3. **Backup schema 3 and IndexedDB version 2.** Both were approved in the plan page before the build.
+
+## Decisions
+
+1. **A pasted token, not "Sign in with GitHub".** GitHub's sign-in endpoints on `github.com/login/` send no CORS headers, so a page on GitHub Pages can't use them without a server. The API at `api.github.com` allows requests from any site. Both were checked with `curl` on 12 November 2026.
+2. **A private repository, not a gist.** A secret gist can be read by anyone with its link, a token for gists can change every gist in the account, and gist writes don't check the sha. Connect refuses a public repository.
+3. **The token link fills in the form.** It uses GitHub's [template URL parameters](https://github.blog/changelog/2025-08-26-template-urls-for-fine-grained-pats-and-updated-permissions-ui/) for the name, account, a 366-day expiry, and Contents write. The repository itself is chosen on GitHub's page.
+4. **The last search doesn't sync.** It changes with every filter change, and each write is a commit. Only nerd mode, Draw or Browse, and the Browse sort sync. `syncSettingsAt` dates the last change to one of them.
+5. **Sync status redraws only Data.** A sync redraws Lists and Discover only when it changed data on the device, so that editing a list isn't interrupted.
+6. **Background errors show once.** A failed background sync shows in **Data**. When the cause needs a fix, such as an expired token, a message also shows, once for each kind of error. Network errors show in **Data** only, because they fix themselves. **Sync now** shows its result as a message.
+7. **The browser checks fake GitHub.** `scripts/check-ui.mjs` answers every request to `api.github.com` through the DevTools Fetch domain, with the CORS headers that GitHub sends.
+
+## Tests
+
+- Written first, and seen failing before the code: `tests/sync.test.js` (27 tests). They failed as a group, because the modules didn't exist. To see single tests fail for the right reason, the code was then broken on purpose three times: no deletion marker on delete (3 tests failed), writes without the old sha (4 failed), and the token in exported backups (1 failed). The code was restored each time.
+- Written first: the browser checks for the **Sync with GitHub** section, Connect, a refused token, Sync now with a list from another device, sync after a change, Disconnect, and focus. They failed on the first run because the section didn't exist.
+- The browser check for the IndexedDB upgrade was written before the UI, but after the upgrade step. Its first run failed because of a bug in the check itself (the test server sends `README.md` as a download). After that fix, it passed.
+- Changed after the code: two tests in `tests/export.test.js` that expected schema 2.
+- An Opus review found races and gaps. Each got a test first, seen failing, then the fix: the app now reloads as soon as a sync changes local data, before the write to GitHub (before, an edit during the write could undo the data that the sync brought in); a Disconnect during a sync no longer brings the token back; a save between a sync's read and write of local data now makes the sync start over, and a sync no longer rewrites history; Replace import while connected now wins on GitHub too; a token that can read but not write no longer stays connected; and a secondary rate limit and other 422 answers get the right error. A browser check for focus on **Sync now** failed before the button changed from `disabled` to `aria-disabled`. The test that a sync that throws doesn't block the next one passed before its change, because the cycle already caught the error. The queue still got a `catch`, in case the error handling itself fails.
+- Fixtures: real GitHub responses for a repository, a file, a missing file, and a refused token, fetched by `scripts/fetch-fixtures.sh` from a public repository. No fixture exists for a successful write or a 409, because those need a token. The fake GitHub builds them in the shape that the [contents API docs](https://docs.github.com/en/rest/repos/contents) give.
+
+## Known problems
+
+- No test has run against a real repository with a real token. The request and response shapes come from the docs and from responses that need no token.
+- A device that doesn't sync for more than 90 days can bring back a list that another device deleted.
+- Each list syncs as a whole. When the same list changes on two devices between syncs, the copy that changed last wins, and the other device's changes to that list are lost. The help page and README say so.
+- The merge compares dates from each device's clock. A device with a clock that is far wrong can win, or lose, against a later change on another device.
+- A sync reads local data again just before it writes, but a save in the moment between that check and the write can still be replaced. The gap is one storage call long.

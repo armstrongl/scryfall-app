@@ -108,17 +108,20 @@ test("Replace takes the file's settings", () => {
 
 test("a wrong schemaVersion is rejected", () => {
   const clock = fakeClock();
-  const backup = { ...makeBackup(sampleData(clock), clock.now()), schemaVersion: 3 };
+  const backup = { ...makeBackup(sampleData(clock), clock.now()), schemaVersion: 4 };
   const r = validateBackup(backup);
   assert.equal(r.ok, false);
-  assert.match(r.errors[0], /schema version 3/);
+  assert.match(r.errors[0], /schema version 4\. This app reads versions 1, 2, and 3 only\./);
 });
 
-test("backups are schema version 2, and version 1 backups still import", () => {
+test("backups are schema version 3, and version 1 and 2 backups still import", () => {
   const clock = fakeClock();
   const backup = makeBackup(sampleData(clock), clock.now());
-  assert.equal(backup.schemaVersion, 2);
-  assert.equal(validateBackup({ ...structuredClone(backup), schemaVersion: 1 }).ok, true);
+  assert.equal(backup.schemaVersion, 3);
+  const { deletions, ...older } = structuredClone(backup);
+  assert.deepEqual(deletions, []);
+  assert.equal(validateBackup({ ...older, schemaVersion: 1 }).ok, true);
+  assert.equal(validateBackup({ ...older, schemaVersion: 2 }).ok, true);
 });
 
 test("a commander section and a Brawl format pass the backup checks", () => {

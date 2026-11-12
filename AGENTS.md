@@ -16,6 +16,7 @@ The detail lives in `.claude/rules/`. Claude Code loads these files on its own. 
 | [Scryfall API](.claude/rules/scryfall-api.md) | You touch `src/scryfall.js`, `src/explore.js`, or the API scripts. |
 | [Storage and backups](.claude/rules/storage-and-backups.md) | You touch `src/storage/`, `src/export.js`, or `src/config.js`. |
 | [Help docs](.claude/rules/help-docs.md) | You touch `src/docs.js`, `README.md`, or `REPORT.md`. |
+| [GitHub sync](.claude/rules/github-sync.md) | You touch `src/github.js`, `src/sync.js`, or `src/storage/sync.js`. |
 
 Shared skills are in `.agents/skills/`: [ship](.agents/skills/ship/SKILL.md) (the full routine for a change) and [plan-with-options](.agents/skills/plan-with-options/SKILL.md) (a plan page with inputs). Codex reads them there, and Claude Code reads them through the `.claude/skills` link.
 
@@ -85,6 +86,12 @@ Breaking these rules can get the user's IP address blocked by Scryfall or break 
 - Keep the credit to Commander Spellbook in the **Combos** help page and in `README.md`.
 - Issue #5 has the plan for bringing their combo data into the app. Read it before you work on combos.
 
+### GitHub sync
+
+- Only `src/github.js` sends requests to `api.github.com`, and only to a private repository. No proxy, no server, and no `User-Agent`.
+- The token stays in the `sync` record of the `meta` store. Never put it in a backup, the sync file, the page, a log, or a URL.
+- Don't change `SYNC_FILE_NAME` in `src/config.js`. Connected devices look for it.
+
 ### Card images and branding
 
 - Never crop, clip, cover, stretch, filter, or overlay card images. Don't apply CSS `filter`, `transform`, `clip-path`, or `object-fit: cover` to them, and don't put any element over them.
@@ -117,7 +124,7 @@ Where tests go:
 
 ## Code conventions
 
-- The modules `query.js`, `cards.js`, `lists.js`, `deck-rules.js`, `export.js`, `draw.js`, `synergy.js`, `explore.js`, `browse.js`, `saved.js`, `stats.js`, `links.js`, `glossary.js`, `docs.js`, and `combos.js` in `src/` are pure: they don't use the DOM, the network, or storage. Put new logic in a pure module, and test it with `node --test`.
+- The modules `query.js`, `cards.js`, `lists.js`, `deck-rules.js`, `export.js`, `draw.js`, `synergy.js`, `explore.js`, `browse.js`, `saved.js`, `stats.js`, `links.js`, `glossary.js`, `docs.js`, `combos.js`, and `sync.js` in `src/` are pure: they don't use the DOM, the network, or storage. Put new logic in a pure module, and test it with `node --test`.
 - UI code is in `src/ui/`. Build elements with the `h()` helper in `src/ui/dom.js`. Don't use `innerHTML` with card data or user text.
 - Don't use browser dialogs (`alert`, `confirm`, `prompt`). Use `confirmBox()` from `src/ui/dom.js`.
 - Keep the app usable by keyboard and screen reader: label every control, and send status messages through `announce()`.

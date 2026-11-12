@@ -47,3 +47,23 @@ get card-planeswalker.json "/cards/named?exact=Teferi%2C%20Hero%20of%20Dominaria
 get card-landfall.json "/cards/named?exact=Lotus%20Cobra"
 get card-enchantress.json "/cards/named?exact=Starfield%20Mystic"
 get card-flyer.json "/cards/named?exact=Serra%20Angel"
+
+# Added for GitHub sync: real responses from the GitHub REST API, from a
+# public repository and with no token (and one with a token that is not
+# valid). These requests send curl's default User-Agent.
+GH="https://api.github.com"
+GH_ACCEPT="application/vnd.github+json"
+GH_VERSION="2022-11-28"
+gh_get() { # gh_get <file> <path> [token]
+  if [ -n "${3:-}" ]; then
+    curl -sS -H "Accept: $GH_ACCEPT" -H "X-GitHub-Api-Version: $GH_VERSION" -H "Authorization: Bearer $3" "$GH$2" -o "$1"
+  else
+    curl -sS -H "Accept: $GH_ACCEPT" -H "X-GitHub-Api-Version: $GH_VERSION" "$GH$2" -o "$1"
+  fi
+  echo "saved $1"
+  sleep 0.6
+}
+gh_get github-repo.json "/repos/octocat/Hello-World"
+gh_get github-contents.json "/repos/octocat/Hello-World/contents/README"
+gh_get github-contents-404.json "/repos/octocat/Hello-World/contents/no-such-file.json"
+gh_get github-401.json "/repos/octocat/Hello-World" "not-a-real-token"

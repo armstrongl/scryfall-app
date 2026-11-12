@@ -35,7 +35,7 @@ The short form of [GitHub voice](.claude/rules/github-voice.md). It covers every
 
 Agents lead this project. Direction and feedback come in the session, not approval of each step. Take a task all the way through on your own: plan it, build it test first, review it, ship it, and open the app. [Shipping](.claude/rules/shipping.md) has every step.
 
-- **Ship it yourself, always.** Every change ends merged: branch, commit, push, open a pull request, and merge it yourself once `npm test` and `node scripts/check-ui.mjs` pass. Don't stop at a local commit, and don't wait for a review.
+- **Ship it yourself, always.** Every change ends merged: branch, commit, push, open a pull request, and merge it yourself once `npm test`, `node scripts/check-ui.mjs`, and the GitHub checks pass. Don't stop at a local commit, and don't wait for a review.
 - **Fix it yourself.** Never leave a command for someone else to run when you can run it. Fix open items before you finish.
 - **Decide, don't ask.** When this file or `PLAN.md` doesn't cover a detail, pick the most conservative option that keeps the hard rules below, note the choice in the pull request description, and keep going. If the choice departs from `PLAN.md`, record it in `REPORT.md`.
 - **Ask only about:**
@@ -69,7 +69,8 @@ Breaking these rules can get the user's IP address blocked by Scryfall or break 
 
 - No build step, no framework, and no runtime dependencies. `package.json` holds no dependencies: only `name`, `private`, `"type": "module"`, and the `test` script.
 - Use relative URLs for every local file. The app is served from a subpath on [GitHub Pages](https://docs.github.com/en/pages).
-- Don't change repository settings or GitHub Pages settings. Those are changed by hand.
+- Don't change repository settings or GitHub Pages settings. Those are changed by hand. [Issue #35](https://github.com/armstrongl/scryfall-app/issues/35) has the steps to make the `test` and `changelog` checks required.
+- `.github/workflows/check.yml` runs `npm test` and `scripts/check-changelog.mjs` on every pull request. Both must pass before a merge.
 
 ### Scryfall API
 
@@ -141,7 +142,7 @@ After every change, ALWAYS check whether each of these needs an update, and upda
 | What | Where |
 | --- | --- |
 | Agent instructions | `AGENTS.md`, the rules in `.claude/rules/`, the skills in `.agents/skills/`, and `CLAUDE.md` (Claude-only notes) |
-| Changelog | `CHANGELOG.md`: an entry for every pull request, in the section it fits, linked to the pull request. `tests/changelog.test.js` fails when an entry has no link, and after the merge when a pull request has no entry. |
+| Changelog | `CHANGELOG.md`: an entry for every pull request, in the section it fits, linked to the pull request. `tests/changelog.test.js` fails when an entry has no link, and the `changelog` check on GitHub fails when a pull request adds no entry. |
 | README and other repository docs | `README.md` and `REPORT.md`. `PLAN.md` is the v1 plan: don't change what it specifies. Record differences from it in `REPORT.md`. |
 | Interface copy | Every text the user sees or hears: labels, buttons, hints, messages, `title` and `aria-label` text, and `announce()` messages. `docs/ui-copy.md` indexes all of it and says where each kind lives. Rebuild it with `node scripts/ui-copy.mjs`, and read its diff to review the copy the change touches. |
 | Tooltips | `TIPS` in `src/docs.js`, including the nerd mode tooltip (`NERD_MODE_TIP`). Add one where a control or field isn't obvious. |

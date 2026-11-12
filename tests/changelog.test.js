@@ -1,8 +1,7 @@
-// Tests for CHANGELOG.md: its shape, and that every pull request merged
-// into main has an entry.
+// Tests for CHANGELOG.md: its shape and its links. The changelog check on
+// GitHub (scripts/check-changelog.mjs) makes sure each pull request adds an entry.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 
 const ROOT = new URL("../", import.meta.url);
@@ -13,10 +12,6 @@ const MONTHS = ["January", "February", "March", "April", "May", "June", "July",
   "August", "September", "October", "November", "December"];
 const SECTIONS = ["Added", "Changed", "Fixed", "Removed", "Project"];
 
-let HAS_GIT = true;
-try {
-  execFileSync("git", ["rev-parse", "--is-inside-work-tree"], { cwd: ROOT, stdio: "ignore" });
-} catch { HAS_GIT = false; }
 
 const text = () => read("CHANGELOG.md");
 
@@ -53,15 +48,6 @@ test("every changelog entry links to its pull request or commit", () => {
   assert.ok(bullets.length > 0, "no entries");
   const link = new RegExp(`\\(${REPO_URL.replace(/[.]/g, "\\.")}/(?:pull/\\d+|commit/[0-9a-f]{7,40})\\)`);
   assert.deepEqual(bullets.filter((b) => !link.test(b)), [], "entries with no link");
-});
-
-const SHALLOW = HAS_GIT && execFileSync("git", ["rev-parse", "--is-shallow-repository"], { cwd: ROOT, encoding: "utf8" }).trim() === "true";
-
-test("every pull request merged into main has a changelog entry", { skip: (!HAS_GIT && "needs git") || (SHALLOW && "needs the full history, not a shallow clone") }, () => {
-  const log = execFileSync("git", ["log", "--first-parent", "--format=%s", "HEAD"], { cwd: ROOT, encoding: "utf8" });
-  const merged = [...log.matchAll(/^Merge pull request #(\d+)/gm)].map((m) => m[1]);
-  const missing = merged.filter((n) => !text().includes(`${REPO_URL}/pull/${n})`));
-  assert.deepEqual(missing, [], "pull requests with no entry");
 });
 
 test("the agent instructions say to keep the changelog in step", () => {

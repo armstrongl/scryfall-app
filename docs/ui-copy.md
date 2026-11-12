@@ -50,6 +50,7 @@ This index lists the text the app shows or announces from `index.html`, `src/mai
 | `TIPS.section` | `src/ui/add-panel.js` | Maybe holds cards you're considering, and the Arena export leaves it out. Commander holds a Brawl deck's commander. |
 | `TIPS.edhrecRank` | `src/ui/details.js` | How popular the card is in Commander decks on EDHREC. Rank 1 is in the most decks. |
 | `TIPS.storage` | `src/ui/data-view.js` | Persistent storage means the browser keeps the app's data even when the device runs low on space. Otherwise, the browser can clear it to free up space. |
+| `TIPS.syncToken` | `src/ui/data-view.js` | A fine-grained token from GitHub that can read and write only your sync repository. The app keeps it in this browser only, and never puts it in a backup. |
 
 ## Help pages
 
@@ -62,7 +63,8 @@ This index lists the text the app shows or announces from `index.html`, `src/mai
 | Combos | `#help/combos` | Find card combos on Commander Spellbook, and learn what bracket tags mean. | 16 |
 | Lists and decks | `#help/lists-and-decks` | Save cards, check decks, and export them to MTG Arena. | 9 |
 | Nerd mode | `#help/nerd-mode` | More details on every card. | 2 |
-| Your data | `#help/your-data` | Where your lists are stored, and how to back them up. | 8 |
+| Your data | `#help/your-data` | Where your lists are stored, and how to back them up. | 10 |
+| Sync with GitHub | `#help/sync` | Keep your lists on every device, in a private GitHub repository. | 5 |
 | Glossary | `#help/glossary` | The Magic terms the app uses, with links to learn more. | 36 |
 
 ## `index.html`
@@ -92,6 +94,7 @@ This index lists the text the app shows or announces from `index.html`, `src/mai
 
 | Kind | Text |
 | --- | --- |
+| notify | Sync with GitHub stopped. {…} Open Data for details. |
 | text | The list was not saved. |
 | text | The list was not deleted. |
 | text | The preset was not saved. |
@@ -194,15 +197,46 @@ This index lists the text the app shows or announces from `index.html`, `src/mai
 
 | Kind | Text |
 | --- | --- |
+| text | (opens in a new tab) |
 | text | Storage: persistent |
 | text | Storage: the browser can clear it |
 | text | Storage: the browser can clear it (this browser does not report persistence) |
+| placeholder | your-name/cascade-data |
+| text | Create a token |
+| text | Enter the repository as account/name, for example your-name/cascade-data. |
+| text | Paste the token from GitHub into Token. |
+| message | Connecting to GitHub… |
+| announce | Connecting to GitHub. |
+| announce | Connected to {…}/{…} and synced. |
+| text | Synced. Changes from GitHub are now on this device. |
+| text | Synced. Everything was up to date. |
+| message | Disconnect from GitHub? The app deletes the token from this browser. Your data stays on this device and in the repository. |
+| confirmLabel | Disconnect |
+| announce | Disconnected from GitHub. |
+| text | Sync with GitHub |
+| message | Sync needs storage, which isn't available in this browser window. |
+| text | Keep your lists, custom presets, and settings in a private GitHub repository, and use them on each device that you connect. History stays on each device. |
+| text | Create a repository |
+| text | Enter the repository below. Then |
+| text | Paste the token below, then select Connect. |
+| field | Repository |
+| field | Account and name, for example your-name/cascade-data. |
+| field | Token |
+| text | Connect |
+| text | Learn more about sync |
+| text | Syncing with |
+| text | Syncing… |
+| text | Last sync: {…}. |
+| text | Sync now |
+| text | Disconnect |
+| text | Learn more about sync |
 | notify | Exported {…}. |
 | notify | The backup was not exported. {…} |
 | message | The file is not valid JSON. Choose a backup file from this app. |
 | message | The file can't be imported. No data changed. |
 | announce | The file can't be imported. |
 | text | Import |
+| text | Replace all of your data with the data in this file? You can't undo this. Your synced devices get the same data at their next sync. |
 | text | Replace all of your data with the data in this file? You can't undo this. |
 | text | Merge this file into your data? Items with the same ID keep the newer copy. |
 | confirmLabel | Replace all data |

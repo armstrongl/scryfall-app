@@ -27,11 +27,17 @@ import { normalizeSort } from "./browse.js";
  * @property {"comfortable"|"nerd"} density Nerd mode shows more card details.
  * @property {"draw"|"browse"} discoverMode
  * @property {import("./browse.js").BrowseSort} browseSort
+ * @property {string|null} syncSettingsAt When a synced setting last changed.
+ * @typedef {Object} Deletion A marker that a list or preset was deleted.
+ * @property {string} id
+ * @property {"list"|"preset"} kind
+ * @property {string} deletedAt
  * @typedef {Object} AppData
  * @property {CardList[]} lists
  * @property {Preset[]} presets Custom presets only.
  * @property {HistoryItem[]} history
  * @property {Settings} settings
+ * @property {Deletion[]} [deletions] Missing in backups before schema 3.
  * @typedef {AppData & {app: string, schemaVersion: number, exportedAt: string}} Backup
  */
 
@@ -45,6 +51,7 @@ export function defaultSettings() {
     density: "comfortable",
     discoverMode: "draw",
     browseSort: { order: "name", dir: "auto" },
+    syncSettingsAt: null,
   };
 }
 
@@ -88,6 +95,7 @@ export function makeBackup(data, exportedAt) {
     presets: data.presets.filter((p) => !p.builtIn),
     history: data.history,
     settings: data.settings,
+    deletions: data.deletions ?? [],
   };
 }
 
@@ -96,6 +104,9 @@ export function backupFileName(isoDate) {
   return `${APP_ID}-backup-${isoDate.slice(0, 10)}.json`;
 }
 
+/** "1 and 2", or "1, 2, and 3". */
+const listWords = (items) =>
+  items.length < 3 ? items.join(" and ") : `${items.slice(0, -1).join(", ")}, and ${items.at(-1)}`;
 const isStr = (v) => typeof v === "string";
 const isDate = (v) => isStr(v) && !Number.isNaN(Date.parse(v));
 const isObj = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
@@ -130,13 +141,14 @@ export function validateBackup(file) {
   if (!READABLE_BACKUP_VERSIONS.includes(file.schemaVersion)) {
     return {
       ok: false,
-      errors: [`The backup has schema version ${JSON.stringify(file.schemaVersion)}. This app reads versions ${READABLE_BACKUP_VERSIONS.join(" and ")} only.`],
+      errors: [`The backup has schema version ${JSON.stringify(file.schemaVersion)}. This app reads versions ${listWords(READABLE_BACKUP_VERSIONS)} only.`],
     };
   }
   for (const key of ["lists", "presets", "history"]) {
     if (!Array.isArray(file[key])) errors.push(`The backup has no "${key}" list.`);
   }
   if (!isObj(file.settings)) errors.push('The backup has no "settings" object.');
+  if (file.schemaVersion >= 3 && !Array.isArray(file.deletions)) errors.push('The backup has no "deletions" list.');
   if (errors.length) return { ok: false, errors };
 
   file.lists.forEach((list, i) => {
@@ -167,6 +179,11 @@ export function validateBackup(file) {
     if (!isStr(h.query)) errors.push(`${where} has no query.`);
     checkSnapshot(h.card, where, errors);
   });
+  (file.deletions ?? []).forEach((d, i) => {
+    const where = `Deletion marker ${i + 1}`;
+    if (!checkRecord(d, where, errors, ["deletedAt"])) return;
+    if (d.kind !== "list" && d.kind !== "preset") errors.push(`${where} has an unknown kind.`);
+  });
 
   if (errors.length) return { ok: false, errors: errors.slice(0, 20) };
   return {
@@ -191,6 +208,7 @@ export function cleanSettings(s) {
     density: s?.density === "nerd" ? "nerd" : d.density,
     discoverMode: s?.discoverMode === "browse" ? "browse" : d.discoverMode,
     browseSort: normalizeSort(s?.browseSort),
+    syncSettingsAt: dateOrNull(s?.syncSettingsAt),
   };
 }
 
@@ -215,12 +233,35 @@ export function replaceData(backup) {
     presets: cleanPresets(backup.presets),
     history: newestHistory(backup.history),
     settings: cleanSettings(backup.settings),
+    deletions: backup.deletions ?? [],
   };
 }
 
 /**
+ * Merges deletion markers by ID, keeping the later delete. Then removes each
+ * item deleted at or after its last change, and each marker whose item
+ * changed after the delete (an Undo, or an edit on another device).
+ * @param {{lists: any[], presets: any[]}} data
+ * @param {Deletion[]} current
+ * @param {Deletion[]} incoming
+ */
+export function applyDeletions(data, current, incoming) {
+  const marks = new Map(current.map((d) => [d.id, d]));
+  for (const d of incoming) {
+    const have = marks.get(d.id);
+    if (!have || d.deletedAt > have.deletedAt) marks.set(d.id, d);
+  }
+  const keep = (item) => !(marks.get(item.id)?.deletedAt >= item.updatedAt);
+  const lists = data.lists.filter(keep);
+  const presets = data.presets.filter(keep);
+  const alive = new Set([...lists, ...presets].map((x) => x.id));
+  return { lists, presets, deletions: [...marks.values()].filter((d) => !alive.has(d.id)) };
+}
+
+/**
  * Merge: new IDs are added. For an ID that already exists, the item with the
- * later updatedAt stays. History items with an existing ID are skipped. The
+ * later updatedAt stays. Deletion markers from both sides apply (see
+ * applyDeletions). History items with an existing ID are skipped. The
  * current settings stay.
  * @param {AppData} current
  * @param {Backup} backup
@@ -236,9 +277,13 @@ export function mergeData(current, backup) {
     return [...map.values()];
   };
   const historyIds = new Set(current.history.map((h) => h.id));
+  const merged = applyDeletions(
+    { lists: mergeById(current.lists, backup.lists), presets: mergeById(current.presets, cleanPresets(backup.presets)) },
+    current.deletions ?? [],
+    backup.deletions ?? [],
+  );
   return {
-    lists: mergeById(current.lists, backup.lists),
-    presets: mergeById(current.presets, cleanPresets(backup.presets)),
+    ...merged,
     history: newestHistory([...current.history, ...backup.history.filter((h) => !historyIds.has(h.id))]),
     settings: current.settings,
   };

@@ -8,7 +8,8 @@
 // and the Help view never parses HTML.
 
 import {
-  APP_NAME, BACKUP_REMINDER_DAYS, HISTORY_LIMIT, MAX_DRAW, MIN_DRAW, SCRYFALL_SITE, SMALL_POOL_SIZE, SPELLBOOK_SITE,
+  APP_NAME, BACKUP_REMINDER_DAYS, DELETION_KEEP_DAYS, HISTORY_LIMIT, MAX_DRAW, MIN_DRAW, SCRYFALL_SITE, SMALL_POOL_SIZE,
+  SPELLBOOK_SITE, SYNC_FILE_NAME,
 } from "./config.js";
 import { FIND_MY_COMBOS_URL } from "./combos.js";
 import { scryfallListUrls } from "./links.js";
@@ -47,6 +48,7 @@ export const TIPS = {
   section: "Maybe holds cards you're considering, and the Arena export leaves it out. Commander holds a Brawl deck's commander.",
   edhrecRank: "How popular the card is in Commander decks on EDHREC. Rank 1 is in the most decks.",
   storage: "Persistent storage means the browser keeps the app's data even when the device runs low on space. Otherwise, the browser can clear it to free up space.",
+  syncToken: "A fine-grained token from GitHub that can read and write only your sync repository. The app keeps it in this browser only, and never puts it in a backup.",
 };
 
 // Links ------------------------------------------------------------------------------
@@ -81,6 +83,10 @@ const SAFARI_7_DAYS = "https://webkit.org/blog/10218/full-third-party-cookie-blo
 const HOME_SCREEN = "https://support.apple.com/guide/iphone/bookmark-a-website-iph42ab2f3a7/ios";
 const STORAGE_LIMITS = "https://developer.mozilla.org/en-US/docs/Web/API/Storage_API/Storage_quotas_and_eviction_criteria";
 const INDEXEDDB = "https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API";
+const GITHUB = "https://github.com";
+const GITHUB_NEW_REPO = "https://github.com/new";
+const GITHUB_TOKENS = "https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens";
+const GITHUB_PRIVATE = "https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/managing-repository-settings/setting-repository-visibility";
 
 /**
  * @typedef {{p: string} | {steps: string[]} | {list: string[]} | {terms: [string, string][]}} DocBlock
@@ -409,9 +415,9 @@ export const DOC_PAGES = [
       {
         heading: "Where your data is",
         blocks: [
-          { p: `Your lists, presets, draw history, and settings are stored only in this browser, on this device, in its ${link("IndexedDB", INDEXEDDB)} storage. They don't sync between devices or browsers. If you clear the browser's site data for the app, they're deleted.` },
+          { p: `Your lists, presets, draw history, and settings are stored in this browser, on this device, in its ${link("IndexedDB", INDEXEDDB)} storage. They don't sync between devices or browsers unless you ${help("sync with GitHub", "sync")}. If you clear the browser's site data for the app, they're deleted from this browser.` },
           { p: `A browser can also clear the data to free up space, unless the app's storage is persistent. **Data** shows which kind it has. For details, see ${link("how browsers limit storage", STORAGE_LIMITS)}.` },
-          { p: `The app sends ${link("Scryfall", SCRYFALL_SITE)} your card searches, and the Scryfall IDs of cards when you refresh a list or show rulings. It doesn't send list names, notes, or anything else about you. The app sends ${link("Commander Spellbook", SPELLBOOK_SITE)} nothing: its links put a card name or colors in the address, and you paste a list there yourself.` },
+          { p: `The app sends ${link("Scryfall", SCRYFALL_SITE)} your card searches, and the Scryfall IDs of cards when you refresh a list or show rulings. It doesn't send list names, notes, or anything else about you. If you connect GitHub, the app sends your lists, custom presets, and synced settings to your own private repository on ${link("GitHub", GITHUB)}, and nothing else. The app sends ${link("Commander Spellbook", SPELLBOOK_SITE)} nothing: its links put a card name or colors in the address, and you paste a list there yourself.` },
         ],
       },
       {
@@ -438,6 +444,57 @@ export const DOC_PAGES = [
         blocks: [
           { p: `Card data and images are from ${link("Scryfall", SCRYFALL_SITE)}. ${APP_NAME} isn't made by or endorsed by Scryfall.` },
           { p: `${APP_NAME} is unofficial fan content, under the Wizards of the Coast ${link("Fan Content Policy", FAN_CONTENT_POLICY)}.` },
+        ],
+      },
+    ],
+  },
+  {
+    id: "sync",
+    title: "Sync with GitHub",
+    summary: "Keep your lists on every device, in a private GitHub repository.",
+    sections: [
+      {
+        heading: "What syncs",
+        blocks: [
+          { p: `Sync keeps your lists, custom presets, and some settings in one file in a private repository on ${link("GitHub", GITHUB)}. Each device that you connect reads the file, merges it with its own data, then saves the result to the file. The synced settings are nerd mode, **Draw** or **Browse**, and the **Browse** sort order.` },
+          { p: "Your draw history, your last search, and the date of your last backup stay on each device." },
+          { p: `Each list and preset syncs as a whole. When the same list changed on two devices between syncs, the copy that changed last wins, and the other device's changes to that list are lost. To avoid this, let a device sync before you edit the same list on another one. A list or preset that you delete is deleted on every device. After ${DELETION_KEEP_DAYS} days, the app forgets the delete, so a device that doesn't sync for longer than that can bring the deleted item back.` },
+        ],
+      },
+      {
+        heading: "Connect",
+        blocks: [
+          {
+            steps: [
+              `On GitHub, ${link("create a repository", GITHUB_NEW_REPO)}. Make it **Private**. The app doesn't connect to a ${link("public repository", GITHUB_PRIVATE)}, because anyone can read one.`,
+              "In the app, open **Data**. Under **Sync with GitHub**, enter the repository as account/name, for example your-name/cascade-data.",
+              "Select **Create a token**. GitHub opens with the token's name, your account, and the **Contents** permission filled in. Under **Repository access**, select **Only select repositories**, choose your repository, then select **Generate token**.",
+              "Copy the token. Paste it into **Token**, then select **Connect**.",
+              "On each of your other devices, connect to the same repository. You can use the same token, or make a token for each device.",
+            ],
+          },
+        ],
+      },
+      {
+        heading: "When it syncs",
+        blocks: [
+          { p: "The app syncs when it opens, when you come back to it after a minute or more, a few seconds after you change a list, a preset, or a synced setting, and when you select **Sync now**. **Data** shows when the last sync was, or what went wrong." },
+          { p: "If a sync fails, your changes stay on this device, and the next sync sends them. If sync stops because of the token or the repository, the app shows a message once." },
+          { p: "When you replace all of your data with a backup under **Import backup**, your synced devices get the same data at their next sync." },
+        ],
+      },
+      {
+        heading: "Your token",
+        blocks: [
+          { p: `The token is a ${link("fine-grained personal access token", GITHUB_TOKENS)}. It can read and write only the repository that you choose. The app keeps it in this browser only. It never goes into a backup or the sync file, and the app sends it only to GitHub.` },
+          { p: `To remove the token from this browser, select **Disconnect**. Your data stays on the device and in the repository. To stop the token working on every device, ${link("delete it on GitHub", GITHUB_TOKENS)}.` },
+          { p: "The token page sets the token to expire after 366 days. When the token expires, **Data** says that GitHub refused it. Select **Disconnect**, then connect again with a new token." },
+        ],
+      },
+      {
+        heading: "The sync file",
+        blocks: [
+          { p: `The file is ${SYNC_FILE_NAME}, at the top of the repository. It has the same format as a backup, without the history, so you can also import it under **Import backup**. GitHub keeps every earlier copy of the file in the repository's history.` },
         ],
       },
     ],

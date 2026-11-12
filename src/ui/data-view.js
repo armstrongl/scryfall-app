@@ -1,9 +1,14 @@
-// The Data view: backup, import, storage status, and attribution.
+// The Data view: storage status, GitHub sync, backup, import, and attribution.
 
 import { APP_NAME, BACKUP_REMINDER_DAYS, FAN_CONTENT_NOTICE, SCRYFALL_SITE } from "../config.js";
 import { backupFileName, needsBackupReminder, validateBackup } from "../export.js";
 import { TIPS } from "../docs.js";
+import { parseRepo, syncErrorText, tokenUrl } from "../sync.js";
 import { announce, confirmBox, field, formatDate, h, helpLink, infoTip, message, plural, replace } from "./dom.js";
+
+/** A link that opens another site in a new tab, and says so to screen readers. */
+const outLink = (href, text, attrs = {}) =>
+  h("a", { href, target: "_blank", rel: "noopener", ...attrs }, text, h("span", { class: "visually-hidden", text: " (opens in a new tab)" }));
 
 const PERSISTENCE_TEXT = {
   persistent: "Storage: persistent",
@@ -16,6 +21,110 @@ export function createDataView(app) {
   const el = h("section", { class: "view", id: "view-data", "aria-labelledby": "data-title" });
   const importSlot = h("div");
   let pending = null; // A validated backup that waits for the user's choice.
+
+  // Sync with GitHub. The fields stay across re-renders, so typed text stays.
+  const repoInput = h("input", {
+    id: "sync-repo", type: "text", autocomplete: "off", autocapitalize: "none", spellcheck: "false",
+    placeholder: "your-name/cascade-data",
+    oninput: () => { tokenLink.href = tokenUrl(parseRepo(repoInput.value)?.owner ?? ""); },
+  });
+  const tokenInput = h("input", { id: "sync-token", type: "password", autocomplete: "off", autocapitalize: "none", spellcheck: "false" });
+  const tokenLink = outLink(tokenUrl(""), "Create a token");
+  const syncSlot = h("div", { class: "sync-message" });
+  const syncConfirm = h("div");
+  /** The control to focus after the next render, by ID. */
+  let focusNext = null;
+
+  function syncError(text, focusEl) {
+    replace(syncSlot, message("error", text));
+    focusEl?.focus();
+  }
+
+  async function connect() {
+    const parsed = parseRepo(repoInput.value);
+    if (!parsed) return syncError("Enter the repository as account/name, for example your-name/cascade-data.", repoInput);
+    const token = tokenInput.value.trim();
+    if (!token) return syncError("Paste the token from GitHub into Token.", tokenInput);
+    const btn = el.querySelector("#sync-connect");
+    if (btn) btn.disabled = true;
+    replace(syncSlot, message("info", "Connecting to GitHub…"));
+    announce("Connecting to GitHub.");
+    const result = await app.connectSync({ ...parsed, token });
+    if (!result.ok) {
+      if (btn) btn.disabled = false;
+      syncError(syncErrorText(result.error));
+      return;
+    }
+    tokenInput.value = "";
+    syncSlot.replaceChildren();
+    focusNext = "sync-now";
+    render();
+    announce(`Connected to ${parsed.owner}/${parsed.repo} and synced.`);
+  }
+
+  async function syncNow() {
+    if (app.syncing) return;
+    const result = await app.runSync({ manual: true });
+    if (!result) return;
+    if (result.ok) app.notify(result.changedLocal ? "Synced. Changes from GitHub are now on this device." : "Synced. Everything was up to date.");
+    else app.notify(syncErrorText(result.error), "error");
+  }
+
+  function disconnect() {
+    replace(syncConfirm, confirmBox({
+      message: "Disconnect from GitHub? The app deletes the token from this browser. Your data stays on this device and in the repository.",
+      confirmLabel: "Disconnect",
+      onConfirm: async () => {
+        await app.disconnectSync();
+        syncConfirm.replaceChildren();
+        focusNext = "sync-repo";
+        render();
+        announce("Disconnected from GitHub.");
+      },
+      onCancel: () => {
+        syncConfirm.replaceChildren();
+        el.querySelector("#sync-disconnect")?.focus();
+      },
+    }));
+  }
+
+  function syncSection() {
+    const box = h("section", { class: "panel-box", id: "sync-section", "aria-labelledby": "sync-title" },
+      h("h2", { id: "sync-title", text: "Sync with GitHub" }));
+    if (!app.storageOk) {
+      box.append(message("warn", "Sync needs storage, which isn't available in this browser window."));
+      return box;
+    }
+    const state = app.syncState;
+    if (!state) {
+      box.append(
+        h("p", { text: "Keep your lists, custom presets, and settings in a private GitHub repository, and use them on each device that you connect. History stays on each device." }),
+        h("ol", { class: "steps" },
+          h("li", {}, outLink("https://github.com/new", "Create a repository"), " on GitHub. Make it private."),
+          h("li", {}, "Enter the repository below. Then ", tokenLink, ": under Repository access, choose only that repository, then generate the token."),
+          h("li", { text: "Paste the token below, then select Connect." })),
+        field("Repository", repoInput, "Account and name, for example your-name/cascade-data."),
+        field("Token", tokenInput, undefined, TIPS.syncToken),
+        h("div", { class: "row wrap" }, h("button", { type: "button", id: "sync-connect", text: "Connect", onclick: connect })),
+        syncSlot,
+        h("p", { class: "hint" }, helpLink("sync", "Learn more about sync")));
+      return box;
+    }
+    const name = `${state.owner}/${state.repo}`;
+    box.append(
+      h("p", {}, "Syncing with ", outLink(`https://github.com/${state.owner}/${state.repo}`, name), "."),
+      app.syncing
+        ? h("p", { class: "hint", text: "Syncing…" })
+        : state.lastError ? message("warn", syncErrorText(state.lastError)) : null,
+      h("p", { class: "hint", text: `Last sync: ${formatDate(state.lastSyncAt)}.` }),
+      h("div", { class: "row wrap" },
+        // aria-disabled, not disabled, so that focus stays on the button during a sync.
+        h("button", { type: "button", id: "sync-now", text: "Sync now", "aria-disabled": app.syncing ? "true" : null, onclick: syncNow }),
+        h("button", { type: "button", id: "sync-disconnect", text: "Disconnect", onclick: disconnect })),
+      syncConfirm,
+      h("p", { class: "hint" }, helpLink("sync", "Learn more about sync")));
+    return box;
+  }
 
   async function exportBackup() {
     try {
@@ -64,13 +173,16 @@ export function createDataView(app) {
         const mode = repl.checked ? "replace" : "merge";
         replace(confirmSlot, confirmBox({
           message: mode === "replace"
-            ? "Replace all of your data with the data in this file? You can't undo this."
+            ? app.syncState
+              ? "Replace all of your data with the data in this file? You can't undo this. Your synced devices get the same data at their next sync."
+              : "Replace all of your data with the data in this file? You can't undo this."
             : "Merge this file into your data? Items with the same ID keep the newer copy.",
           confirmLabel: mode === "replace" ? "Replace all data" : "Merge",
           onConfirm: async () => {
             try {
               await app.storage.importAll(pending, mode);
               await app.reload();
+              app.scheduleSync();
               pending = null;
               replace(importSlot, message("ok", mode === "replace" ? "Replaced your data with the backup." : "Merged the backup into your data."));
               announce("Import done.");
@@ -94,6 +206,9 @@ export function createDataView(app) {
   }
 
   function render() {
+    // Keep focus on the same control when the view re-renders, such as Sync now during a sync.
+    const focusedId = focusNext ?? (el.contains(document.activeElement) ? document.activeElement?.id : null);
+    focusNext = null;
     const fileInput = h("input", { type: "file", accept: "application/json,.json", onchange: () => readFile(fileInput.files?.[0]) });
     const reminder = needsBackupReminder(app.settings, Date.now(), BACKUP_REMINDER_DAYS);
     replace(el,
@@ -106,6 +221,7 @@ export function createDataView(app) {
         h("p", { class: "hint", text: `Last backup: ${formatDate(app.settings.lastBackupAt)}.` }),
         h("p", { class: "hint", text: "On iPhone and iPad, Safari deletes this app's data if you don't open it for 7 days of Safari use. To prevent this, add the app to your Home Screen: in Safari, select Share, then Add to Home Screen. Open the app from the Home Screen icon." }),
         h("p", { class: "hint" }, helpLink("your-data", "Learn more about where your data is stored"))),
+      syncSection(),
       h("section", { class: "panel-box", "aria-labelledby": "backup-title" },
         h("h2", { id: "backup-title", text: "Backup" }),
         reminder ? message("warn", "Your data changed since your last backup. Export a backup now.") : null,
@@ -120,6 +236,7 @@ export function createDataView(app) {
         h("p", {}, `${APP_NAME} helps you discover Magic: The Gathering cards, learn what they do, see how they work together, find combos, and build Standard and Brawl decks for MTG Arena. To learn how, open `, h("a", { href: "#help", text: "Help" }), ". ",
           "Card data and images come from ", h("a", { href: SCRYFALL_SITE, text: "Scryfall" }), ". The app is not made by or endorsed by Scryfall."),
         h("p", { text: FAN_CONTENT_NOTICE })));
+    if (focusedId) el.querySelector(`#${CSS.escape(focusedId)}`)?.focus();
   }
 
   return { el, show: render, refresh: render };

@@ -1,7 +1,7 @@
 // An in-memory storage backend. The app uses it when IndexedDB is not
 // available, and the tests use it. Data is lost when the page closes.
 
-export const STORES = ["lists", "presets", "history", "meta"];
+export const STORES = ["lists", "presets", "history", "meta", "deletions"];
 
 const clone = (v) => structuredClone(v);
 

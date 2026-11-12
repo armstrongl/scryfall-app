@@ -1,8 +1,11 @@
 // Starts the app and switches between views.
 
-import { APP_NAME, FAN_CONTENT_NOTICE, SCRYFALL_SITE } from "./config.js";
+import { APP_NAME, FAN_CONTENT_NOTICE, SCRYFALL_SITE, SYNC_DEBOUNCE_MS, SYNC_ON_SHOW_MS, SYNCED_SETTINGS } from "./config.js";
 import { createClient } from "./scryfall.js";
 import { openStorage, persistenceStatus, requestPersistence } from "./storage/index.js";
+import { createSyncer } from "./storage/sync.js";
+import { createGitHub } from "./github.js";
+import { syncErrorText } from "./sync.js";
 import { defaultSettings } from "./export.js";
 import { createDiscoverView } from "./ui/discover.js";
 import { createListsView } from "./ui/lists-view.js";
@@ -21,6 +24,12 @@ import { savedIndex, savedIn } from "./saved.js";
 async function createApp() {
   const { storage, error } = await openStorage();
   const listeners = new Set();
+  // As soon as a sync changes data on the device, the app reloads it, so
+  // that nothing edits a stale copy while the write to GitHub runs.
+  const syncer = createSyncer({ storage, makeClient: (token) => createGitHub({ token }), onLocalChange: () => app.reload() });
+  let syncTimer = null;
+  /** The last sync error shown as a message, so that each shows once. */
+  let shownSyncError = null;
 
   const app = {
     storage,
@@ -49,6 +58,71 @@ async function createApp() {
     /** The lists that hold a card. @param {import("./cards.js").CardSnapshot} snapshot */
     savedIn(snapshot) {
       return savedIn(app.saved, snapshot);
+    },
+
+    /**
+     * The GitHub connection, or null. It holds the token, so views read
+     * only the account, repository, and status from it.
+     * @type {import("./storage/index.js").SyncState|null}
+     */
+    syncState: null,
+    /** True while a sync runs. */
+    syncing: false,
+
+    /**
+     * Syncs with GitHub now, if connected. A background sync that stops
+     * because of the token or the repository says so once; **Sync now**
+     * (manual) shows its own result.
+     * @param {{manual?: boolean}} [opts]
+     * @returns {Promise<import("./storage/sync.js").SyncResult|null>}
+     */
+    async runSync(opts = {}) {
+      clearTimeout(syncTimer);
+      if (!app.syncState || !app.storageOk) return null;
+      app.syncing = true;
+      app.emit("sync");
+      let result;
+      try {
+        result = await syncer.syncNow();
+        app.syncState = await storage.getSyncState();
+      } finally {
+        app.syncing = false;
+        app.emit("sync");
+      }
+      if (result.ok) shownSyncError = null;
+      else if (!opts.manual && ["unauthorized", "forbidden", "not-found", "bad-file"].includes(result.error) && shownSyncError !== result.error) {
+        shownSyncError = result.error;
+        app.notify(`Sync with GitHub stopped. ${syncErrorText(result.error)} Open Data for details.`, "warn");
+      }
+      return result;
+    },
+    /** Syncs a few seconds after the last change, so that changes made close together go out as one. */
+    scheduleSync() {
+      if (!app.syncState) return;
+      clearTimeout(syncTimer);
+      syncTimer = setTimeout(() => app.runSync(), SYNC_DEBOUNCE_MS);
+    },
+    /**
+     * Connects to a repository and syncs. Saves nothing if GitHub refuses.
+     * @param {{owner: string, repo: string, token: string}} conn
+     */
+    async connectSync(conn) {
+      app.syncing = true;
+      try {
+        return await syncer.connect(conn);
+      } finally {
+        app.syncing = false;
+        app.syncState = await storage.getSyncState();
+        shownSyncError = null;
+        app.emit("sync");
+      }
+    },
+    /** Removes the connection and deletes the token from this browser. */
+    async disconnectSync() {
+      clearTimeout(syncTimer);
+      await syncer.disconnect();
+      app.syncState = null;
+      app.emit("sync");
     },
 
     onChange(fn) {
@@ -124,6 +198,7 @@ async function createApp() {
       if (ok) {
         app.afterSave();
         app.emit("lists");
+        app.scheduleSync();
       }
       return ok;
     },
@@ -134,7 +209,10 @@ async function createApp() {
         app.saved = savedIndex(app.lists);
         app.settings = await storage.getSettings();
       }, "The list was not deleted.");
-      if (ok) app.emit("lists");
+      if (ok) {
+        app.emit("lists");
+        app.scheduleSync();
+      }
       return ok;
     },
     async savePreset(preset) {
@@ -146,6 +224,7 @@ async function createApp() {
       if (ok) {
         app.afterSave();
         app.emit("presets");
+        app.scheduleSync();
       }
       return ok;
     },
@@ -155,7 +234,10 @@ async function createApp() {
         app.presets = app.presets.filter((p) => p.id !== id);
         app.settings = await storage.getSettings();
       }, "The preset was not deleted.");
-      if (ok) app.emit("presets");
+      if (ok) {
+        app.emit("presets");
+        app.scheduleSync();
+      }
       return ok;
     },
     async addHistory(item) {
@@ -181,10 +263,12 @@ async function createApp() {
       app.settings = { ...app.settings, ...changes };
       try {
         await storage.saveSettings(app.settings);
+        app.settings = await storage.getSettings();
       } catch {
         // Settings are a convenience. Discovery keeps working without them.
       }
       if (!opts.quiet) app.emit("settings");
+      if (Object.keys(changes).some((k) => SYNCED_SETTINGS.includes(k))) app.scheduleSync();
     },
   };
 
@@ -195,6 +279,13 @@ async function createApp() {
     app.storageError = String(e?.message ?? e);
   }
   app.persistence = await persistenceStatus();
+  if (app.storageOk) {
+    try {
+      app.syncState = await storage.getSyncState();
+    } catch {
+      app.syncState = null;
+    }
+  }
   return app;
 }
 
@@ -288,6 +379,10 @@ async function start() {
     densityBtn?.setAttribute("aria-pressed", String(nerd));
   };
   applyDensity();
+  // A sync can bring in nerd mode from another device.
+  app.onChange((what) => {
+    if (what === "all") applyDensity();
+  });
   setUpTooltip(densityBtn);
   densityBtn?.addEventListener("click", () => {
     const nerd = app.settings.density !== "nerd";
@@ -328,12 +423,21 @@ async function start() {
     if (what === "all") views.discover.refresh();
     if (what === "presets") views.discover.refresh();
     if (what === "lists" || what === "all") views.discover.refreshSaved();
-    if (view === "lists" && what !== "presets") views.lists.refresh();
+    if (view === "lists" && what !== "presets" && what !== "sync") views.lists.refresh();
     if (view === "data") views.data.refresh();
   });
 
   window.addEventListener("hashchange", () => route(true));
   route(false);
+
+  // Sync when the app opens, and when it comes back into view after a while,
+  // as a Home Screen app does when you switch back to it.
+  app.runSync();
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "visible" || !app.syncState || app.syncing) return;
+    const last = Date.parse(app.syncState.lastSyncAt ?? "") || 0;
+    if (Date.now() - last > SYNC_ON_SHOW_MS) app.runSync();
+  });
 }
 
 start().catch((e) => {

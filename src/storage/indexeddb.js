@@ -16,6 +16,10 @@ const UPGRADES = {
     history.createIndex("drawnAt", "drawnAt");
     db.createObjectStore("meta", { keyPath: "key" });
   },
+  // Deletion markers, so that a delete reaches other synced devices.
+  2(db) {
+    db.createObjectStore("deletions", { keyPath: "id" });
+  },
 };
 
 function promisify(req) {

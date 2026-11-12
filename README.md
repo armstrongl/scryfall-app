@@ -101,11 +101,23 @@ To see a whole list on Scryfall, select **Open on Scryfall**. A long list opens 
 
 ## Where your data is stored
 
-Your lists, presets, history, and settings are stored only in your browser, on your device. The app has no server and no accounts, so your data doesn't sync between devices or browsers.
+Your lists, presets, history, and settings are stored in your browser, on your device. The app has no server and no accounts. To use the same lists on more than one device, turn on sync with GitHub (see the next section).
 
-If you clear your browser's site data for the app, your data is deleted. To keep a copy, open **Data** and select **Export backup**. To restore it, select a backup file under **Import backup**. You can also use a backup to move your data to another device.
+If you clear your browser's site data for the app, your data is deleted from that browser. To keep a copy, open **Data** and select **Export backup**. To restore it, select a backup file under **Import backup**. You can also use a backup to move your data to another device.
 
-The app sends Scryfall your card searches. It also sends Scryfall IDs: those of a list's cards when you refresh the list, and a card's ID when you select **Show rulings**. It doesn't send list names, notes, or anything else about you. The app sends Commander Spellbook nothing: its links put a card name or colors in the address, and you paste a list there yourself. Backups made by this version use backup schema 2. This version also imports schema 1 backups from earlier versions.
+The app sends Scryfall your card searches. It also sends Scryfall IDs: those of a list's cards when you refresh the list, and a card's ID when you select **Show rulings**. It doesn't send list names, notes, or anything else about you. If you turn on sync, the app sends your lists, custom presets, and synced settings to your own private repository on [GitHub](https://github.com), and nothing else. The app sends Commander Spellbook nothing: its links put a card name or colors in the address, and you paste a list there yourself. Backups made by this version use backup schema 3, which adds deletion markers for sync. This version also imports schema 1 and 2 backups from earlier versions.
+
+### Sync between devices with GitHub
+
+Sync keeps your lists, custom presets, and some settings (nerd mode, **Draw** or **Browse**, and the **Browse** sort order) in one file in a private GitHub repository. Each device that you connect reads the file, merges it with its own data, and saves the result to the file. History stays on each device.
+
+1. On GitHub, [create a repository](https://github.com/new). Make it **Private**.
+2. In the app, open **Data**. Under **Sync with GitHub**, enter the repository as account/name.
+3. Select **Create a token**. GitHub opens with the [fine-grained token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens) settings filled in. Under **Repository access**, choose only your repository, then select **Generate token**.
+4. Paste the token into **Token**, then select **Connect**.
+5. Do the same on each other device.
+
+The app syncs when it opens, when you come back to it after a minute, a few seconds after a change, and when you select **Sync now**. Each list syncs as a whole: when the same list changed on two devices between syncs, the copy that changed last wins, and the other device's changes to that list are lost. A delete reaches every device. The token stays in that browser only: it is never in a backup or in the sync file. **Disconnect** deletes it from the browser. The **Sync with GitHub** help page in the app has the details.
 
 ## Project layout
 
@@ -115,17 +127,18 @@ The app sends Scryfall your card searches. It also sends Scryfall IDs: those of 
 | `src/main.js` | App startup and navigation between views. |
 | `src/config.js` | The app name, API settings, and other constants. |
 | `src/scryfall.js` | The Scryfall API client. All API requests go through its queue, which spaces requests at least 500 ms apart. |
-| `src/query.js`, `src/cards.js`, `src/lists.js`, `src/deck-rules.js`, `src/export.js`, `src/draw.js`, `src/synergy.js`, `src/explore.js`, `src/browse.js`, `src/saved.js`, `src/stats.js`, `src/links.js`, `src/glossary.js`, `src/docs.js`, `src/combos.js` | App logic with no DOM code. The tests cover these modules. |
+| `src/github.js` | The GitHub API client for sync. It is the only code that sends requests to GitHub. |
+| `src/query.js`, `src/cards.js`, `src/lists.js`, `src/deck-rules.js`, `src/export.js`, `src/draw.js`, `src/synergy.js`, `src/explore.js`, `src/browse.js`, `src/saved.js`, `src/stats.js`, `src/links.js`, `src/glossary.js`, `src/docs.js`, `src/combos.js`, `src/sync.js` | App logic with no DOM code. The tests cover these modules. |
 | `src/docs.js` | The help pages shown in the **Help** view, and the text of every tooltip (`TIPS`). |
-| `src/storage/` | Data storage in IndexedDB, with a memory fallback. |
+| `src/storage/` | Data storage in IndexedDB, with a memory fallback, and the sync cycle (`sync.js`). |
 | `src/ui/` | The views, including the Help view (`help-view.js`), and the DOM helpers. |
-| `tests/` | Unit tests and saved Scryfall responses (`tests/fixtures/`). |
+| `tests/` | Unit tests, and saved Scryfall and GitHub responses (`tests/fixtures/`). |
 | `scripts/` | Development tools: fixture download, live API checks, browser tests, icon drawing, the interface copy index (`ui-copy.mjs`), and the help link check (`check-links.mjs`). |
 | `AGENTS.md`, `CLAUDE.md` | Instructions for coding agents. `AGENTS.md` is read by every agent. `CLAUDE.md` imports it and adds notes for Claude Code. |
-| `.claude/rules/` | The detailed rules for agents: GitHub voice, shipping, design, the Scryfall API, storage, and help docs. |
+| `.claude/rules/` | The detailed rules for agents: GitHub voice, shipping, design, the Scryfall API, storage, help docs, and GitHub sync. |
 | `.claude/settings.json` | Shared Claude Code settings: no attribution in commits or pull requests, and a prompt before any force push. |
 | `.agents/skills/` | Shared agent skills for Codex and Claude Code: **ship** and **plan-with-options**. `.claude/skills` links here. |
-| `PLAN.md`, `REPORT.md` | The v1 plan, and the report on what was built, followed by the design overhaul, the feedback round, the combos work, the docs audit, the agent instructions, and the help links and tooltips. |
+| `PLAN.md`, `REPORT.md` | The v1 plan, and the report on what was built, followed by the design overhaul, the feedback round, the combos work, the docs audit, the agent instructions, the help links and tooltips, and GitHub sync. |
 | `docs/ui-copy.md` | The index of all interface copy, for audits. Generated by `scripts/ui-copy.mjs`. |
 
 ## Run the tests
@@ -146,7 +159,7 @@ To check that every link in the help pages still works, run `node scripts/check-
 
 ### Browser tests
 
-`node scripts/check-ui.mjs` runs the app in headless Chrome at phone width (390 px) and desktop width (1280 px), in light and dark mode. It checks controls, focus, layout, and the card image rules, and it fails if the page logs an error. To run one width only, set `ONLY` to the width, for example `ONLY=390 node scripts/check-ui.mjs`. Add `SCHEME=dark` for dark mode. It uses only Node.js built-ins and the Chrome installed on your computer. If Chrome is somewhere else, set `CHROME_PATH` to its executable. The app sends real Scryfall requests during the tests, through its own request queue. Each run starts with an empty browser profile.
+`node scripts/check-ui.mjs` runs the app in headless Chrome at phone width (390 px) and desktop width (1280 px), in light and dark mode. It checks controls, focus, layout, and the card image rules, and it fails if the page logs an error. To run one width only, set `ONLY` to the width, for example `ONLY=390 node scripts/check-ui.mjs`. Add `SCHEME=dark` for dark mode. It uses only Node.js built-ins and the Chrome installed on your computer. If Chrome is somewhere else, set `CHROME_PATH` to its executable. The app sends real Scryfall requests during the tests, through its own request queue. Requests to GitHub never leave the browser: the test script answers them from a fake private repository. Each run starts with an empty browser profile.
 
 ## Turn on GitHub Pages
 
@@ -169,7 +182,7 @@ To keep your lists:
 3. Select **Add to Home Screen**, then select **Add**.
 4. Open the app from the Home Screen icon from now on.
 
-Also export a backup from the **Data** view from time to time. The app reminds you after your lists or presets change, if you've never backed up or your last backup is more than 14 days old.
+Also export a backup from the **Data** view from time to time, or turn on sync with GitHub. The app reminds you after your lists or presets change, if you've never backed up or your last backup is more than 14 days old.
 
 ## Change the app name
 

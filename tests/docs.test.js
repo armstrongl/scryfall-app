@@ -85,7 +85,7 @@ test("inline parts mark UI labels in bold, with no HTML", () => {
 // tests/agent-docs.test.js checks that the docs avoid the first person too.
 const ROOT = new URL("../", import.meta.url);
 const DOC_FILES = [
-  "README.md", "AGENTS.md", "CLAUDE.md", "REPORT.md", "PLAN.md",
+  "README.md", "AGENTS.md", "CLAUDE.md", "REPORT.md", "PLAN.md", "CHANGELOG.md",
   ...readdirSync(new URL(".claude/rules/", ROOT)).filter((f) => f.endsWith(".md")).map((f) => `.claude/rules/${f}`),
   ...readdirSync(new URL(".agents/skills/", ROOT), { withFileTypes: true })
     .filter((d) => d.isDirectory() && existsSync(new URL(`.agents/skills/${d.name}/SKILL.md`, ROOT)))

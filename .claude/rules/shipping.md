@@ -25,9 +25,10 @@ This is the routine for every change, from start to finish. The [ship skill](../
 
 1. Fetch again and rebase on `origin/main`. Run the tests again if anything came in.
 2. Push the branch and open a pull request. [GitHub voice](github-voice.md) says how to write it.
-3. Merge it yourself with a merge commit when the checks pass: `gh pr merge --merge --delete-branch`.
-4. Delete the branch locally and on GitHub, and remove your worktree when you're done with it. If the main checkout has no uncommitted changes, update it with `git -C ~/Projects/scryfall-app pull --ff-only`. If it has changes, leave it alone.
-5. Put any work you deferred into a GitHub issue, with its plan, and link it from the pull request.
+3. Add the entry to `CHANGELOG.md`, linked to the new pull request, then commit and push it. Use the date it merges, in local time. If that date already has a heading, for example from another agent's change, add to it. Write for someone using the app, and put changes to tests, scripts, and agent instructions under **Project**. Before you merge, check the link is there: `grep -q "pull/$(gh pr view --json number -q .number))" CHANGELOG.md`.
+4. Merge it yourself with a merge commit when the checks pass: `gh pr merge --merge --delete-branch`.
+5. Delete the branch locally and on GitHub, and remove your worktree when you're done with it. If the main checkout has no uncommitted changes, update it with `git -C ~/Projects/scryfall-app pull --ff-only`. If it has changes, leave it alone.
+6. Put any work you deferred into a GitHub issue, with its plan, and link it from the pull request.
 
 ## Finish
 

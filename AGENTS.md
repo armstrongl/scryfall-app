@@ -141,6 +141,7 @@ After every change, ALWAYS check whether each of these needs an update, and upda
 | What | Where |
 | --- | --- |
 | Agent instructions | `AGENTS.md`, the rules in `.claude/rules/`, the skills in `.agents/skills/`, and `CLAUDE.md` (Claude-only notes) |
+| Changelog | `CHANGELOG.md`: an entry for every pull request, in the section it fits, linked to the pull request. `tests/changelog.test.js` fails when an entry has no link, and after the merge when a pull request has no entry. |
 | README and other repository docs | `README.md` and `REPORT.md`. `PLAN.md` is the v1 plan: don't change what it specifies. Record differences from it in `REPORT.md`. |
 | Interface copy | Every text the user sees or hears: labels, buttons, hints, messages, `title` and `aria-label` text, and `announce()` messages. `docs/ui-copy.md` indexes all of it and says where each kind lives. Rebuild it with `node scripts/ui-copy.mjs`, and read its diff to review the copy the change touches. |
 | Tooltips | `TIPS` in `src/docs.js`, including the nerd mode tooltip (`NERD_MODE_TIP`). Add one where a control or field isn't obvious. |

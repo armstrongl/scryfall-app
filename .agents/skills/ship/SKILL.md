@@ -23,7 +23,8 @@ This is the checklist form of [shipping](../../../.claude/rules/shipping.md). Re
 9. **Rebase.** `git fetch origin && git rebase origin/main`. Run the tests again if anything came in.
 10. **Commit.** Use an imperative, sentence-case subject with no prefix, and a body that says what and why. No first person, no session links, no attribution.
 11. **Pull request.** `gh pr create`. Write the description in ASD-STE100 Simplified Technical English: what changed, why, decisions, tests first and after, and open items as issue links.
-12. **Merge.** `gh pr merge --merge --delete-branch`. Delete the local branch. If the main checkout has no uncommitted changes, run `git -C ~/Projects/scryfall-app pull --ff-only`.
-13. **Defer.** Put deferred work in a GitHub issue with its plan, and link it from the pull request.
-14. **Open the app.** In your worktree, run `git fetch origin && git switch --detach origin/main`, then `python3 -m http.server 8000` (or the next free port), then `open http://localhost:8000/`. Say what changed and where to look. Remove the worktree when you're done.
-15. **Report.** Use plain words. Fix open items yourself. Name anything that truly needs a person, and why.
+12. **Changelog.** Add the entry to `CHANGELOG.md`, linked to the new pull request, then commit and push it. Use the date it merges, in local time. If that date already has a heading, for example from another agent's change, add to it. Write for someone using the app, and put changes to tests, scripts, and agent instructions under **Project**. Before you merge, check the link is there: `grep -q "pull/$(gh pr view --json number -q .number))" CHANGELOG.md`.
+13. **Merge.** `gh pr merge --merge --delete-branch`. Delete the local branch. If the main checkout has no uncommitted changes, run `git -C ~/Projects/scryfall-app pull --ff-only`.
+14. **Defer.** Put deferred work in a GitHub issue with its plan, and link it from the pull request.
+15. **Open the app.** In your worktree, run `git fetch origin && git switch --detach origin/main`, then `python3 -m http.server 8000` (or the next free port), then `open http://localhost:8000/`. Say what changed and where to look. Remove the worktree when you're done.
+16. **Report.** Use plain words. Fix open items yourself. Name anything that truly needs a person, and why.

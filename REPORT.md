@@ -398,14 +398,14 @@ The request: persistent storage that works across devices. The plan was agreed o
 
 # Changelog and pull request checks (12 November 2026)
 
-`CHANGELOG.md` lists the notable changes by date. `.github/workflows/check.yml` runs two checks on every pull request, and a ruleset on `main` makes both required:
+`CHANGELOG.md` lists the notable changes by date. `.github/workflows/check.yml` runs two checks on every pull request:
 
 - `test` runs `npm test` on Node.js 20.
 - `changelog` runs `scripts/check-changelog.mjs`. It fails unless the pull request changes `CHANGELOG.md` and links to itself there. The `no-changelog` label skips it.
 
 ## Decisions
 
-- The ruleset is a repository setting. `AGENTS.md` keeps agents out of repository settings, but this one was requested, so it is the one recorded exception.
+- GitHub does not yet stop a merge when a check fails. A ruleset on `main` can do that, but it is a repository setting, which is changed by hand. [Issue #35](https://github.com/armstrongl/scryfall-app/issues/35) has the steps. Until then, agents merge only when both checks pass.
 - The changelog check fails when a pull request opens, because the entry needs the pull request number. Agents push the entry after they open the pull request.
 - The `no-changelog` label replaced a unit test that needed an entry for every pull request in the git history. That test would fail on every later pull request after one labeled merge. The `changelog` check now does the job before each merge.
 - The check compares the merge commit that GitHub checks out with its first parent, `main`. The base commit in the event data can be older than `main`, and then the diff would include other merged changes.

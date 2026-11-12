@@ -21,7 +21,7 @@ Sections:
 
 ### Project
 
-- GitHub checks on every pull request: `npm test`, and a changelog entry linked to the pull request. A `no-changelog` label skips the changelog check. A ruleset on `main` makes both checks required. ([#34](https://github.com/armstrongl/scryfall-app/pull/34))
+- GitHub checks on every pull request: `npm test`, and a changelog entry linked to the pull request. A `no-changelog` label skips the changelog check. ([#34](https://github.com/armstrongl/scryfall-app/pull/34))
 - This changelog, with tests that fail when an entry has no link or a merged pull request has no entry. ([#33](https://github.com/armstrongl/scryfall-app/pull/33))
 
 ## 7 November 2026

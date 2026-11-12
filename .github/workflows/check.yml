@@ -1,5 +1,5 @@
-# Checks every pull request and every push to main. A ruleset on main makes
-# the test and changelog jobs required before a merge.
+# Checks every pull request and every push to main. Agents merge only when
+# the test and changelog jobs pass.
 name: Check
 
 on:

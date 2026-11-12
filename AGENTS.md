@@ -69,7 +69,7 @@ Breaking these rules can get the user's IP address blocked by Scryfall or break 
 
 - No build step, no framework, and no runtime dependencies. `package.json` holds no dependencies: only `name`, `private`, `"type": "module"`, and the `test` script.
 - Use relative URLs for every local file. The app is served from a subpath on [GitHub Pages](https://docs.github.com/en/pages).
-- Don't change repository settings or GitHub Pages settings. Those are changed by hand. The one exception is the ruleset on `main` that requires the `test` and `changelog` checks. An agent created it with `gh api` on request on 12 November 2026. Don't take it as leave to change other settings.
+- Don't change repository settings or GitHub Pages settings. Those are changed by hand. [Issue #35](https://github.com/armstrongl/scryfall-app/issues/35) has the steps to make the `test` and `changelog` checks required.
 - `.github/workflows/check.yml` runs `npm test` and `scripts/check-changelog.mjs` on every pull request. Both must pass before a merge.
 
 ### Scryfall API

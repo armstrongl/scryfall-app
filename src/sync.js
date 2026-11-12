@@ -2,7 +2,7 @@
 // Pure module. The GitHub client is src/github.js, and the sync cycle is
 // src/storage/sync.js.
 
-import { APP_NAME, DELETION_KEEP_DAYS, SYNCED_SETTINGS } from "./config.js";
+import { APP_ID, APP_NAME, DELETION_KEEP_DAYS, GITHUB_BACKUP_DIR, SYNCED_SETTINGS } from "./config.js";
 import { cleanSettings, makeBackup, mergeData, validateBackup } from "./export.js";
 
 /**
@@ -83,6 +83,47 @@ export function mergeForSync(local, remote, now) {
   };
 }
 
+/**
+ * Where a backup exported to GitHub goes: the backups folder, with the date
+ * and time in the name, so that each export is a new file.
+ * @param {string} isoDate
+ */
+export function githubBackupPath(isoDate) {
+  const time = isoDate.slice(11, 19).replace(/:/g, "");
+  return `${GITHUB_BACKUP_DIR}/${APP_ID}-backup-${isoDate.slice(0, 10)}-${time}.json`;
+}
+
+const BACKUP_NAME = new RegExp(`^${APP_ID}-backup-(\\d{4}-\\d{2}-\\d{2})-(\\d{2})(\\d{2})(\\d{2})\\.json$`);
+
+/**
+ * The time in the name of a backup from Export to GitHub, as an ISO date,
+ * or null for any other name.
+ * @param {string} name
+ */
+export function backupTime(name) {
+  const m = BACKUP_NAME.exec(name);
+  if (!m) return null;
+  const t = new Date(`${m[1]}T${m[2]}:${m[3]}:${m[4]}.000Z`);
+  return Number.isNaN(t.getTime()) ? null : t.toISOString();
+}
+
+/**
+ * The JSON files in a folder listing from GitHub. Backups from Export to
+ * GitHub come first, newest first, then any other JSON files by name.
+ * @param {Array<{name: string, path: string, type: string}>} listing
+ * @returns {Array<{name: string, path: string, time: string|null}>}
+ */
+export function backupFiles(listing) {
+  return listing
+    .filter((f) => f.type === "file" && /\.json$/i.test(f.name))
+    .map((f) => ({ name: f.name, path: f.path, time: backupTime(f.name) }))
+    .sort((a, b) => {
+      if (a.time && b.time) return a.time < b.time ? 1 : a.time > b.time ? -1 : 0;
+      if (a.time || b.time) return a.time ? -1 : 1;
+      return a.name < b.name ? -1 : a.name > b.name ? 1 : 0;
+    });
+}
+
 const NAME = /^[A-Za-z0-9_.-]+$/;
 
 /**
@@ -126,6 +167,8 @@ const ERRORS = {
   "rate-limited": "GitHub asked the app to slow down. The app syncs again later.",
   network: "The app can't reach GitHub. Check your connection. Your changes are kept on this device and sync later.",
   server: "GitHub had a problem. The app syncs again later.",
+  "backup-exists": "A backup with the same time is already on GitHub. Wait a second, then select Export to GitHub again.",
+  "backup-missing": "That backup isn't on GitHub anymore. Select Choose a backup on GitHub again.",
   "bad-file": "The sync file on GitHub isn't a file from this app, so the app didn't change it. Check the file in the repository.",
 };
 

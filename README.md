@@ -105,7 +105,7 @@ Your lists, presets, history, and settings are stored in your browser, on your d
 
 If you clear your browser's site data for the app, your data is deleted from that browser. To keep a copy, open **Data** and select **Export backup**. To restore it, select a backup file under **Import backup**. You can also use a backup to move your data to another device.
 
-The app sends Scryfall your card searches. It also sends Scryfall IDs: those of a list's cards when you refresh the list, and a card's ID when you select **Show rulings**. It doesn't send list names, notes, or anything else about you. If you turn on sync, the app sends your lists, custom presets, and synced settings to your own private repository on [GitHub](https://github.com), and nothing else. The app sends Commander Spellbook nothing: its links put a card name or colors in the address, and you paste a list there yourself. Backups made by this version use backup schema 3, which adds deletion markers for sync. This version also imports schema 1 and 2 backups from earlier versions.
+The app sends Scryfall your card searches. It also sends Scryfall IDs: those of a list's cards when you refresh the list, and a card's ID when you select **Show rulings**. It doesn't send list names, notes, or anything else about you. If you turn on sync, it sends your lists, custom presets, and synced settings to your own private repository on [GitHub](https://github.com). When you select **Export to GitHub**, the app also sends a full backup there, with your history and every setting. The app sends GitHub nothing else. The app sends Commander Spellbook nothing: its links put a card name or colors in the address, and you paste a list there yourself. Backups made by this version use backup schema 3, which adds deletion markers for sync. This version also imports schema 1 and 2 backups from earlier versions.
 
 ### Sync between devices with GitHub
 
@@ -118,6 +118,8 @@ Sync keeps your lists, custom presets, and some settings (nerd mode, **Draw** or
 5. Do the same on each other device.
 
 The app syncs when it opens, when you come back to it after a minute, a few seconds after a change, and when you select **Sync now**. Each list syncs as a whole: when the same list changed on two devices between syncs, the copy that changed last wins, and the other device's changes to that list are lost. A delete reaches every device. The token stays in that browser only: it is never in a backup or in the sync file. **Disconnect** deletes it from the browser. The **Sync with GitHub** help page in the app has the details.
+
+While sync is on, **Export to GitHub** under **Backup** saves a full backup (with history and every setting, never the token) as a new file in the repository's `backups` folder. To restore one, select **Choose a backup on GitHub** under **Import backup**. Sync doesn't read or change that folder.
 
 ## Project layout
 

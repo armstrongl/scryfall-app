@@ -67,3 +67,5 @@ gh_get github-repo.json "/repos/octocat/Hello-World"
 gh_get github-contents.json "/repos/octocat/Hello-World/contents/README"
 gh_get github-contents-404.json "/repos/octocat/Hello-World/contents/no-such-file.json"
 gh_get github-401.json "/repos/octocat/Hello-World" "not-a-real-token"
+# Added for backups on GitHub: a folder listing.
+gh_get github-dir.json "/repos/octocat/Spoon-Knife/contents/"

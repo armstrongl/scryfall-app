@@ -9,7 +9,7 @@
 
 import {
   APP_NAME, BACKUP_REMINDER_DAYS, DELETION_KEEP_DAYS, HISTORY_LIMIT, MAX_DRAW, MIN_DRAW, SCRYFALL_SITE, SMALL_POOL_SIZE,
-  SPELLBOOK_SITE, SYNC_FILE_NAME,
+  GITHUB_BACKUP_DIR, SPELLBOOK_SITE, SYNC_FILE_NAME,
 } from "./config.js";
 import { FIND_MY_COMBOS_URL } from "./combos.js";
 import { scryfallListUrls } from "./links.js";
@@ -417,7 +417,7 @@ export const DOC_PAGES = [
         blocks: [
           { p: `Your lists, presets, draw history, and settings are stored in this browser, on this device, in its ${link("IndexedDB", INDEXEDDB)} storage. They don't sync between devices or browsers unless you ${help("sync with GitHub", "sync")}. If you clear the browser's site data for the app, they're deleted from this browser.` },
           { p: `A browser can also clear the data to free up space, unless the app's storage is persistent. **Data** shows which kind it has. For details, see ${link("how browsers limit storage", STORAGE_LIMITS)}.` },
-          { p: `The app sends ${link("Scryfall", SCRYFALL_SITE)} your card searches, and the Scryfall IDs of cards when you refresh a list or show rulings. It doesn't send list names, notes, or anything else about you. If you connect GitHub, the app sends your lists, custom presets, and synced settings to your own private repository on ${link("GitHub", GITHUB)}, and nothing else. The app sends ${link("Commander Spellbook", SPELLBOOK_SITE)} nothing: its links put a card name or colors in the address, and you paste a list there yourself.` },
+          { p: `The app sends ${link("Scryfall", SCRYFALL_SITE)} your card searches, and the Scryfall IDs of cards when you refresh a list or show rulings. It doesn't send list names, notes, or anything else about you. If you connect GitHub, sync sends your lists, custom presets, and synced settings to your own private repository on ${link("GitHub", GITHUB)}. When you select **Export to GitHub**, the app also sends a full backup there, with your history and every setting. The app sends GitHub nothing else. The app sends ${link("Commander Spellbook", SPELLBOOK_SITE)} nothing: its links put a card name or colors in the address, and you paste a list there yourself.` },
         ],
       },
       {
@@ -431,6 +431,7 @@ export const DOC_PAGES = [
             ],
           },
           { p: `The app reminds you to back up after your lists or presets change, if you've never backed up or your last backup is more than ${BACKUP_REMINDER_DAYS} days old.` },
+          { p: "When sync with GitHub is on, you can also keep backups in the sync repository. See **Backups on GitHub** on the **Sync with GitHub** page." },
         ],
       },
       {
@@ -495,6 +496,21 @@ export const DOC_PAGES = [
         heading: "The sync file",
         blocks: [
           { p: `The file is ${SYNC_FILE_NAME}, at the top of the repository. It has the same format as a backup, without the history, so you can also import it under **Import backup**. GitHub keeps every earlier copy of the file in the repository's history.` },
+        ],
+      },
+      {
+        heading: "Backups on GitHub",
+        blocks: [
+          { p: `While the app is connected, **Data** can also save full backups in the repository. A backup on GitHub is the same as a file from **Export backup**: it has all of your lists, custom presets, history, and settings, and never the token.` },
+          {
+            steps: [
+              "Open **Data**.",
+              `Under **Backup**, select **Export to GitHub**. The app adds a new file to the ${GITHUB_BACKUP_DIR} folder of the repository, with the date and time in its name. Earlier backups stay.`,
+              "To restore one, under **Import backup**, select **Choose a backup on GitHub**. Choose a backup from the list, newest first, then select **Open backup**.",
+              "Choose **Merge** or **Replace**, select **Import**, then confirm.",
+            ],
+          },
+          { p: `Sync doesn't read or change the ${GITHUB_BACKUP_DIR} folder. Each export is a new commit in the repository. To delete old backups, delete their files on GitHub.` },
         ],
       },
     ],

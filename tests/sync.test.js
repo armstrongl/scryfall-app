@@ -6,7 +6,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  APP_ID, BACKUP_SCHEMA_VERSION, DELETION_KEEP_DAYS, READABLE_BACKUP_VERSIONS, SYNC_FILE_NAME,
+  APP_ID, APP_NAME, BACKUP_SCHEMA_VERSION, DELETION_KEEP_DAYS, GITHUB_BACKUP_DIR, READABLE_BACKUP_VERSIONS, SYNC_FILE_NAME,
 } from "../src/config.js";
 import { cleanSettings, defaultSettings, makeBackup, mergeData, replaceData, validateBackup } from "../src/export.js";
 import { createList, renameList } from "../src/lists.js";
@@ -15,7 +15,7 @@ import { createMemoryBackend, STORES } from "../src/storage/memory.js";
 import { createSyncer } from "../src/storage/sync.js";
 import { createGitHub, GitHubError } from "../src/github.js";
 import {
-  mergeForSync, parseRepo, parseSyncFile, syncErrorText, syncFileFrom, syncFileText, tokenUrl,
+  backupFiles, backupTime, githubBackupPath, mergeForSync, parseRepo, parseSyncFile, syncErrorText, syncFileFrom, syncFileText, tokenUrl,
 } from "../src/sync.js";
 import { fakeClock, fixture } from "./helpers.js";
 
@@ -59,6 +59,9 @@ function fakeGitHub({ isPrivate = true, token = "good-token", readOnly = false }
       if (u.pathname === "/repos/me/cards") {
         return json(200, { ...fixture("github-repo"), name: "cards", full_name: "me/cards", private: isPrivate });
       }
+      const prefix = "/repos/me/cards/contents/";
+      const path = decodeURIComponent(u.pathname.slice(prefix.length));
+      if (u.pathname.startsWith(prefix) && path !== SYNC_FILE_NAME) return gh.other(method, path, init, readOnly);
       if (u.pathname !== `/repos/me/cards/contents/${SYNC_FILE_NAME}`) return json(404, fixture("github-contents-404"));
       if (method === "GET") {
         if (!gh.file) return json(404, fixture("github-contents-404"));
@@ -83,6 +86,27 @@ function fakeGitHub({ isPrivate = true, token = "good-token", readOnly = false }
         if ((gh.file?.sha ?? undefined) !== body.sha) return json(409, { message: "is at a different sha" });
         gh.put(unb64(body.content));
         return json(gh.file ? 200 : 201, { content: { ...fixture("github-contents"), sha: gh.file.sha }, commit: {} });
+      }
+      return json(404, fixture("github-contents-404"));
+    },
+    /** Files other than the sync file, by path. */
+    files: new Map(),
+    /** Answers for files other than the sync file, and for folders. */
+    async other(method, path, init, ro) {
+      const sample = fixture("github-dir")[0];
+      if (method === "GET") {
+        const f = gh.files.get(path);
+        if (f) return json(200, { ...fixture("github-contents"), name: path.split("/").pop(), path, sha: f.sha, encoding: "base64", content: b64(f.text) });
+        const inDir = [...gh.files.keys()].filter((k) => k.startsWith(`${path}/`) && !k.slice(path.length + 1).includes("/"));
+        if (!inDir.length) return json(404, fixture("github-contents-404"));
+        return json(200, inDir.map((k) => ({ ...sample, name: k.split("/").pop(), path: k, sha: gh.files.get(k).sha, type: "file" })));
+      }
+      if (method === "PUT") {
+        if (ro) return json(403, { message: "Resource not accessible by personal access token" });
+        const body = JSON.parse(init.body);
+        if ((gh.files.get(path)?.sha ?? undefined) !== body.sha) return json(422, { message: 'Invalid request.\n\n"sha" wasn\'t supplied.' });
+        gh.files.set(path, { text: unb64(body.content), sha: `sha-${++gh.shaCount}` });
+        return json(201, { content: { ...fixture("github-contents"), path, sha: gh.files.get(path).sha }, commit: {} });
       }
       return json(404, fixture("github-contents-404"));
     },
@@ -597,4 +621,122 @@ test("GitHub's other 403 and 422 answers get the right codes", async () => {
   assert.equal(await code(reply(403, { message: "You have exceeded a secondary rate limit" }, { "retry-after": "60" }).readFile("a", "b", "c")), "rate-limited");
   assert.equal(await code(reply(422, { message: "Invalid request.\n\n\"sha\" wasn't supplied." }).writeFile("a", "b", "c", "x", null, "m")), "conflict");
   assert.equal(await code(reply(422, { message: "Invalid request." }).writeFile("a", "b", "c", "x", null, "m")), "server");
+});
+
+// Backups on GitHub ----------------------------------------------------------------
+
+test("a backup on GitHub goes in the backups folder, named for the date and time", () => {
+  assert.equal(GITHUB_BACKUP_DIR, "backups");
+  assert.equal(githubBackupPath("2026-11-12T14:03:22.456Z"), `backups/${APP_ID}-backup-2026-11-12-140322.json`);
+});
+
+test("backupFiles keeps JSON files, newest first, from a real folder listing", () => {
+  const listing = [
+    ...fixture("github-dir"),
+    { ...fixture("github-dir")[0], name: `${APP_ID}-backup-2026-11-01-090000.json`, path: `backups/${APP_ID}-backup-2026-11-01-090000.json` },
+    { ...fixture("github-dir")[0], name: `${APP_ID}-backup-2026-11-12-140322.json`, path: `backups/${APP_ID}-backup-2026-11-12-140322.json` },
+    { ...fixture("github-dir")[0], name: "old.json", path: "backups/old.json", type: "dir" },
+  ];
+  assert.deepEqual(backupFiles(listing).map((f) => f.name), [
+    `${APP_ID}-backup-2026-11-12-140322.json`,
+    `${APP_ID}-backup-2026-11-01-090000.json`,
+  ]);
+  assert.equal(backupFiles(listing)[0].path, `backups/${APP_ID}-backup-2026-11-12-140322.json`);
+});
+
+test("listDir reads a real folder listing, and a missing folder is empty", async () => {
+  const gh = createGitHub({
+    token: "tok",
+    fetchImpl: async (url) => (url.endsWith("/contents/backups")
+      ? json(404, fixture("github-contents-404"))
+      : json(200, fixture("github-dir"))),
+  });
+  assert.deepEqual((await gh.listDir("octocat", "Spoon-Knife", "")).map((f) => f.name), ["README.md", "index.html", "styles.css"]);
+  assert.deepEqual(await gh.listDir("me", "cards", "backups"), []);
+});
+
+test("export to GitHub writes a full backup with history and every setting, and never the token", async () => {
+  const gh = fakeGitHub();
+  const clock = fakeClock();
+  const d = await connected(gh, clock);
+  await d.storage.saveList(createList("Mine", "collection", clock));
+  const before = gh.puts();
+  const r = await d.syncer.exportBackup();
+  assert.equal(r.ok, true, JSON.stringify(r));
+  assert.equal(gh.puts(), before + 1);
+  assert.match(r.path, new RegExp(`^backups/${APP_ID}-backup-\\d{4}-\\d{2}-\\d{2}-\\d{6}\\.json$`));
+  const text = gh.files.get(r.path).text;
+  assert.ok(!text.includes("good-token"));
+  const v = validateBackup(JSON.parse(text));
+  assert.equal(v.ok, true);
+  assert.deepEqual(v.backup.lists.map((l) => l.name), ["Mine"]);
+  const full = await d.storage.exportAll();
+  assert.deepEqual(Object.keys(JSON.parse(text)).sort(), Object.keys(full).sort());
+  assert.deepEqual(v.backup.settings, full.settings);
+  assert.equal(r.exportedAt, JSON.parse(text).exportedAt);
+  const put = gh.requests.findLast((x) => x.method === "PUT");
+  assert.equal(put.body.sha, undefined);
+  assert.equal(put.body.message, `Back up ${APP_NAME} data`);
+});
+
+test("list and read backups on GitHub, newest first", async () => {
+  const gh = fakeGitHub();
+  const clock = fakeClock();
+  const d = await connected(gh, clock);
+  assert.deepEqual(await d.syncer.listBackups(), { ok: true, files: [] });
+  const first = await d.syncer.exportBackup();
+  await d.storage.saveList(createList("Later", "collection", clock));
+  const second = await d.syncer.exportBackup();
+  assert.notEqual(first.path, second.path);
+  const list = await d.syncer.listBackups();
+  assert.equal(list.ok, true);
+  assert.deepEqual(list.files.map((f) => f.path), [second.path, first.path]);
+  const read = await d.syncer.readBackup(second.path);
+  assert.equal(read.ok, true);
+  assert.deepEqual(validateBackup(JSON.parse(read.text)).backup.lists.map((l) => l.name), ["Later"]);
+});
+
+test("backups on GitHub need a connection, and errors have codes", async () => {
+  const gh = fakeGitHub({ readOnly: true });
+  const clock = fakeClock();
+  const lone = device(gh, clock);
+  assert.deepEqual(await lone.syncer.exportBackup(), { ok: false, error: "not-found" });
+  assert.deepEqual(await lone.syncer.listBackups(), { ok: false, error: "not-found" });
+  await lone.storage.saveSyncState({ owner: "me", repo: "cards", token: "good-token", sha: null, lastSyncAt: null, lastError: null });
+  assert.deepEqual(await lone.syncer.exportBackup(), { ok: false, error: "forbidden" });
+  assert.deepEqual(await lone.syncer.readBackup("backups/missing.json"), { ok: false, error: "backup-missing" });
+});
+
+test("backupTime reads the time from a backup name, and backupFiles sorts by it", () => {
+  assert.equal(backupTime(`${APP_ID}-backup-2026-11-12-140322.json`), "2026-11-12T14:03:22.000Z");
+  assert.equal(backupTime("my-backup.json"), null);
+  const f = (name) => ({ ...fixture("github-dir")[0], name, path: `backups/${name}` });
+  assert.deepEqual(backupFiles([f("zzz.json"), f(`${APP_ID}-backup-2026-11-01-090000.json`), f(`${APP_ID}-backup-2026-11-12-140322.json`), f("aaa.json")])
+    .map((x) => x.name), [`${APP_ID}-backup-2026-11-12-140322.json`, `${APP_ID}-backup-2026-11-01-090000.json`, "aaa.json", "zzz.json"]);
+  assert.equal(backupFiles([f(`${APP_ID}-backup-2026-11-01-090000.json`)])[0].time, "2026-11-01T09:00:00.000Z");
+});
+
+test("export to GitHub refuses a repository that became public", async () => {
+  const gh = fakeGitHub();
+  const clock = fakeClock();
+  const d = await connected(gh, clock);
+  const before = gh.puts();
+  const pub = fakeGitHub({ isPrivate: false });
+  pub.file = gh.file;
+  const d2 = device(pub, clock);
+  await d2.storage.saveSyncState(await d.storage.getSyncState());
+  assert.deepEqual(await d2.syncer.exportBackup(), { ok: false, error: "public-repo" });
+  assert.equal(pub.puts(), 0);
+  assert.equal(gh.puts(), before);
+});
+
+test("backup errors on GitHub have their own text", async () => {
+  const gh = fakeGitHub();
+  const clock = fakeClock();
+  const d = await connected(gh, clock);
+  gh.failNext = { method: "PUT", status: 422, body: { message: 'Invalid request.\n\n"sha" wasn\'t supplied.' } };
+  assert.deepEqual(await d.syncer.exportBackup(), { ok: false, error: "backup-exists" });
+  assert.deepEqual(await d.syncer.readBackup("backups/gone.json"), { ok: false, error: "backup-missing" });
+  assert.match(syncErrorText("backup-exists"), /Export to GitHub again/);
+  assert.match(syncErrorText("backup-missing"), /Choose a backup on GitHub again/);
 });

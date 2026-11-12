@@ -415,3 +415,29 @@ The request: persistent storage that works across devices. The plan was agreed o
 
 - [Issue #10](https://github.com/armstrongl/scryfall-app/issues/10) still has the checks for pull request titles, descriptions, and commit messages.
 - `node scripts/check-ui.mjs` doesn't run on GitHub. It needs Chrome and live Scryfall requests.
+
+# Backups on GitHub (12 November 2026)
+
+While sync is connected, **Data** can export a full backup to the sync repository and import one from it. Requested on 12 November 2026.
+
+- **Export to GitHub**, under **Backup**, writes the same file as **Export backup** to a new file in `backups/`, named for the date and time in UTC, for example `card-discovery-backup-2026-11-12-140322.json`. It dates the last backup, as a download does.
+- **Choose a backup on GitHub**, under **Import backup**, lists the JSON files in `backups/`. Dated backups come first, newest first, shown as a local date and time. A chosen file goes through the same checks and **Merge** or **Replace** choices as a file from the device.
+- The GitHub client can now list a folder (`listDir()` in `src/github.js`). It still uses only the contents API and Get a repository.
+
+## Decisions
+
+- A full backup, not the sync file. The sync file leaves out history and most settings, and it already lives at the top of the repository.
+- A new file for each export, never a replaced one, so that earlier backups stay. GitHub keeps the commits too. Old files are deleted on GitHub by hand.
+- Exports happen only when someone selects **Export to GitHub**, never on a timer, because each one is a commit.
+- Sync never reads or changes `backups/`.
+- Before each export, the app checks again that the repository is private, because a full backup holds history.
+
+## Tests
+
+- Written first and seen failing: the unit tests in `tests/sync.test.js` for the backup path, the folder listing (with a real listing fixture, `tests/fixtures/github-dir.json`), export, list, read, the missing-connection and error codes, the private-repository check, and the backup error text.
+- The browser checks in `scripts/check-ui.mjs` were added before they were first run, but after the first version of the UI. They were proved able to fail by running them against the Data view from `main`: they failed. The checks added after the review (date labels, focus after a read error, no list after Disconnect) were seen failing before the fix.
+
+## Known problems
+
+- Two exports in the same second get the same name. The second one stops with a message to try again.
+- No test has run against a real repository with a real token. A successful folder listing is a real response. Writes are built in the shape that the contents API docs give.

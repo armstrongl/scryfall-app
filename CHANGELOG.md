@@ -11,6 +11,8 @@ Sections:
 
 ### Added
 
+- **Export to GitHub** and **Choose a backup on GitHub**, in **Data**, while sync is connected. A full backup, with history and every setting, goes to a new dated file in the `backups` folder of the sync repository, and any backup there can be imported with **Merge** or **Replace**. ([#36](https://github.com/armstrongl/scryfall-app/pull/36))
+
 - **Sync with GitHub**, in **Data**. Lists, custom presets, and three settings (nerd mode, Draw or Browse, and the Browse sort) sync between devices through one file in a private GitHub repository. Connect with the repository name and a fine-grained token. The app syncs when it opens, when it comes back into view after a minute, a few seconds after a change, and from **Sync now**. **Disconnect** deletes the token from the browser. History and the last search stay on each device. A new **Sync with GitHub** help page explains the setup. ([#32](https://github.com/armstrongl/scryfall-app/pull/32))
 
 ### Changed

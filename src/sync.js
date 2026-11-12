@@ -2,7 +2,7 @@
 // Pure module. The GitHub client is src/github.js, and the sync cycle is
 // src/storage/sync.js.
 
-import { APP_NAME, DELETION_KEEP_DAYS, SYNCED_SETTINGS } from "./config.js";
+import { APP_ID, APP_NAME, DELETION_KEEP_DAYS, GITHUB_BACKUP_DIR, SYNCED_SETTINGS } from "./config.js";
 import { cleanSettings, makeBackup, mergeData, validateBackup } from "./export.js";
 
 /**
@@ -81,6 +81,29 @@ export function mergeForSync(local, remote, now) {
     history: local.history,
     settings,
   };
+}
+
+/**
+ * Where a backup exported to GitHub goes: the backups folder, with the date
+ * and time in the name, so that each export is a new file.
+ * @param {string} isoDate
+ */
+export function githubBackupPath(isoDate) {
+  const time = isoDate.slice(11, 19).replace(/:/g, "");
+  return `${GITHUB_BACKUP_DIR}/${APP_ID}-backup-${isoDate.slice(0, 10)}-${time}.json`;
+}
+
+/**
+ * The JSON files in a folder listing from GitHub, newest first. Names with
+ * the date and time sort by time.
+ * @param {Array<{name: string, path: string, type: string}>} listing
+ * @returns {Array<{name: string, path: string}>}
+ */
+export function backupFiles(listing) {
+  return listing
+    .filter((f) => f.type === "file" && /\.json$/i.test(f.name))
+    .map((f) => ({ name: f.name, path: f.path }))
+    .sort((a, b) => (a.name < b.name ? 1 : a.name > b.name ? -1 : 0));
 }
 
 const NAME = /^[A-Za-z0-9_.-]+$/;

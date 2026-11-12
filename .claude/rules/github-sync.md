@@ -12,7 +12,7 @@ Sync keeps lists, custom presets, and some settings in one file in a private Git
 ## Requests
 
 - Only `src/github.js` sends requests to `api.github.com`. It sends `Authorization: Bearer <token>`, `Accept: application/vnd.github+json`, and `X-GitHub-Api-Version`. Never set `User-Agent` in browser code.
-- Use only the [repository contents API](https://docs.github.com/en/rest/repos/contents) and [Get a repository](https://docs.github.com/en/rest/repos/repos#get-a-repository). GitHub's sign-in pages refuse requests from other sites, so there is no "Sign in with GitHub". Don't add a proxy or a server.
+- Use only the [repository contents API](https://docs.github.com/en/rest/repos/contents) (read a file, list a folder, and create or replace a file) and [Get a repository](https://docs.github.com/en/rest/repos/repos#get-a-repository). GitHub's sign-in pages refuse requests from other sites, so there is no "Sign in with GitHub". Don't add a proxy or a server.
 - Every write sends the sha of the file it read. When GitHub refuses the write (409 or 422), read again, merge again, and write again, up to `SYNC_MAX_TRIES` times.
 - Don't sync more often than the triggers in `src/main.js`: on open, when the app comes back into view after `SYNC_ON_SHOW_MS`, `SYNC_DEBOUNCE_MS` after a change, and from **Sync now**. Each write is a commit in the repository.
 - A sync never sends a request to Scryfall. Saved cards stay snapshots.
@@ -28,6 +28,13 @@ Sync keeps lists, custom presets, and some settings in one file in a private Git
 - The file is `SYNC_FILE_NAME` in `src/config.js`. Don't change the name: devices that are already connected look for it.
 - It is a backup in the current schema, with no history and only the settings in `SYNCED_SETTINGS`. Items are sorted by ID, so that the same data gives the same file and an unchanged sync writes nothing.
 - A file that isn't a valid backup stops the sync with no changes on either side.
+
+## Backups on GitHub
+
+- While connected, **Export to GitHub** writes a full backup, the same as **Export backup**, to a new file in `GITHUB_BACKUP_DIR` (`backups/`). The name comes from `githubBackupPath()` in `src/sync.js` and has the date and time, so each export adds a file and never replaces one. It dates the last backup, as a download does.
+- **Choose a backup on GitHub** lists that folder (`backupFiles()`, newest first), reads the chosen file, and passes it to the same checks and import choices as a file from the device.
+- Sync never reads or changes the backups folder, and backups are never written on a timer: only when someone selects **Export to GitHub**. Requested on 12 November 2026.
+- The token never goes in a backup on GitHub. `tests/sync.test.js` and the browser checks test this.
 
 ## Merging
 

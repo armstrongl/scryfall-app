@@ -64,6 +64,8 @@ export const GITHUB_ACCEPT = "application/vnd.github+json";
 export const GITHUB_API_VERSION = "2022-11-28";
 /** The file that sync keeps in the connected repository. Do not change after release. */
 export const SYNC_FILE_NAME = `${APP_ID}-sync.json`;
+/** The folder in the sync repository for full backups exported to GitHub. */
+export const GITHUB_BACKUP_DIR = "backups";
 /** Wait this long after the last change before syncing. */
 export const SYNC_DEBOUNCE_MS = 5000;
 /** When the app comes back into view, sync if the last sync is older than this. */

@@ -117,6 +117,12 @@ async function createApp() {
         app.emit("sync");
       }
     },
+    /** Writes a full backup to the backups folder of the sync repository. */
+    exportBackupToGitHub: () => syncer.exportBackup(),
+    /** The backup files in the sync repository, newest first. */
+    listGitHubBackups: () => syncer.listBackups(),
+    /** The text of one backup file in the sync repository. @param {string} path */
+    readGitHubBackup: (path) => syncer.readBackup(path),
     /** Removes the connection and deletes the token from this browser. */
     async disconnectSync() {
       clearTimeout(syncTimer);

@@ -105,6 +105,18 @@ export function createGitHub({ token, fetchImpl = (...a) => fetch(...a) }) {
     },
 
     /**
+     * Lists a folder. Returns an empty list if the folder doesn't exist.
+     * @returns {Promise<Array<{name: string, path: string, sha: string, type: string}>>}
+     */
+    async listDir(owner, repo, path) {
+      const res = await request(contents(owner, repo, path));
+      if (res.status === 404) return [];
+      if (!res.ok) throw await errorFor(res);
+      const items = await res.json();
+      return Array.isArray(items) ? items : [];
+    },
+
+    /**
      * Creates or replaces a file. `sha` is the sha of the file being
      * replaced, or null for a new file. If the file changed since that sha,
      * GitHub refuses and this throws a "conflict" error.

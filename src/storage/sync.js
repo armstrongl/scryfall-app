@@ -2,9 +2,9 @@
 // GitHub client, both passed in, so the tests run it with memory storage
 // and a fake GitHub.
 
-import { APP_NAME, SYNC_FILE_NAME, SYNC_MAX_TRIES } from "../config.js";
+import { APP_NAME, GITHUB_BACKUP_DIR, SYNC_FILE_NAME, SYNC_MAX_TRIES } from "../config.js";
 import { defaultClock } from "../lists.js";
-import { mergeForSync, parseSyncFile, sameSyncData, syncFileFrom, syncFileText } from "../sync.js";
+import { backupFiles, githubBackupPath, mergeForSync, parseSyncFile, sameSyncData, syncFileFrom, syncFileText } from "../sync.js";
 
 /**
  * @typedef {{ok: true, changedLocal: boolean} | {ok: false, error: string}} SyncResult
@@ -114,8 +114,56 @@ export function createSyncer({ storage, makeClient, clock = defaultClock, onLoca
     return queued;
   }
 
+  /**
+   * Runs one request with the connection's client. Reports a missing
+   * connection or a GitHub error as a code, like a sync does.
+   * @template T
+   * @param {(client: any, owner: string, repo: string) => Promise<T>} fn
+   */
+  async function withClient(fn) {
+    const state = await storage.getSyncState();
+    if (!state) return { ok: false, error: "not-found" };
+    try {
+      return { ok: true, ...(await fn(makeClient(state.token), state.owner, state.repo)) };
+    } catch (e) {
+      return { ok: false, error: codeOf(e) };
+    }
+  }
+
   return {
     syncNow,
+
+    /**
+     * Writes a full backup, the same as Export backup, to a new file in the
+     * backups folder of the repository. The backup never holds the token.
+     * @returns {Promise<{ok: true, path: string, exportedAt: string} | {ok: false, error: string}>}
+     */
+    exportBackup: () => withClient(async (client, owner, repo) => {
+      const backup = await storage.exportAll();
+      const path = githubBackupPath(backup.exportedAt);
+      await client.writeFile(owner, repo, path, JSON.stringify(backup, null, 2), null, `Back up ${APP_NAME} data`);
+      return { path, exportedAt: backup.exportedAt };
+    }),
+
+    /**
+     * The backup files in the repository's backups folder, newest first.
+     * @returns {Promise<{ok: true, files: Array<{name: string, path: string}>} | {ok: false, error: string}>}
+     */
+    listBackups: () => withClient(async (client, owner, repo) => ({
+      files: backupFiles(await client.listDir(owner, repo, GITHUB_BACKUP_DIR)),
+    })),
+
+    /**
+     * The text of one backup file in the repository. The caller validates it,
+     * as for a file chosen on the device.
+     * @param {string} path
+     * @returns {Promise<{ok: true, text: string} | {ok: false, error: string}>}
+     */
+    readBackup: (path) => withClient(async (client, owner, repo) => {
+      const file = await client.readFile(owner, repo, path);
+      if (!file) throw Object.assign(new Error("not-found"), { name: "GitHubError", code: "not-found" });
+      return { text: file.text };
+    }),
 
     /**
      * Checks the repository and the token, saves the connection, and syncs.

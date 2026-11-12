@@ -232,6 +232,17 @@ This index lists the text the app shows or announces from `index.html`, `src/mai
 | text | Learn more about sync |
 | notify | Exported {…}. |
 | notify | The backup was not exported. {…} |
+| announce | Exporting a backup to GitHub. |
+| notify | The backup was not exported to GitHub. {…} |
+| notify | Exported {…} to GitHub. |
+| message | Reading the backups on GitHub… |
+| announce | The backups on GitHub can't be read. |
+| announce | There are no backups on GitHub yet. |
+| field | Backup on GitHub |
+| field | Newest first, from the {…} folder of the repository. |
+| announce | {…} on GitHub. |
+| message | Reading the backup from GitHub… |
+| announce | The backup can't be read from GitHub. |
 | message | The file is not valid JSON. Choose a backup file from this app. |
 | message | The file can't be imported. No data changed. |
 | announce | The file can't be imported. |
@@ -259,7 +270,9 @@ This index lists the text the app shows or announces from `index.html`, `src/mai
 | text | Backup |
 | message | Your data changed since your last backup. Export a backup now. |
 | text | A backup file has all of your lists, custom presets, history, and settings. |
+| text | Export to GitHub puts a new backup file in the {…} folder of {…}/{…}. |
 | text | Export backup |
+| text | Export to GitHub |
 | field | Backup file |
 | text | About |
 | text | Help |

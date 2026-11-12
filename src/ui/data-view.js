@@ -1,6 +1,6 @@
 // The Data view: storage status, GitHub sync, backup, import, and attribution.
 
-import { APP_NAME, BACKUP_REMINDER_DAYS, FAN_CONTENT_NOTICE, SCRYFALL_SITE } from "../config.js";
+import { APP_NAME, BACKUP_REMINDER_DAYS, FAN_CONTENT_NOTICE, GITHUB_BACKUP_DIR, SCRYFALL_SITE } from "../config.js";
 import { backupFileName, needsBackupReminder, validateBackup } from "../export.js";
 import { TIPS } from "../docs.js";
 import { parseRepo, syncErrorText, tokenUrl } from "../sync.js";
@@ -21,6 +21,7 @@ export function createDataView(app) {
   const el = h("section", { class: "view", id: "view-data", "aria-labelledby": "data-title" });
   const importSlot = h("div");
   let pending = null; // A validated backup that waits for the user's choice.
+  let githubBusy = false; // An export to GitHub is running.
 
   // Sync with GitHub. The fields stay across re-renders, so typed text stays.
   const repoInput = h("input", {
@@ -143,12 +144,71 @@ export function createDataView(app) {
     }
   }
 
+  /** Exports a full backup to the backups folder of the sync repository. */
+  async function exportToGitHub() {
+    if (githubBusy) return;
+    githubBusy = true;
+    const btn = el.querySelector("#backup-github");
+    btn?.setAttribute("aria-disabled", "true");
+    announce("Exporting a backup to GitHub.");
+    try {
+      const r = await app.exportBackupToGitHub();
+      if (!r.ok) return app.notify(`The backup was not exported to GitHub. ${syncErrorText(r.error)}`, "error");
+      await app.saveSettings({ lastBackupAt: r.exportedAt });
+      app.notify(`Exported ${r.path} to GitHub.`);
+    } finally {
+      githubBusy = false;
+      el.querySelector("#backup-github")?.removeAttribute("aria-disabled");
+    }
+  }
+
+  /** Shows the backups in the sync repository, to choose one to import. */
+  async function listGitHubBackups() {
+    pending = null;
+    replace(importSlot, message("info", "Reading the backups on GitHub…"));
+    const r = await app.listGitHubBackups();
+    if (!r.ok) {
+      replace(importSlot, message("error", syncErrorText(r.error)));
+      announce("The backups on GitHub can't be read.");
+      return;
+    }
+    const state = app.syncState;
+    if (!r.files.length) {
+      replace(importSlot, message("info", `There are no backups in the ${GITHUB_BACKUP_DIR} folder of ${state?.owner}/${state?.repo} yet. To make one, select Export to GitHub.`));
+      announce("There are no backups on GitHub yet.");
+      return;
+    }
+    const select = h("select", { id: "import-github-file" }, r.files.map((f) => h("option", { value: f.path, text: f.name })));
+    replace(importSlot,
+      field("Backup on GitHub", select, `Newest first, from the ${GITHUB_BACKUP_DIR} folder of the repository.`),
+      h("div", { class: "row wrap" }, h("button", { type: "button", id: "import-github-open", text: "Open backup", onclick: () => openGitHubBackup(select.value) })));
+    select.focus();
+    announce(`${plural(r.files.length, "backup")} on GitHub.`);
+  }
+
+  async function openGitHubBackup(path) {
+    replace(importSlot, message("info", "Reading the backup from GitHub…"));
+    const r = await app.readGitHubBackup(path);
+    if (!r.ok) {
+      replace(importSlot, message("error", syncErrorText(r.error)));
+      announce("The backup can't be read from GitHub.");
+      return;
+    }
+    readText(r.text);
+  }
+
   async function readFile(file) {
     pending = null;
     if (!file) return replace(importSlot);
+    readText(await file.text());
+  }
+
+  /** Checks a backup's text and shows the import choices, or the errors. */
+  function readText(text) {
+    pending = null;
     let parsed;
     try {
-      parsed = JSON.parse(await file.text());
+      parsed = JSON.parse(text);
     } catch {
       replace(importSlot, message("error", "The file is not valid JSON. Choose a backup file from this app."));
       return;
@@ -226,10 +286,18 @@ export function createDataView(app) {
         h("h2", { id: "backup-title", text: "Backup" }),
         reminder ? message("warn", "Your data changed since your last backup. Export a backup now.") : null,
         h("p", { text: "A backup file has all of your lists, custom presets, history, and settings." }),
-        h("button", { type: "button", class: "primary", text: "Export backup", onclick: exportBackup })),
+        app.syncState ? h("p", { class: "hint", text: `Export to GitHub puts a new backup file in the ${GITHUB_BACKUP_DIR} folder of ${app.syncState.owner}/${app.syncState.repo}.` }) : null,
+        h("div", { class: "row wrap" },
+          h("button", { type: "button", class: "primary", text: "Export backup", onclick: exportBackup }),
+          app.syncState
+            ? h("button", { type: "button", id: "backup-github", text: "Export to GitHub", "aria-disabled": githubBusy ? "true" : null, onclick: exportToGitHub })
+            : null)),
       h("section", { class: "panel-box", "aria-labelledby": "import-title" },
         h("h2", { id: "import-title", text: "Import backup" }),
         field("Backup file", fileInput),
+        app.syncState
+          ? h("div", { class: "row wrap" }, h("button", { type: "button", id: "import-github-list", text: "Choose a backup on GitHub", onclick: listGitHubBackups }))
+          : null,
         importSlot),
       h("section", { class: "panel-box", "aria-labelledby": "about-title" },
         h("h2", { id: "about-title", text: "About" }),

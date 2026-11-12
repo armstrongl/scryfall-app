@@ -645,6 +645,7 @@ const CORS = [
 async function fakeGitHub(b) {
   const gh = {
     file: null, // { text, sha }
+    files: new Map(), // Other files, such as backups, by path.
     shas: 0,
     requests: [],
     put(text) {
@@ -665,6 +666,23 @@ async function fakeGitHub(b) {
     if (request.method === "OPTIONS") return reply(requestId, 204);
     if (auth !== `Bearer ${GH_TOKEN}`) return reply(requestId, 401, { message: "Bad credentials", status: "401" });
     if (url.pathname === "/repos/me/cards") return reply(requestId, 200, { name: "cards", full_name: "me/cards", private: true });
+    const prefix = "/repos/me/cards/contents/";
+    const path = decodeURIComponent(url.pathname.slice(prefix.length));
+    if (url.pathname.startsWith(prefix) && path !== GH_FILE) {
+      // Files in the backups folder, and the folder listing.
+      if (request.method === "GET") {
+        const f = gh.files.get(path);
+        if (f) return reply(requestId, 200, { name: path.split("/").pop(), path, sha: f.sha, encoding: "base64", content: Buffer.from(f.text).toString("base64") });
+        const inDir = [...gh.files.keys()].filter((k) => k.startsWith(`${path}/`));
+        if (!inDir.length) return reply(requestId, 404, { message: "Not Found", status: "404" });
+        return reply(requestId, 200, inDir.map((k) => ({ name: k.split("/").pop(), path: k, sha: gh.files.get(k).sha, type: "file" })));
+      }
+      if (request.method === "PUT") {
+        const body = JSON.parse(request.postData ?? "{}");
+        gh.files.set(path, { text: Buffer.from(body.content, "base64").toString("utf8"), sha: `sha-${++gh.shas}` });
+        return reply(requestId, 201, { content: { name: path.split("/").pop(), path, sha: gh.files.get(path).sha }, commit: {} });
+      }
+    }
     if (url.pathname !== `/repos/me/cards/contents/${GH_FILE}`) return reply(requestId, 404, { message: "Not Found", status: "404" });
     if (request.method === "GET") {
       if (!gh.file) return reply(requestId, 404, { message: "Not Found", status: "404" });
@@ -747,10 +765,50 @@ async function sync(b, gh, check) {
 
   await ev(`location.hash = "#data"`);
   await until(`!document.querySelector("#view-data").hidden`, 3000);
+
+  // Backups on GitHub.
+  check("Export to GitHub shows while connected", await ev(`document.querySelector("#backup-github")?.textContent === "Export to GitHub"`));
+  await ev(`document.querySelector("#backup-github").focus()`);
+  await ev(click("#backup-github"));
+  let exported = false;
+  for (let i = 0; i < 40 && !exported; i++) {
+    exported = [...gh.files.keys()].some((k) => /^backups\/card-discovery-backup-\d{4}-\d{2}-\d{2}-\d{6}\.json$/.test(k));
+    if (!exported) await sleep(250);
+  }
+  check("Export to GitHub writes a backup file to the backups folder", exported, JSON.stringify([...gh.files.keys()]));
+  const ghBackup = exported ? JSON.parse([...gh.files.values()][0].text) : null;
+  check("the backup on GitHub is a full backup with history", !!ghBackup && Array.isArray(ghBackup.history) && Array.isArray(ghBackup.lists));
+  check("the backup on GitHub never holds the token", exported && ![...gh.files.values()].some((f) => f.text.includes(GH_TOKEN)));
+  check("Export to GitHub says where the backup went", await until(`/backups\\/card-discovery-backup-/.test(document.body.textContent)`, 3000));
+  check("Export to GitHub dates the last backup", await until(`!/Last backup: (never|Never)/.test(document.querySelector("#view-data").textContent)`, 3000));
+  check("focus stays on Export to GitHub", await ev(`document.activeElement?.id === "backup-github"`), await ev(FOCUS));
+
+  // Another device's backup, with a list this device doesn't have.
+  const other = JSON.parse(JSON.stringify(ghBackup));
+  const at2 = new Date().toISOString();
+  other.lists.push({ id: "from-github-backup", name: "From a GitHub backup", kind: "collection", format: "standard", entries: [], createdAt: at2, updatedAt: at2 });
+  other.exportedAt = "2099-01-01T00:00:00.000Z";
+  gh.files.set("backups/card-discovery-backup-2099-01-01-000000.json", { text: JSON.stringify(other), sha: `sha-${++gh.shas}` });
+  check("Choose a backup on GitHub shows while connected", await ev(`!!document.querySelector("#import-github-list")`));
+  await ev(click("#import-github-list"));
+  check("the backups on GitHub show newest first, in a labeled list", await until(`(() => { const s = document.querySelector("#import-github-file"); return !!s && !!document.querySelector("label[for=import-github-file]") && s.options[0]?.textContent.includes("2099-01-01"); })()`, 5000));
+  check("focus moves to the list of backups on GitHub", await until(`document.activeElement?.id === "import-github-file"`, 1000), await ev(FOCUS));
+  await ev(click("#import-github-open"));
+  check("a backup from GitHub shows the import choices", await until(`/This backup is from/.test(document.querySelector("#view-data").textContent) && !!document.querySelector("#mode-merge")`, 5000));
+  await ev(clickText("#view-data button", "Import"));
+  await ev(clickText("#view-data .confirm button", "Merge"));
+  check("a backup from GitHub merges in", await until(`/Merged the backup/.test(document.querySelector("#view-data").textContent)`, 5000));
+  await ev(`location.hash = "#lists"`);
+  check("the list from the GitHub backup shows in Lists", await until(`document.querySelector("#view-lists").textContent.includes("From a GitHub backup")`, 5000));
+  await ev(`location.hash = "#data"`);
+  await until(`!document.querySelector("#view-data").hidden`, 3000);
+  check("the Backup and Import sections have no horizontal scroll", await ev(`[...document.querySelectorAll("#view-data .panel-box")].every((s) => s.scrollWidth <= s.clientWidth + 1)`));
+
   check("the Sync section has no horizontal scroll", await ev(`(() => { const s = document.querySelector("#sync-section"); return s.scrollWidth <= s.clientWidth + 1; })()`));
   await ev(click("#sync-disconnect"));
   await ev(clickText("#sync-section .confirm button", "Disconnect"));
   check("Disconnect shows Connect again", await until(`!!document.querySelector("#sync-connect")`, 3000));
+  check("the GitHub backup buttons go away after Disconnect", await ev(`!document.querySelector("#backup-github") && !document.querySelector("#import-github-list")`));
   check("focus moves to the repository field after Disconnect", await until(`document.activeElement?.id === "sync-repo"`, 1000), await ev(FOCUS));
   check("Disconnect deletes the token from the browser", !(await ev(`(async () => {
     const db = await new Promise((r, j) => { const q = indexedDB.open("card-discovery"); q.onsuccess = () => r(q.result); q.onerror = () => j(q.error); });

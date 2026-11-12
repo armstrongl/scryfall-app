@@ -9,7 +9,7 @@
 
 import {
   APP_NAME, BACKUP_REMINDER_DAYS, DELETION_KEEP_DAYS, HISTORY_LIMIT, MAX_DRAW, MIN_DRAW, SCRYFALL_SITE, SMALL_POOL_SIZE,
-  SPELLBOOK_SITE, SYNC_FILE_NAME,
+  GITHUB_BACKUP_DIR, SPELLBOOK_SITE, SYNC_FILE_NAME,
 } from "./config.js";
 import { FIND_MY_COMBOS_URL } from "./combos.js";
 import { scryfallListUrls } from "./links.js";
@@ -431,6 +431,7 @@ export const DOC_PAGES = [
             ],
           },
           { p: `The app reminds you to back up after your lists or presets change, if you've never backed up or your last backup is more than ${BACKUP_REMINDER_DAYS} days old.` },
+          { p: "When sync with GitHub is on, you can also keep backups in the sync repository. See **Backups on GitHub** on the **Sync with GitHub** page." },
         ],
       },
       {
@@ -495,6 +496,21 @@ export const DOC_PAGES = [
         heading: "The sync file",
         blocks: [
           { p: `The file is ${SYNC_FILE_NAME}, at the top of the repository. It has the same format as a backup, without the history, so you can also import it under **Import backup**. GitHub keeps every earlier copy of the file in the repository's history.` },
+        ],
+      },
+      {
+        heading: "Backups on GitHub",
+        blocks: [
+          { p: `While the app is connected, **Data** can also save full backups in the repository. A backup on GitHub is the same as a file from **Export backup**: it has all of your lists, custom presets, history, and settings, and never the token.` },
+          {
+            steps: [
+              "Open **Data**.",
+              `Under **Backup**, select **Export to GitHub**. The app adds a new file to the ${GITHUB_BACKUP_DIR} folder of the repository, with the date and time in its name. Earlier backups stay.`,
+              "To restore one, under **Import backup**, select **Choose a backup on GitHub**. Choose a backup from the list, newest first, then select **Open backup**.",
+              "Choose **Merge** or **Replace**, then select **Import**.",
+            ],
+          },
+          { p: `Sync doesn't read or change the ${GITHUB_BACKUP_DIR} folder. Each export is a new commit in the repository. To delete old backups, delete their files on GitHub.` },
         ],
       },
     ],

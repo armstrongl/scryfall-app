@@ -417,7 +417,7 @@ export const DOC_PAGES = [
         blocks: [
           { p: `Your lists, presets, draw history, and settings are stored in this browser, on this device, in its ${link("IndexedDB", INDEXEDDB)} storage. They don't sync between devices or browsers unless you ${help("sync with GitHub", "sync")}. If you clear the browser's site data for the app, they're deleted from this browser.` },
           { p: `A browser can also clear the data to free up space, unless the app's storage is persistent. **Data** shows which kind it has. For details, see ${link("how browsers limit storage", STORAGE_LIMITS)}.` },
-          { p: `The app sends ${link("Scryfall", SCRYFALL_SITE)} your card searches, and the Scryfall IDs of cards when you refresh a list or show rulings. It doesn't send list names, notes, or anything else about you. If you connect GitHub, the app sends your lists, custom presets, and synced settings to your own private repository on ${link("GitHub", GITHUB)}, and nothing else. The app sends ${link("Commander Spellbook", SPELLBOOK_SITE)} nothing: its links put a card name or colors in the address, and you paste a list there yourself.` },
+          { p: `The app sends ${link("Scryfall", SCRYFALL_SITE)} your card searches, and the Scryfall IDs of cards when you refresh a list or show rulings. It doesn't send list names, notes, or anything else about you. If you connect GitHub, sync sends your lists, custom presets, and synced settings to your own private repository on ${link("GitHub", GITHUB)}. When you select **Export to GitHub**, the app also sends a full backup there, with your history and every setting. The app sends GitHub nothing else. The app sends ${link("Commander Spellbook", SPELLBOOK_SITE)} nothing: its links put a card name or colors in the address, and you paste a list there yourself.` },
         ],
       },
       {
@@ -507,7 +507,7 @@ export const DOC_PAGES = [
               "Open **Data**.",
               `Under **Backup**, select **Export to GitHub**. The app adds a new file to the ${GITHUB_BACKUP_DIR} folder of the repository, with the date and time in its name. Earlier backups stay.`,
               "To restore one, under **Import backup**, select **Choose a backup on GitHub**. Choose a backup from the list, newest first, then select **Open backup**.",
-              "Choose **Merge** or **Replace**, then select **Import**.",
+              "Choose **Merge** or **Replace**, select **Import**, then confirm.",
             ],
           },
           { p: `Sync doesn't read or change the ${GITHUB_BACKUP_DIR} folder. Each export is a new commit in the repository. To delete old backups, delete their files on GitHub.` },

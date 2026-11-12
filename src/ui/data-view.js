@@ -22,6 +22,8 @@ export function createDataView(app) {
   const importSlot = h("div");
   let pending = null; // A validated backup that waits for the user's choice.
   let githubBusy = false; // An export to GitHub is running.
+  let readSeq = 0; // Each read of a backup gets a number, so that a late reply can't replace a newer one.
+  let slotRepo = null; // The repository whose backup list importSlot shows, if any.
 
   // Sync with GitHub. The fields stay across re-renders, so typed text stays.
   const repoInput = h("input", {
@@ -165,20 +167,21 @@ export function createDataView(app) {
   /** Shows the backups in the sync repository, to choose one to import. */
   async function listGitHubBackups() {
     pending = null;
+    const seq = ++readSeq;
+    const state = app.syncState;
+    const repoName = `${state?.owner}/${state?.repo}`;
+    slotRepo = repoName;
     replace(importSlot, message("info", "Reading the backups on GitHub…"));
     const r = await app.listGitHubBackups();
-    if (!r.ok) {
-      replace(importSlot, message("error", syncErrorText(r.error)));
-      announce("The backups on GitHub can't be read.");
-      return;
-    }
-    const state = app.syncState;
+    if (seq !== readSeq) return;
+    if (!r.ok) return githubReadError(r.error, "The backups on GitHub can't be read.");
     if (!r.files.length) {
-      replace(importSlot, message("info", `There are no backups in the ${GITHUB_BACKUP_DIR} folder of ${state?.owner}/${state?.repo} yet. To make one, select Export to GitHub.`));
+      replace(importSlot, message("info", `There are no backups in the ${GITHUB_BACKUP_DIR} folder of ${repoName} yet. To make one, select Export to GitHub.`));
       announce("There are no backups on GitHub yet.");
       return;
     }
-    const select = h("select", { id: "import-github-file" }, r.files.map((f) => h("option", { value: f.path, text: f.name })));
+    const select = h("select", { id: "import-github-file" },
+      r.files.map((f) => h("option", { value: f.path, text: f.time ? formatDate(f.time) : f.name })));
     replace(importSlot,
       field("Backup on GitHub", select, `Newest first, from the ${GITHUB_BACKUP_DIR} folder of the repository.`),
       h("div", { class: "row wrap" }, h("button", { type: "button", id: "import-github-open", text: "Open backup", onclick: () => openGitHubBackup(select.value) })));
@@ -187,20 +190,29 @@ export function createDataView(app) {
   }
 
   async function openGitHubBackup(path) {
+    const seq = ++readSeq;
     replace(importSlot, message("info", "Reading the backup from GitHub…"));
     const r = await app.readGitHubBackup(path);
-    if (!r.ok) {
-      replace(importSlot, message("error", syncErrorText(r.error)));
-      announce("The backup can't be read from GitHub.");
-      return;
-    }
+    if (seq !== readSeq) return;
+    if (!r.ok) return githubReadError(r.error, "The backup can't be read from GitHub.");
+    slotRepo = null;
     readText(r.text);
+  }
+
+  /** Shows a GitHub error in the import section, and puts focus where the user can try again. */
+  function githubReadError(code, spoken) {
+    replace(importSlot, message("error", syncErrorText(code)));
+    el.querySelector("#import-github-list")?.focus();
+    announce(spoken);
   }
 
   async function readFile(file) {
     pending = null;
+    const seq = ++readSeq;
+    slotRepo = null;
     if (!file) return replace(importSlot);
-    readText(await file.text());
+    const text = await file.text();
+    if (seq === readSeq) readText(text);
   }
 
   /** Checks a backup's text and shows the import choices, or the errors. */
@@ -269,6 +281,13 @@ export function createDataView(app) {
     // Keep focus on the same control when the view re-renders, such as Sync now during a sync.
     const focusedId = focusNext ?? (el.contains(document.activeElement) ? document.activeElement?.id : null);
     focusNext = null;
+    // A backup list from GitHub belongs to one connection. Drop it when that changes.
+    const repoNow = app.syncState ? `${app.syncState.owner}/${app.syncState.repo}` : null;
+    if (slotRepo && slotRepo !== repoNow) {
+      slotRepo = null;
+      readSeq++;
+      importSlot.replaceChildren();
+    }
     const fileInput = h("input", { type: "file", accept: "application/json,.json", onchange: () => readFile(fileInput.files?.[0]) });
     const reminder = needsBackupReminder(app.settings, Date.now(), BACKUP_REMINDER_DAYS);
     replace(el,

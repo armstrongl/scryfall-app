@@ -32,6 +32,7 @@ export function createSyncer({ storage, makeClient, clock = defaultClock, onLoca
   /** @type {Promise<SyncResult>|null} */
   let queued = null;
 
+  const gitHubError = (code) => Object.assign(new Error(code), { name: "GitHubError", code });
   const codeOf = (e) => (e?.name === "GitHubError" ? e.code : "server");
   const same = (a, b) => !!a && !!b && a.owner === b.owner && a.repo === b.repo && a.token === b.token;
 
@@ -139,9 +140,16 @@ export function createSyncer({ storage, makeClient, clock = defaultClock, onLoca
      * @returns {Promise<{ok: true, path: string, exportedAt: string} | {ok: false, error: string}>}
      */
     exportBackup: () => withClient(async (client, owner, repo) => {
+      // A backup has history too. Check again that the repository is private.
+      if (!(await client.getRepo(owner, repo)).private) throw gitHubError("public-repo");
       const backup = await storage.exportAll();
       const path = githubBackupPath(backup.exportedAt);
-      await client.writeFile(owner, repo, path, JSON.stringify(backup, null, 2), null, `Back up ${APP_NAME} data`);
+      try {
+        await client.writeFile(owner, repo, path, JSON.stringify(backup, null, 2), null, `Back up ${APP_NAME} data`);
+      } catch (e) {
+        // A file with this name exists: another export in the same second.
+        throw codeOf(e) === "conflict" ? gitHubError("backup-exists") : e;
+      }
       return { path, exportedAt: backup.exportedAt };
     }),
 
@@ -161,7 +169,7 @@ export function createSyncer({ storage, makeClient, clock = defaultClock, onLoca
      */
     readBackup: (path) => withClient(async (client, owner, repo) => {
       const file = await client.readFile(owner, repo, path);
-      if (!file) throw Object.assign(new Error("not-found"), { name: "GitHubError", code: "not-found" });
+      if (!file) throw gitHubError("backup-missing");
       return { text: file.text };
     }),
 

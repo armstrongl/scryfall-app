@@ -791,7 +791,7 @@ async function sync(b, gh, check) {
   gh.files.set("backups/card-discovery-backup-2099-01-01-000000.json", { text: JSON.stringify(other), sha: `sha-${++gh.shas}` });
   check("Choose a backup on GitHub shows while connected", await ev(`!!document.querySelector("#import-github-list")`));
   await ev(click("#import-github-list"));
-  check("the backups on GitHub show newest first, in a labeled list", await until(`(() => { const s = document.querySelector("#import-github-file"); return !!s && !!document.querySelector("label[for=import-github-file]") && s.options[0]?.textContent.includes("2099-01-01"); })()`, 5000));
+  check("the backups on GitHub show newest first, in a labeled list", await until(`(() => { const s = document.querySelector("#import-github-file"); return !!s && !!document.querySelector("label[for=import-github-file]") && s.options[0]?.value.includes("2099-01-01") && !/\\.json$/.test(s.options[0].textContent) && /20[0-9][0-9]/.test(s.options[0].textContent); })()`, 5000));
   check("focus moves to the list of backups on GitHub", await until(`document.activeElement?.id === "import-github-file"`, 1000), await ev(FOCUS));
   await ev(click("#import-github-open"));
   check("a backup from GitHub shows the import choices", await until(`/This backup is from/.test(document.querySelector("#view-data").textContent) && !!document.querySelector("#mode-merge")`, 5000));
@@ -802,13 +802,23 @@ async function sync(b, gh, check) {
   check("the list from the GitHub backup shows in Lists", await until(`document.querySelector("#view-lists").textContent.includes("From a GitHub backup")`, 5000));
   await ev(`location.hash = "#data"`);
   await until(`!document.querySelector("#view-data").hidden`, 3000);
+  // A backup deleted on GitHub after the list was read.
+  await ev(click("#import-github-list"));
+  await until(`!!document.querySelector("#import-github-file")`, 5000);
+  gh.files.delete("backups/card-discovery-backup-2099-01-01-000000.json");
+  await ev(click("#import-github-open"));
+  check("a backup that's gone from GitHub says to choose again", await until(`/isn't on GitHub anymore/.test(document.querySelector("#view-data").textContent)`, 5000));
+  check("focus moves to Choose a backup on GitHub after a read error", await until(`document.activeElement?.id === "import-github-list"`, 1000), await ev(FOCUS));
+  await ev(click("#import-github-list"));
+  await until(`!!document.querySelector("#import-github-file")`, 5000);
+
   check("the Backup and Import sections have no horizontal scroll", await ev(`[...document.querySelectorAll("#view-data .panel-box")].every((s) => s.scrollWidth <= s.clientWidth + 1)`));
 
   check("the Sync section has no horizontal scroll", await ev(`(() => { const s = document.querySelector("#sync-section"); return s.scrollWidth <= s.clientWidth + 1; })()`));
   await ev(click("#sync-disconnect"));
   await ev(clickText("#sync-section .confirm button", "Disconnect"));
   check("Disconnect shows Connect again", await until(`!!document.querySelector("#sync-connect")`, 3000));
-  check("the GitHub backup buttons go away after Disconnect", await ev(`!document.querySelector("#backup-github") && !document.querySelector("#import-github-list")`));
+  check("the GitHub backup buttons and list go away after Disconnect", await ev(`!document.querySelector("#backup-github") && !document.querySelector("#import-github-list") && !document.querySelector("#import-github-file") && !document.querySelector("#import-github-open")`));
   check("focus moves to the repository field after Disconnect", await until(`document.activeElement?.id === "sync-repo"`, 1000), await ev(FOCUS));
   check("Disconnect deletes the token from the browser", !(await ev(`(async () => {
     const db = await new Promise((r, j) => { const q = indexedDB.open("card-discovery"); q.onsuccess = () => r(q.result); q.onerror = () => j(q.error); });

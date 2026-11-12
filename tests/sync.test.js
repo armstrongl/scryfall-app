@@ -15,7 +15,7 @@ import { createMemoryBackend, STORES } from "../src/storage/memory.js";
 import { createSyncer } from "../src/storage/sync.js";
 import { createGitHub, GitHubError } from "../src/github.js";
 import {
-  backupFiles, githubBackupPath, mergeForSync, parseRepo, parseSyncFile, syncErrorText, syncFileFrom, syncFileText, tokenUrl,
+  backupFiles, backupTime, githubBackupPath, mergeForSync, parseRepo, parseSyncFile, syncErrorText, syncFileFrom, syncFileText, tokenUrl,
 } from "../src/sync.js";
 import { fakeClock, fixture } from "./helpers.js";
 
@@ -704,5 +704,39 @@ test("backups on GitHub need a connection, and errors have codes", async () => {
   assert.deepEqual(await lone.syncer.listBackups(), { ok: false, error: "not-found" });
   await lone.storage.saveSyncState({ owner: "me", repo: "cards", token: "good-token", sha: null, lastSyncAt: null, lastError: null });
   assert.deepEqual(await lone.syncer.exportBackup(), { ok: false, error: "forbidden" });
-  assert.deepEqual(await lone.syncer.readBackup("backups/missing.json"), { ok: false, error: "not-found" });
+  assert.deepEqual(await lone.syncer.readBackup("backups/missing.json"), { ok: false, error: "backup-missing" });
+});
+
+test("backupTime reads the time from a backup name, and backupFiles sorts by it", () => {
+  assert.equal(backupTime(`${APP_ID}-backup-2026-11-12-140322.json`), "2026-11-12T14:03:22.000Z");
+  assert.equal(backupTime("my-backup.json"), null);
+  const f = (name) => ({ ...fixture("github-dir")[0], name, path: `backups/${name}` });
+  assert.deepEqual(backupFiles([f("zzz.json"), f(`${APP_ID}-backup-2026-11-01-090000.json`), f(`${APP_ID}-backup-2026-11-12-140322.json`), f("aaa.json")])
+    .map((x) => x.name), [`${APP_ID}-backup-2026-11-12-140322.json`, `${APP_ID}-backup-2026-11-01-090000.json`, "aaa.json", "zzz.json"]);
+  assert.equal(backupFiles([f(`${APP_ID}-backup-2026-11-01-090000.json`)])[0].time, "2026-11-01T09:00:00.000Z");
+});
+
+test("export to GitHub refuses a repository that became public", async () => {
+  const gh = fakeGitHub();
+  const clock = fakeClock();
+  const d = await connected(gh, clock);
+  const before = gh.puts();
+  const pub = fakeGitHub({ isPrivate: false });
+  pub.file = gh.file;
+  const d2 = device(pub, clock);
+  await d2.storage.saveSyncState(await d.storage.getSyncState());
+  assert.deepEqual(await d2.syncer.exportBackup(), { ok: false, error: "public-repo" });
+  assert.equal(pub.puts(), 0);
+  assert.equal(gh.puts(), before);
+});
+
+test("backup errors on GitHub have their own text", async () => {
+  const gh = fakeGitHub();
+  const clock = fakeClock();
+  const d = await connected(gh, clock);
+  gh.failNext = { method: "PUT", status: 422, body: { message: 'Invalid request.\n\n"sha" wasn\'t supplied.' } };
+  assert.deepEqual(await d.syncer.exportBackup(), { ok: false, error: "backup-exists" });
+  assert.deepEqual(await d.syncer.readBackup("backups/gone.json"), { ok: false, error: "backup-missing" });
+  assert.match(syncErrorText("backup-exists"), /Export to GitHub again/);
+  assert.match(syncErrorText("backup-missing"), /Choose a backup on GitHub again/);
 });

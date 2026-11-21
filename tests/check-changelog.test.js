@@ -50,10 +50,11 @@ test("the workflow runs the tests and the changelog check on pull requests", () 
 });
 
 // Runs the script in a small repository whose HEAD is a merge commit, like
-// the merge ref that GitHub checks out for a pull request.
+// the merge ref that GitHub checks out for a pull request. Commit signing is
+// off, so a global signing setting can't stop the test commits.
 function runInRepo({ branchFiles, env }) {
   const dir = mkdtempSync(join(tmpdir(), "cascade-changelog-"));
-  const git = (...args) => execFileSync("git", ["-c", "user.name=Test", "-c", "user.email=test@example.com", ...args], { cwd: dir, stdio: "ignore" });
+  const git = (...args) => execFileSync("git", ["-c", "user.name=Test", "-c", "user.email=test@example.com", "-c", "commit.gpgsign=false", ...args], { cwd: dir, stdio: "ignore" });
   try {
     git("init", "-q", "-b", "main");
     writeFileSync(join(dir, "CHANGELOG.md"), "# Changelog\n");

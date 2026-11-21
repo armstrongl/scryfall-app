@@ -1,7 +1,7 @@
 // Runs the API checks from PLAN.md section 9 against the live Scryfall API.
 // Follows the Scryfall rules: Accept header, descriptive User-Agent, and at
 // least 500 ms between requests. Run: node scripts/check-api.mjs
-import { buildQuery, emptyCriteria } from "../src/query.js";
+import { ABILITY_COUNTS, CARD_ROLES, buildQuery, emptyCriteria, setOptions } from "../src/query.js";
 import { PARTNER_QUERIES, rewardsQuery } from "../src/synergy.js";
 import { VERIFIED_TAGS } from "../src/explore.js";
 
@@ -66,6 +66,50 @@ for (const [label, changes] of Object.entries(rows)) {
   const warn = body.warnings?.length ? `WARNINGS: ${body.warnings.join(" | ")}` : "no warnings";
   console.log(`${label.padEnd(28)} ${q.padEnd(36)} ${status} ${body.total_cards ?? body.code} ${warn}`);
 }
+
+console.log("\n## Filters added after v1 (each one in Standard on Arena)");
+console.log("Each row needs status 200, cards, and no warnings.");
+const more = {
+  "Popularity: staples": { popularity: "staple" },
+  "Popularity: spicy": { popularity: "spicy" },
+  "First printed from": { yearMin: 2025 },
+  "First printed to": { yearMax: 2015 },
+  "First printed in": { yearMin: 2024, yearMax: 2024 },
+  "Set": { sets: [{ code: "dsk", name: "Duskmourn" }] },
+  "Two sets": { sets: [{ code: "dsk", name: "Duskmourn" }, { code: "blb", name: "Bloomburrow" }] },
+  ...Object.fromEntries(ABILITY_COUNTS.map((a) => [`Abilities: ${a}`, { abilityCount: a }])),
+  "Creature abilities": { creatureKeywords: ["flying", "first strike"] },
+  "Power and toughness": { powMin: 3, touMax: 3 },
+  ...Object.fromEntries(CARD_ROLES.map((r) => [`Does: ${r.label}`, { roles: [r.tag] }])),
+  "Can be your commander": { canBeCommander: true },
+};
+for (const [label, changes] of Object.entries(more)) {
+  const q = buildQuery({ ...emptyCriteria(), format: "standard", game: "arena", ...changes }).query;
+  const { status, body } = await search(q);
+  const ok = status === 200 && body.total_cards > 0 && !body.warnings?.length;
+  console.log(`${ok ? "ok  " : "BAD "} ${label.padEnd(24)} ${q.padEnd(50)} ${status} ${body.total_cards ?? body.code}${body.warnings?.length ? ` WARNINGS: ${body.warnings.join(" | ")}` : ""}`);
+}
+const price = await search(buildQuery({ ...emptyCriteria(), game: "paper", priceMax: 1 }).query);
+console.log(`${price.status === 200 && price.body.total_cards > 0 ? "ok  " : "BAD "} Paper price ${price.status} ${price.body.total_cards ?? price.body.code}`);
+// Opt was first printed in 2000, and is on Arena only in later sets. With an
+// age, the game filter must look at every printing, or Opt is lost.
+const opt = await search(`!"Opt" ${buildQuery({ ...emptyCriteria(), game: "arena", yearMax: 2001 }).query}`);
+console.log(`${opt.body.total_cards === 1 ? "ok  " : "BAD "} First printed checks every printing (Opt, 2000, on Arena): ${opt.status} ${opt.body.total_cards ?? opt.body.code}`);
+// A known card for each Number of abilities choice, and one that must not match.
+const abilityCards = [
+  ["none", "Grizzly Bears", 1], ["keywords", "Serra Angel", 1], ["1", "Llanowar Elves", 1],
+  ["2", "Thragtusk", 1], ["3plus", "Sheoldred, the Apocalypse", 1], ["2", "Llanowar Elves", 0],
+];
+for (const [count, name, want] of abilityCards) {
+  const r = await search(`!"${name}" ${buildQuery({ ...emptyCriteria(), abilityCount: count }).query}`);
+  const got = r.body.total_cards ?? 0;
+  console.log(`${got === want ? "ok  " : "BAD "} Abilities ${count}: ${name} ${want ? "matches" : "doesn't match"} (${r.status} ${got})`);
+}
+// Brawl allows legendary planeswalkers as commanders.
+const walker = await search(`!"Teferi, Hero of Dominaria" ${buildQuery({ ...emptyCriteria(), format: "brawl", canBeCommander: true }).query}`);
+console.log(`${walker.body.total_cards === 1 ? "ok  " : "BAD "} Brawl commander: a legendary planeswalker matches (${walker.status} ${walker.body.total_cards ?? walker.body.code})`);
+const sets = await get("/sets");
+console.log(`${sets.status === 200 && setOptions(sets.body).some((x) => x.code === "dsk") ? "ok  " : "BAD "} The set list: ${sets.status}, ${setOptions(sets.body).length} sets to choose from`);
 
 console.log("\n## Synergy queries (each partner query in src/synergy.js, in Standard on Arena)");
 const synergy = { ...PARTNER_QUERIES, "rewards (Elf)": rewardsQuery("Elf"), "exclude a card": 't:elf -!"Llanowar Elves"' };

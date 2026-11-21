@@ -29,6 +29,12 @@ The [Scryfall API](https://scryfall.com/docs/api) is the app's only source of ca
 
 ## Tagger tags
 
-- Explore uses only the [Scryfall Tagger](https://tagger.scryfall.com) tags in `VERIFIED_TAGS` in `src/explore.js`.
+- Explore and the **What the card does** filter (`CARD_ROLES` in `src/query.js`) use only the [Scryfall Tagger](https://tagger.scryfall.com) tags in `VERIFIED_TAGS` in `src/explore.js`.
 - Before you add a tag, check it against the live API. `node scripts/check-api.mjs` checks them all again.
 - Tagger tags are kept by the community. A wrong tag gets an issue in this repository. Don't report it on Scryfall unless the session approves it.
+
+## Printings
+
+- Scryfall checks most terms against one printing at a time: `game:`, `year`, `e:`, `r:`, and `usd`. A card matches when one printing matches all of them. So `game:arena year<=2001` loses [Opt](https://scryfall.com/search?q=%21%22Opt%22), whose 2000 printing isn't on Arena.
+- `in:arena` checks every printing of the card. The **First printed** filter uses `in:` with `year` and `not:reprint`. `scripts/check-api.mjs` checks the Opt case again.
+- Scryfall regular expressions (`o:/…/`) match line by line, so `^` and `$` don't anchor the whole rules text. **Number of abilities** counts line breaks (`\n`) instead.

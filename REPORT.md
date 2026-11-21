@@ -441,3 +441,48 @@ While sync is connected, **Data** can export a full backup to the sync repositor
 
 - Two exports in the same second get the same name. The second one stops with a message to try again.
 - No test has run against a real repository with a real token. A successful folder listing is a real response. Writes are built in the shape that the contents API docs give.
+
+# More Discover filters (20 November 2026)
+
+**Filters** in Discover has new filters, requested on 20 November 2026. The plan was approved item by item before the build. The basic filters stay as they were. The new ones are in four groups that open and close:
+
+- **Card**: **What the card does** (creature removal, ramp, card draw, counterspell, board wipe, burn, tutor, or combat trick, from Scryfall Tagger tags), **Number of abilities** (none, keywords only, 1, 2, or 3 or more lines of rules text), **Keyword ability**, **Rules text**, and **Can be your commander**. **Keyword ability** and **Rules text** moved here from the basic filters.
+- **Creature**: **Creature abilities** (15 common keywords, all of them must match), **Power**, and **Toughness**.
+- **Printing**: **First printed** (from and to years), **Set** (one or more sets, from Scryfall's `/sets`), and **Paper price at most (USD)**.
+- **Popularity**: **Staples** (EDHREC rank under 1,000), **Popular** (under 5,000), or **Spicy** (over 10,000).
+
+Each filter adds a field to the saved criteria with an "off" default, so presets, the last search, backups, and sync data from before still load and give the same query. The IndexedDB schema and the backup format don't change.
+
+## Changes from the plan
+
+- The query has more terms than the table in `PLAN.md` section 4.1. They come after **Rules text** and before **Scryfall search**, so the old terms keep their order.
+- **Meta** is not built. No source that the app may call has meta data. [Issue #37](https://github.com/armstrongl/scryfall-app/issues/37) has the plan.
+
+## Decisions
+
+- **First printed** counts the first printing, as chosen. Scryfall checks `game:` and `year` against the same printing, which loses old cards whose first printing isn't on Arena. With a year set, the game filter uses `in:` (every printing of the card) instead, plus `not:reprint`. The live check with Opt (2000) passes.
+- **Number of abilities** counts lines of rules text. Scryfall's regular expressions match line by line, so the counts look for line breaks. Keywords on one line count as one ability, but Oracle text often puts each keyword with reminder text on its own line: Serra Angel has two. The help page says so. `scripts/check-api.mjs` checks a known card for each choice.
+- **Can be your commander** uses `is:commander`, or `is:brawler` when the format is Brawl or Standard Brawl. `is:brawler` adds the legendary planeswalkers that Brawl allows: 238 more Arena Brawl cards on 20 November 2026.
+- With **First printed**, Scryfall checks **Set**, **Rarity**, and **Paper price** on the first printing. No search term checks them on every printing, so a note under **First printed** says so when they are on together.
+- **Paper price** has no effect when **Game** is Arena or MTGO. Its chip stays and says "not used on Arena", so it can be seen and cleared with **Printing** closed.
+- **What the card does** matches any of the ticked jobs, like **Card types** and **Rarity**. Only **Creature abilities** needs all, as chosen.
+- The set list is asked for once, when **Printing** first opens, and kept while the page is open, not for a day as the plan said. That needs no storage. It is one request for each visit that opens **Printing**. **Printing** opens at start when the last search has a filter in it, so the list then loads at start.
+- Token, promo, memorabilia, minigame, Vanguard, and treasure chest sets are left out of the list, and so are sets with no cards.
+- The saved criteria keep each set's name with its code, so its chip names the set before the list loads.
+- A second menu for the number of keywords was offered as an option. It was left out, to keep the form short.
+
+## Tests
+
+- Written first and seen failing: `tests/filters.test.js` (every new term, chip, default, and group count, with the real set list in `tests/fixtures/sets.json`) and the set-list test in `tests/scryfall.test.js`.
+- The browser checks in `moreFilters()` in `scripts/check-ui.mjs` were written before the UI and failed on the old form. They found a bug in the first version: a hidden legend in the set list was as wide as its group, so a phone widened its layout. The old "no horizontal page scroll" check missed it, because the wider layout widens `innerWidth` too. The new check measures each element in the filters against the screen, and it reported the legend at 435 px on a 390 px screen.
+- `moreFilters()` runs last, because it reloads the page to check that groups with filters on open again. It waits a second before the reload, so the last search is saved first.
+- `scripts/check-api.mjs` runs each new filter against the live API, with a known card for each **Number of abilities** choice and a planeswalker commander for Brawl.
+- An Opus review found that ticking a set from the keyboard lost focus, that `is:commander` missed Brawl planeswalkers, that a price on Arena left no chip, and that some help text was wrong. Unit tests and browser checks for each were written first and seen failing, then the fixes went in.
+- `tests/check-changelog.test.js` now turns off commit signing in its test repositories. A global signing setting made those tests hang.
+
+## Known problems
+
+- Scryfall checks `r:`, `usd`, and `e:` against one printing too. With **First printed**, they look at the first printing. For example, **Set** with a year finds cards first printed in that set. A note says so, but there is no way around it in one search.
+- The EDHREC rank counts Commander decks only, so **Popularity** is a rough guide for Standard.
+- The **Number of abilities** count follows Scryfall's search of each face of a double-faced card, not the card as a whole.
+- A year before 1993 is dropped from the search. The form says why, but no chip shows it.

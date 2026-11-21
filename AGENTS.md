@@ -102,7 +102,7 @@ Breaking these rules can get the user's IP address blocked by Scryfall or break 
 ### Data
 
 - Never invent card data, IDs, or API behavior. Test fixtures in `tests/fixtures/` are real API responses. To add one, add it to `scripts/fetch-fixtures.sh`, and fetch it with the headers above and the 500 ms spacing.
-- Explore uses only the [Scryfall Tagger](https://tagger.scryfall.com) tags in `VERIFIED_TAGS` in `src/explore.js`. Before you add a tag, check it against the live API. `scripts/check-api.mjs` checks them all again.
+- Explore and the **What the card does** filter use only the [Scryfall Tagger](https://tagger.scryfall.com) tags in `VERIFIED_TAGS` in `src/explore.js`. Before you add a tag, check it against the live API. `scripts/check-api.mjs` checks them all again.
 - Don't change `APP_ID` in `src/config.js`. Backup files use it.
 - To change the IndexedDB schema, raise `DB_VERSION` in `src/config.js` and add a step to `UPGRADES` in `src/storage/indexeddb.js`. Never edit an earlier upgrade step.
 - To change the backup format, raise `BACKUP_SCHEMA_VERSION` in `src/config.js`, add it to `READABLE_BACKUP_VERSIONS`, and keep the import checks in `src/export.js` in step with it. Old backups must still import.

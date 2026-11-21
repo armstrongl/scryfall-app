@@ -11,6 +11,7 @@
 import {
   ACCEPT_HEADER, API_BASE, COLLECTION_BATCH_SIZE, RATE_LIMIT_PAUSE_MS, REQUEST_SPACING_MS,
 } from "./config.js";
+import { setOptions } from "./query.js";
 
 /**
  * @typedef {Object} ApiError
@@ -206,8 +207,22 @@ export function createClient(options = {}) {
     });
   }
 
+  /** @type {Promise<{code: string, name: string, released: string}[]>|null} */
+  let setsPromise = null;
+
   return {
     request,
+    /**
+     * The sets for the Set filter, newest first. Asked for once and kept
+     * while the page is open. After a failure, the next call asks again.
+     */
+    sets() {
+      setsPromise ??= request("/sets").then(setOptions, (e) => {
+        setsPromise = null;
+        throw e;
+      });
+      return setsPromise;
+    },
     /** Number of requests waiting to start. */
     get pending() {
       return queue.length;

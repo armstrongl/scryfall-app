@@ -28,7 +28,13 @@ Turn on **Nerd mode** at the top of the page to see more on every card: mana val
 ### Find cards
 
 1. Open **Discover**.
-2. Choose a preset, or select **Filters** to choose format, game, colors, card types, type line text, mana value, rarity, keywords, rules text, or Scryfall search syntax (**Scryfall search**). Each active filter shows as a chip in plain words. Scryfall search syntax that you type shows as **Custom search**, and a search from Explore says where it came from, for example "Works with Lotus Cobra". To remove a filter, select **×** on its chip. The app shows how many cards match. To see the same search on the Scryfall website, select **Open on Scryfall**.
+2. Choose a preset, or select **Filters** to choose format, game, colors, card types, type line text, mana value, rarity, or Scryfall search syntax (**Scryfall search**). More filters are in four groups that open and close:
+   - **Card**: what the card does (such as creature removal, ramp, or card draw), the number of abilities, keywords, rules text, and **Can be your commander**.
+   - **Creature**: creature abilities such as flying and trample (a card must have every one you tick), power, and toughness.
+   - **Printing**: the years the card was first printed, one or more sets, and the highest paper price.
+   - **Popularity**: **Staples**, **Popular**, or **Spicy** (rarely played), by [EDHREC](https://edhrec.com) rank in Commander decks.
+
+   Each active filter shows as a chip in plain words. Scryfall search syntax that you type shows as **Custom search**, and a search from Explore says where it came from, for example "Works with Lotus Cobra". To remove a filter, select **×** on its chip. The app shows how many cards match. To see the same search on the Scryfall website, select **Open on Scryfall**.
 3. Choose how to see cards:
    - **Draw random** draws 1 to 30 random cards. When you draw again with the same filters, the app prefers cards you haven't drawn recently for that search. If there aren't enough new cards, it fills the draw with recent ones and says how many. If 175 cards or fewer match, the app gets them all in one request and draws from them. Otherwise it asks Scryfall for one random card at a time, at most two a second.
    - **Browse all** lists every match, in the order you choose: name, mana value, release date, rarity, color, set, popularity (EDHREC rank), price, power, toughness, or artist. Select **Show cards**. The app loads 175 cards at a time. Select **Load more** for the next 175.

@@ -177,7 +177,9 @@ async function tooltipsIn(b, scope, label, check) {
   const { ev, until, key } = b;
   const count = await ev(`(() => {
     document.querySelectorAll("[data-tip-test]").forEach((el) => { delete el.dataset.tipTest; });
-    const els = [...document.querySelectorAll(${JSON.stringify(scope)} + " [aria-describedby]")].filter((el) => el.getClientRects().length > 0
+    // A control in a closed group still has a box in Chrome, but no one can reach it.
+    const shown = (el) => { const d = el.closest("details"); return !d || d.open || el.parentElement.closest("summary"); };
+    const els = [...document.querySelectorAll(${JSON.stringify(scope)} + " [aria-describedby]")].filter((el) => el.getClientRects().length > 0 && shown(el)
       && el.getAttribute("aria-describedby").split(" ").some((id) => document.getElementById(id)?.getAttribute("role") === "tooltip"));
     els.forEach((el, i) => { el.dataset.tipTest = String(i); });
     return els.length;
@@ -228,6 +230,8 @@ async function discoverTips(b, check) {
   const { ev } = b;
   const open = await ev(`document.querySelector("#filters-toggle").getAttribute("aria-expanded") === "true"`);
   if (!open) await ev(click("#filters-toggle"));
+  // Open the filter groups, so their ? buttons are checked too.
+  await ev(`document.querySelectorAll("#filters-panel details.filter-group").forEach((d) => { d.open = true; })`);
   check("the filters have ? buttons that explain them", (await ev(`document.querySelectorAll("#filters-panel .info-tip").length`)) >= 8,
     await ev(`[...document.querySelectorAll("#filters-panel .info-tip")].map((x) => x.getAttribute("aria-label")).join(", ")`));
   check("the filters link to their help page", await ev(`!!document.querySelector("#filters-panel a[href='#help/find-cards']")`));
@@ -251,6 +255,7 @@ async function discoverTips(b, check) {
   await ev(clickText("#view-discover .preset-slot button", "Cancel"));
   await mouseAway(b);
   check("Discover has tooltips on its buttons and filters", n >= 12, String(n));
+  await ev(`document.querySelectorAll("#filters-panel details.filter-group").forEach((d) => { d.open = false; })`);
 }
 
 /** Header, name, nerd mode, and the clean look. */
@@ -355,6 +360,112 @@ async function discover(b, check) {
   await redraw(b, check);
   // The redraw replaced the cards, so the later checks use the new first card.
   return await ev(`document.querySelector(".results .tile .tile-name").textContent`) ?? name;
+}
+
+/**
+ * The filters added after v1, in groups that open and close: Card,
+ * Creature, Printing, and Popularity. Each one reaches the search and
+ * shows as a chip in plain words.
+ */
+async function moreFilters(b, check) {
+  const { ev, until } = b;
+  await ev(`location.hash = "#discover"`);
+  await until(`!document.querySelector("#view-discover").hidden`, 3000);
+  const open = await ev(`document.querySelector("#filters-toggle").getAttribute("aria-expanded") === "true"`);
+  if (!open) await ev(click("#filters-toggle"));
+  await ev(setValue("#view-discover .preset-row select", "builtin-arena-standard", "change"));
+  await ev(clickText("#view-discover button", "Apply"));
+  const groups = `[...document.querySelectorAll("#filters-panel details.filter-group")]`;
+  check("the filters have Card, Creature, Printing, and Popularity groups, closed at first",
+    await ev(`${groups}.map((d) => d.dataset.group).join("|") === "card|creature|printing|popularity" && ${groups}.every((d) => !d.open)`),
+    await ev(`${groups}.map((d) => d.dataset.group + ":" + d.open).join(", ")`));
+  check("each group is opened by a button you can reach by keyboard, as tall as --tap", await ev(`${groups}.every((d) => {
+    const s = d.querySelector(":scope > summary");
+    s.focus();
+    const tap = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--tap"));
+    const ok = document.activeElement === s && s.getBoundingClientRect().height >= tap;
+    s.blur();
+    return ok;
+  })`), await ev(`${groups}.map((d) => d.querySelector(":scope > summary").getBoundingClientRect().height).join(", ")`));
+  const group = (g) => `document.querySelector("#filters-panel details[data-group=${g}]")`;
+  const openGroup = async (g) => { if (!(await ev(`${group(g)}.open`))) await ev(`${group(g)}.querySelector("summary").click()`); };
+
+  await openGroup("popularity");
+  await ev(setValue("#f-popularity", "spicy", "change"));
+  check("Popularity: Spicy reaches the search", await until(`${QUERY}.includes("edhrec>10000")`, 3000), await ev(QUERY));
+  check("Popularity: the chip says Spicy in plain words", await ev(`${CHIPS}.includes("Spicy: rarely played in Commander")`), await ev(CHIPS));
+  check("a group's button says how many of its filters are on", /1 on/.test(await ev(`${group("popularity")}.querySelector("summary").textContent`)));
+
+  await openGroup("creature");
+  for (const k of ["flying", "trample"]) await ev(`document.querySelector("#filters-panel input[name=creatureKeywords][value='${k}']").click()`);
+  check("Creature abilities: ticked keywords must all match", await until(`${QUERY}.includes("kw:flying kw:trample")`, 3000), await ev(QUERY));
+  check("Creature abilities: the chip names them", await ev(`${CHIPS}.includes("Flying and trample")`), await ev(CHIPS));
+  await ev(setValue("#f-pow-min", "3"));
+  check("Power reaches the search", await until(`${QUERY}.includes("pow>=3")`, 3000));
+
+  await openGroup("card");
+  await ev(setValue("#f-ability-count", "3plus", "change"));
+  check("Number of abilities reaches the search", await until(`${QUERY}.includes("o:/\\\\n[^\\\\n]*\\\\n/")`, 3000), await ev(QUERY));
+  await ev(`document.querySelector("#filters-panel input[name=roles][value=ramp]").click()`);
+  check("What the card does reaches the search", await until(`${QUERY}.includes("otag:ramp")`, 3000));
+  await ev(`document.querySelector("#f-commander").click()`);
+  check("Can be your commander reaches the search", await until(`${QUERY}.includes("is:commander")`, 3000));
+
+  await openGroup("printing");
+  await ev(setValue("#f-year-min", "2024"));
+  check("Age: first printed from a year, checked on the whole card", await until(`${QUERY}.includes("in:arena") && ${QUERY}.includes("year>=2024 not:reprint")`, 3000), await ev(QUERY));
+  check("Age: the chip says First printed", await ev(`${CHIPS}.includes("First printed 2024 or later")`), await ev(CHIPS));
+  await ev(setValue("#f-price-max", "2"));
+  check("Price: on Arena it shows why it isn't used", await until(`/paper/i.test(document.querySelector("#f-price-max-hint")?.textContent ?? "") && !${QUERY}.includes("usd")`, 3000));
+  check("Price: on Arena its chip says it isn't used", await ev(`${CHIPS}.includes("$2 or less: not used on Arena")`), await ev(CHIPS));
+  await ev(setValue("#f-price-max", ""));
+  await ev(setValue("#f-year-max", "1850"));
+  check("Age: a year before 1993 says why it isn't used", await until(`/1993/.test(document.querySelector("#f-year-max").closest(".group-body").textContent)`, 3000));
+  await ev(setValue("#f-year-max", ""));
+  check("Set: the list of sets loads", await until(`!!document.querySelector("#f-set-search") && !document.querySelector("#f-set-search").disabled`, 15000));
+  await ev(setValue("#f-set-search", "duskmourn"));
+  check("Set: typing a name finds the set", await until(`[...document.querySelectorAll("#f-set-results label")].some((l) => /Duskmourn: House of Horror/.test(l.textContent))`, 3000),
+    await ev(`document.querySelector("#f-set-results")?.textContent ?? "no list"`));
+  // Tick it from the keyboard: focus stays on the box.
+  await ev(`[...document.querySelectorAll("#f-set-results label")].find((l) => /^Duskmourn: House of Horror/.test(l.textContent)).querySelector("input").focus()`);
+  for (const type of ["keyDown", "keyUp"]) await b.send("Input.dispatchKeyEvent", { type, key: " ", code: "Space", windowsVirtualKeyCode: 32, text: type === "keyDown" ? " " : undefined });
+  check("Set: a ticked set reaches the search", await until(`${QUERY}.includes("e:dsk")`, 3000), await ev(QUERY));
+  check("Set: focus stays on the set you ticked", await ev(`document.activeElement?.value === "dsk" && document.activeElement.checked`), await ev(FOCUS));
+  check("Set: the chip names the set", await ev(`${CHIPS}.includes("Set: Duskmourn: House of Horror")`), await ev(CHIPS));
+  check("Set: the ticked set stays in the list when the search changes", await (async () => {
+    await ev(setValue("#f-set-search", "bloomburrow"));
+    return ev(`[...document.querySelectorAll("#f-set-results input:checked")].some((i) => i.value === "dsk")`);
+  })());
+  // A phone widens its layout to fit a wide element, and then innerWidth
+  // grows too, so this measures every element against the screen instead.
+  check("the filters still fit the screen", await ev(`[...document.querySelectorAll("#filters-panel *")].every((e) => e.getBoundingClientRect().right <= document.documentElement.clientWidth + 1)`),
+    await ev(`[...document.querySelectorAll("#filters-panel *")].filter((e) => e.getBoundingClientRect().right > document.documentElement.clientWidth + 1).slice(0, 3).map((e) => e.tagName + "." + e.className).join(", ")`));
+
+  // Removing a chip clears its control.
+  await ev(`[...document.querySelectorAll(".chips .chip button")].find((x) => /Spicy/.test(x.getAttribute("aria-label"))).click()`);
+  check("removing the Spicy chip resets Popularity", await until(`document.querySelector("#f-popularity").value === "" && !${QUERY}.includes("edhrec")`, 3000));
+  await ev(`[...document.querySelectorAll(".chips .chip button")].find((x) => /Set: Duskmourn/.test(x.getAttribute("aria-label"))).click()`);
+  check("removing the Set chip unticks the set", await until(`!document.querySelector("#f-set-results input[value=dsk]")?.checked && !${QUERY}.includes("e:dsk")`, 3000));
+
+  // The last search comes back after a reload, with its groups open.
+  // The last search is saved to IndexedDB after each change. Wait for the
+  // save, or the reload can bring back the search from before a chip was
+  // removed. Page.navigate to the same address with a hash only scrolls, so
+  // this reloads instead.
+  await sleep(1000);
+  await b.send("Page.reload", {});
+  await sleep(500);
+  await until(`!!document.querySelector("#filters-toggle")`);
+  await ev(click("#filters-toggle"));
+  check("after a reload, groups with filters on are open", await until(`["card", "creature", "printing"].every((g) => document.querySelector("#filters-panel details[data-group=" + g + "]")?.open)`, 5000),
+    await ev(`${groups}.map((d) => d.dataset.group + ":" + d.open).join(", ")`));
+  check("after a reload, a group with no filters on stays closed", await ev(`!${group("popularity")}.open`));
+
+  // A plain preset clears them.
+  await ev(setValue("#view-discover .preset-row select", "builtin-arena-standard", "change"));
+  await ev(clickText("#view-discover button", "Apply"));
+  check("applying a preset clears the new filters", await until(`${QUERY} === "f:standard game:arena -is:rebalanced"`, 3000), await ev(QUERY));
+  check("groups with no filters on say so", await ev(`${groups}.every((d) => !/\\d on/.test(d.querySelector("summary").textContent))`));
 }
 
 /**
@@ -903,6 +1014,8 @@ for (const { width, scheme } of CONFIGS) {
     await dialogTip(b, check);
     await learnMore(b, check);
     await help(b, check);
+    // Reloads the page, so it runs after the checks that need drawn cards.
+    await moreFilters(b, check);
     check("no horizontal page scroll", !(await b.ev("document.documentElement.scrollWidth > window.innerWidth")));
     check("no console errors", b.errors.length === 0, b.errors.join(" | "));
   } catch (e) {

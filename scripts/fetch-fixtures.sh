@@ -48,6 +48,9 @@ get card-landfall.json "/cards/named?exact=Lotus%20Cobra"
 get card-enchantress.json "/cards/named?exact=Starfield%20Mystic"
 get card-flyer.json "/cards/named?exact=Serra%20Angel"
 
+# Added for the Set filter: the full list of sets.
+get sets.json "/sets"
+
 # Added for GitHub sync: real responses from the GitHub REST API, from a
 # public repository and with no token (and one with a token that is not
 # valid). These requests send curl's default User-Agent.

@@ -44,6 +44,12 @@ Cascade's look is a blend of GitHub's [Primer](https://primer.style) and Vercel'
 - Nerd mode adds detail and makes the cards smaller. Extra data such as prices, salt scores, and bracket tags waits for nerd mode or **Details**.
 - In combos: compact in the results, big on the combo itself.
 
+## Filters
+
+- The basic filters are always shown. The rest are in groups that open and close (Card, Creature, Printing, and Popularity), chosen on 20 November 2026. A group starts closed, says how many of its filters are on, and opens when a preset turns one on.
+- Spicy means rarely played, by EDHREC rank. Ticking several creature abilities finds cards with all of them.
+- A real meta filter waits for a data source: [issue #37](https://github.com/armstrongl/scryfall-app/issues/37).
+
 ## Card images
 
 Never crop, clip, cover, stretch, filter, or transform a card image, and never put an element over one. Every marker, such as **Saved in**, goes in the caption below the image.

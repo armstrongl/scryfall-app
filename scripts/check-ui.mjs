@@ -358,6 +358,89 @@ async function discover(b, check) {
 }
 
 /**
+ * The filters added after v1, in groups that open and close: Card,
+ * Creature, Printing, and Popularity. Each one reaches the search and
+ * shows as a chip in plain words.
+ */
+async function moreFilters(b, check) {
+  const { ev, until } = b;
+  const open = await ev(`document.querySelector("#filters-toggle").getAttribute("aria-expanded") === "true"`);
+  if (!open) await ev(click("#filters-toggle"));
+  await ev(setValue("#view-discover .preset-row select", "builtin-arena-standard", "change"));
+  await ev(clickText("#view-discover button", "Apply"));
+  const groups = `[...document.querySelectorAll("#filters-panel details.filter-group")]`;
+  check("the filters have Card, Creature, Printing, and Popularity groups, closed at first",
+    await ev(`${groups}.map((d) => d.dataset.group).join("|") === "card|creature|printing|popularity" && ${groups}.every((d) => !d.open)`),
+    await ev(`${groups}.map((d) => d.dataset.group + ":" + d.open).join(", ")`));
+  check("each group is opened by a button you can reach by keyboard, as tall as --tap", await ev(`${groups}.every((d) => {
+    const s = d.querySelector(":scope > summary");
+    s.focus();
+    const tap = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--tap"));
+    const ok = document.activeElement === s && s.getBoundingClientRect().height >= tap;
+    s.blur();
+    return ok;
+  })`), await ev(`${groups}.map((d) => d.querySelector(":scope > summary").getBoundingClientRect().height).join(", ")`));
+  const group = (g) => `document.querySelector("#filters-panel details[data-group=${g}]")`;
+  const openGroup = async (g) => { if (!(await ev(`${group(g)}.open`))) await ev(`${group(g)}.querySelector("summary").click()`); };
+
+  await openGroup("popularity");
+  await ev(setValue("#f-popularity", "spicy", "change"));
+  check("Popularity: Spicy reaches the search", await until(`${QUERY}.includes("edhrec>10000")`, 3000), await ev(QUERY));
+  check("Popularity: the chip says Spicy in plain words", await ev(`${CHIPS}.includes("Spicy: rarely played in Commander")`), await ev(CHIPS));
+  check("a group's button says how many of its filters are on", /1 on/.test(await ev(`${group("popularity")}.querySelector("summary").textContent`)));
+
+  await openGroup("creature");
+  for (const k of ["flying", "trample"]) await ev(`document.querySelector("#filters-panel input[name=creatureKeywords][value='${k}']").click()`);
+  check("Creature abilities: ticked keywords must all match", await until(`${QUERY}.includes("kw:flying kw:trample")`, 3000), await ev(QUERY));
+  check("Creature abilities: the chip names them", await ev(`${CHIPS}.includes("Flying and trample")`), await ev(CHIPS));
+  await ev(setValue("#f-pow-min", "3"));
+  check("Power reaches the search", await until(`${QUERY}.includes("pow>=3")`, 3000));
+
+  await openGroup("card");
+  await ev(setValue("#f-ability-count", "3plus", "change"));
+  check("Number of abilities reaches the search", await until(`${QUERY}.includes("o:/\\\\n[^\\\\n]*\\\\n/")`, 3000), await ev(QUERY));
+  await ev(`document.querySelector("#filters-panel input[name=roles][value=ramp]").click()`);
+  check("What the card does reaches the search", await until(`${QUERY}.includes("otag:ramp")`, 3000));
+  await ev(`document.querySelector("#f-commander").click()`);
+  check("Can be your commander reaches the search", await until(`${QUERY}.includes("is:commander")`, 3000));
+
+  await openGroup("printing");
+  await ev(setValue("#f-year-min", "2024"));
+  check("Age: first printed from a year, checked on the whole card", await until(`${QUERY}.includes("in:arena") && ${QUERY}.includes("year>=2024 not:reprint")`, 3000), await ev(QUERY));
+  check("Age: the chip says First printed", await ev(`${CHIPS}.includes("First printed 2024 or later")`), await ev(CHIPS));
+  await ev(setValue("#f-price-max", "2"));
+  check("Price: on Arena it shows why it isn't used", await until(`/paper/i.test(document.querySelector("#f-price-max-hint")?.textContent ?? "") && !${QUERY}.includes("usd")`, 3000));
+  await ev(setValue("#f-price-max", ""));
+  check("Set: the list of sets loads", await until(`!!document.querySelector("#f-set-search") && !document.querySelector("#f-set-search").disabled`, 15000));
+  await ev(setValue("#f-set-search", "duskmourn"));
+  check("Set: typing a name finds the set", await until(`[...document.querySelectorAll("#f-set-results label")].some((l) => /Duskmourn: House of Horror/.test(l.textContent))`, 3000),
+    await ev(`document.querySelector("#f-set-results")?.textContent ?? "no list"`));
+  await ev(`[...document.querySelectorAll("#f-set-results label")].find((l) => /^Duskmourn: House of Horror/.test(l.textContent)).querySelector("input").click()`);
+  check("Set: a ticked set reaches the search", await until(`${QUERY}.includes("e:dsk")`, 3000), await ev(QUERY));
+  check("Set: the chip names the set", await ev(`${CHIPS}.includes("Set: Duskmourn: House of Horror")`), await ev(CHIPS));
+  check("Set: the ticked set stays in the list when the search changes", await (async () => {
+    await ev(setValue("#f-set-search", "bloomburrow"));
+    return ev(`[...document.querySelectorAll("#f-set-results input:checked")].some((i) => i.value === "dsk")`);
+  })());
+  // A phone widens its layout to fit a wide element, and then innerWidth
+  // grows too, so this measures every element against the screen instead.
+  check("the filters still fit the screen", await ev(`[...document.querySelectorAll("#filters-panel *")].every((e) => e.getBoundingClientRect().right <= document.documentElement.clientWidth + 1)`),
+    await ev(`[...document.querySelectorAll("#filters-panel *")].filter((e) => e.getBoundingClientRect().right > document.documentElement.clientWidth + 1).slice(0, 3).map((e) => e.tagName + "." + e.className).join(", ")`));
+
+  // Removing a chip clears its control.
+  await ev(`[...document.querySelectorAll(".chips .chip button")].find((x) => /Spicy/.test(x.getAttribute("aria-label"))).click()`);
+  check("removing the Spicy chip resets Popularity", await until(`document.querySelector("#f-popularity").value === "" && !${QUERY}.includes("edhrec")`, 3000));
+  await ev(`[...document.querySelectorAll(".chips .chip button")].find((x) => /Set: Duskmourn/.test(x.getAttribute("aria-label"))).click()`);
+  check("removing the Set chip unticks the set", await until(`!document.querySelector("#f-set-results input[value=dsk]")?.checked && !${QUERY}.includes("e:dsk")`, 3000));
+
+  // A preset with these filters opens their groups; a plain one closes them.
+  await ev(setValue("#view-discover .preset-row select", "builtin-arena-standard", "change"));
+  await ev(clickText("#view-discover button", "Apply"));
+  check("applying a preset clears the new filters", await until(`${QUERY} === "f:standard game:arena -is:rebalanced"`, 3000), await ev(QUERY));
+  check("groups with no filters on say so", await ev(`${groups}.every((d) => !/\\d on/.test(d.querySelector("summary").textContent))`));
+}
+
+/**
  * Redraws prefer cards that weren't drawn recently for the same search. A
  * small pool (175 cards or fewer) is drawn from one search page, so a redraw
  * with enough new cards repeats none, and it sends no random-card requests.
@@ -893,6 +976,7 @@ for (const { width, scheme } of CONFIGS) {
     check("app starts", await b.until(`!!document.querySelector("#view-discover h1")`));
     await shell(b, width, check);
     const name = await discover(b, check);
+    await moreFilters(b, check);
     await discoverTips(b, check);
     await details(b, width, name, check);
     await exploreFlow(b, check);

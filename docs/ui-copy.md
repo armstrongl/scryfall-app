@@ -42,6 +42,14 @@ This index lists the text the app shows or announces from `index.html`, `src/mai
 | `TIPS.manaValue` | `src/ui/criteria-form.js` | The total amount of mana in a card's cost. For example, a card that costs {2}{G}{G} has a mana value of 4. |
 | `TIPS.keyword` | `src/ui/criteria-form.js` | Matches a keyword ability, such as flying, trample, or ward. |
 | `TIPS.rulesText` | `src/ui/criteria-form.js` | Matches words in the card's rules text, such as "draw a card". |
+| `TIPS.roles` | `src/ui/criteria-form.js` | Finds cards that do any of the jobs you tick, such as creature removal or ramp. It uses Scryfall Tagger tags, which the community maintains. |
+| `TIPS.abilityCount` | `src/ui/criteria-form.js` | Counts the paragraphs of rules text. Flying and trample on one line count as one ability. Keywords only means the card has keywords and nothing else. |
+| `TIPS.commander` | `src/ui/criteria-form.js` | Finds cards that can lead a Commander or Brawl deck, such as legendary creatures. |
+| `TIPS.creatureAbilities` | `src/ui/criteria-form.js` | Finds cards with every keyword you tick. For example, Flying and Lifelink finds cards with both. |
+| `TIPS.firstPrinted` | `src/ui/criteria-form.js` | The year the card was first printed, in any set. A reprint of an old card counts as old. |
+| `TIPS.set` | `src/ui/criteria-form.js` | Finds cards printed in any of the sets you tick. Type part of a set name, or its code, such as DSK. |
+| `TIPS.price` | `src/ui/criteria-form.js` | The highest paper price, in dollars (USD), from Scryfall. Arena and MTGO cards have no paper price, so this works only when Game is Paper or Any. |
+| `TIPS.popularity` | `src/ui/criteria-form.js` | How often Commander decks on EDHREC play the card. Staples are in the most decks. Spicy cards are rarely played, with a rank over 10,000. |
 | `TIPS.exportArena` | `src/ui/lists-view.js` | Shows the deck as text to copy and import into MTG Arena. |
 | `TIPS.findCombos` | `src/ui/lists-view.js` | Shows the list as text to paste into Find My Combos on Commander Spellbook. |
 | `TIPS.openList` | `src/ui/lists-view.js` | Opens every card in this list on the Scryfall website, in a new tab. |
@@ -57,7 +65,7 @@ This index lists the text the app shows or announces from `index.html`, `src/mai
 | Page | Address | Summary | Links |
 | --- | --- | --- | --- |
 | Get started | `#help/get-started` | What Cascade does and where things are. | 6 |
-| Find cards | `#help/find-cards` | Presets, filters, random draws, and Browse all. | 21 |
+| Find cards | `#help/find-cards` | Presets, filters, random draws, and Browse all. | 30 |
 | Card details | `#help/card-details` | Rules text, keywords, rulings, legality, and prices. | 19 |
 | Explore | `#help/explore` | Synergies, similar cards, counters, and combos for any card. | 7 |
 | Combos | `#help/combos` | Find card combos on Commander Spellbook, and learn what bracket tags mean. | 16 |
@@ -65,7 +73,7 @@ This index lists the text the app shows or announces from `index.html`, `src/mai
 | Nerd mode | `#help/nerd-mode` | More details on every card. | 2 |
 | Your data | `#help/your-data` | Where your lists are stored, and how to back them up. | 10 |
 | Sync with GitHub | `#help/sync` | Keep your lists on every device, in a private GitHub repository. | 5 |
-| Glossary | `#help/glossary` | The Magic terms the app uses, with links to learn more. | 36 |
+| Glossary | `#help/glossary` | The Magic terms the app uses, with links to learn more. | 44 |
 
 ## `index.html`
 
@@ -162,6 +170,8 @@ This index lists the text the app shows or announces from `index.html`, `src/mai
 
 | Kind | Text |
 | --- | --- |
+| text | Minimum |
+| text | Maximum |
 | text | Any format |
 | text | Arena |
 | text | MTGO |
@@ -177,6 +187,35 @@ This index lists the text the app shows or announces from `index.html`, `src/mai
 | checkbox | Use color identity (for Commander and Brawl) |
 | text | Card types |
 | text | Rarity |
+| text | What the card does |
+| text | Any |
+| checkbox | Can be your commander |
+| text | Creature abilities |
+| text | Any |
+| placeholder | Set name or code |
+| text | The sets load when you open Printing. |
+| aria-label | Sets |
+| text | No sets match. |
+| text | Loading the sets… |
+| text | {…} sets, newest first. Type to find one. |
+| announce | The sets are loaded. |
+| text | Couldn't load the sets. {…} To try again, close Printing and open it. |
+| text | Card |
+| field | Number of abilities |
+| field | Keyword ability |
+| field | Rules text |
+| tooltip button | Can be your commander |
+| text | Creature |
+| text | Power |
+| text | Toughness |
+| text | Printing |
+| text | First printed |
+| text | From year |
+| text | To year |
+| field | Set |
+| field | Paper price at most (USD) |
+| text | Popularity |
+| field | Popularity |
 | aria-label | Criteria |
 | field | Format |
 | field | Game |
@@ -188,8 +227,6 @@ This index lists the text the app shows or announces from `index.html`, `src/mai
 | tooltip button | Mana value |
 | field | Minimum |
 | field | Maximum |
-| field | Keyword ability |
-| field | Rules text |
 | field | Scryfall search |
 | text | Learn more about filters |
 

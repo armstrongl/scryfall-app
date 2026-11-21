@@ -182,3 +182,20 @@ test("cancel while the body is being read is a cancel, not a server error", asyn
   const client = createClient({ fetchImpl, clock });
   await assert.rejects(client.search("t:goblin", {}, controller.signal), (e) => e.kind === "cancelled");
 });
+
+test("the set list is asked for once through the queue and kept, and a failure can be retried", async () => {
+  const clock = virtualClock();
+  let fail = true;
+  const fetchImpl = fakeFetch(clock, () => (fail ? response(500, { object: "error", status: 500, details: "down" }) : response(200, fixture("sets"))));
+  const client = createClient({ fetchImpl, clock });
+  await assert.rejects(client.sets());
+  fail = false;
+  const [a, b] = await Promise.all([client.sets(), client.sets()]);
+  assert.equal(a, b);
+  assert.ok(a.some((s) => s.code === "dsk" && s.name === "Duskmourn: House of Horror"));
+  assert.ok(!a.some((s) => s.code === "tmdd"), "token sets are left out");
+  await client.sets();
+  assert.equal(fetchImpl.calls.length, 2);
+  assert.equal(fetchImpl.calls[1].url, `${API_BASE}/sets`);
+  assert.equal(fetchImpl.calls[1].init.headers.Accept, ACCEPT_HEADER);
+});

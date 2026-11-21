@@ -157,7 +157,7 @@ export function createDiscoverView(app) {
   }
 
   // Filters, chips, and preview ----------------------------------------------------
-  const form = createCriteriaForm((c) => onCriteria(c));
+  const form = createCriteriaForm((c) => onCriteria(c), { loadSets: () => app.client.sets() });
   const filtersPanel = h("div", { id: "filters-panel", class: "filters-panel", hidden: true }, form.el);
   const filtersToggle = h("button", {
     type: "button",

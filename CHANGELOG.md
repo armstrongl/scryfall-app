@@ -7,6 +7,20 @@ Sections:
 - **Added**, **Changed**, **Fixed**, and **Removed** cover what someone using the app sees.
 - **Project** covers changes for people and agents who work on the code: tests, scripts, and agent instructions.
 
+## 20 November 2026
+
+### Added
+
+- More filters in **Filters**, in four groups that open and close and show how many of their filters are on. **Card**: what the card does (such as creature removal, ramp, or card draw), number of abilities, and **Can be your commander**. **Creature**: creature abilities such as flying and trample, power, and toughness. **Printing**: the years a card was first printed, one or more sets, and the highest paper price. **Popularity**: **Staples**, **Popular**, or **Spicy** (rarely played), by EDHREC rank. Each one shows as a chip in plain words. ([#38](https://github.com/armstrongl/scryfall-app/pull/38))
+
+### Changed
+
+- **Keyword ability** and **Rules text** moved into the **Card** group of **Filters**. ([#38](https://github.com/armstrongl/scryfall-app/pull/38))
+
+### Project
+
+- Browser checks for the new filters, live API checks for each new search term, and a real Scryfall set list as a test fixture. The changelog check tests no longer stop when commit signing is on. ([#38](https://github.com/armstrongl/scryfall-app/pull/38))
+
 ## 12 November 2026
 
 ### Added

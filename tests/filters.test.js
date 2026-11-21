@@ -37,6 +37,9 @@ test("popularity uses the EDHREC rank", () => {
   assert.equal(q({ popularity: "popular" }).query, "edhrec<5000");
   assert.equal(q({ popularity: "spicy" }).query, "edhrec>10000");
   assert.equal(normalizeCriteria({ popularity: "hot" }).popularity, null);
+  // A value from a damaged backup that only looks like a key is dropped.
+  assert.equal(normalizeCriteria({ popularity: ["staple"] }).popularity, null);
+  assert.equal(normalizeCriteria({ popularity: "toString" }).popularity, null);
   assert.deepEqual(Object.keys(POPULARITY), ["staple", "popular", "spicy"]);
   assert.deepEqual(chips({ popularity: "spicy" }), ["Spicy: rarely played in Commander"]);
   assert.deepEqual(chips({ popularity: "staple" }), ["Staples: top 1,000 in Commander"]);
@@ -66,6 +69,17 @@ test("with an age, the game filter checks the whole card, not one printing", () 
   assert.equal(q({ game: "paper", yearMin: 2020 }).query, "in:paper year>=2020 not:reprint");
   assert.equal(q({ game: "arena" }).query, "game:arena");
   assert.equal(buildQuery({ ...defaultCriteria(), yearMin: 2025 }).query, "f:standard in:arena -is:rebalanced year>=2025 not:reprint");
+});
+
+test("with an age, set, rarity, and price look at the first printing, and a hint says so", () => {
+  const hint = (c) => q(c).hints.find((h) => h.field === "year")?.message ?? "";
+  assert.equal(hint({ yearMin: 2020 }), "");
+  assert.equal(hint({ sets: [{ code: "fdn", name: "Foundations" }] }), "");
+  assert.match(hint({ yearMin: 2020, sets: [{ code: "fdn", name: "Foundations" }] }), /first printing/);
+  assert.match(hint({ yearMax: 1995, rarities: ["rare"] }), /Rarity/);
+  assert.match(hint({ yearMax: 1995, priceMax: 1 }), /price/i);
+  // On Arena the price isn't used, so the hint doesn't name it.
+  assert.doesNotMatch(hint({ yearMax: 1995, priceMax: 1, game: "arena", sets: [{ code: "fdn", name: "F" }] }), /price/i);
 });
 
 test("sets: one or more set codes, named in plain words", () => {
@@ -101,6 +115,7 @@ test("number of abilities counts paragraphs of rules text", () => {
   assert.equal(q({ abilityCount: "2" }).query, "o:/\\n/ -o:/\\n[^\\n]*\\n/");
   assert.equal(q({ abilityCount: "3plus" }).query, "o:/\\n[^\\n]*\\n/");
   assert.equal(normalizeCriteria({ abilityCount: "7" }).abilityCount, null);
+  assert.equal(normalizeCriteria({ abilityCount: ["1"] }).abilityCount, null);
   assert.deepEqual(["none", "keywords", "1", "2", "3plus"].map((a) => chips({ abilityCount: a })[0]),
     ["No abilities", "Keywords only", "1 ability", "2 abilities", "3 or more abilities"]);
 });
@@ -130,8 +145,12 @@ test("what the card does uses verified Tagger tags, any of them", () => {
   assert.deepEqual(chips({ roles: ["removal-creature", "draw"] }), ["Creature removal or card draw"]);
 });
 
-test("can be your commander", () => {
+test("can be your commander, with Brawl's own rule in Brawl formats", () => {
   assert.equal(q({ canBeCommander: true }).query, "is:commander");
+  assert.equal(q({ canBeCommander: true, format: "commander" }).query, "f:commander is:commander");
+  // is:brawler adds the legendary planeswalkers that only Brawl allows.
+  assert.equal(q({ canBeCommander: true, format: "brawl" }).query, "f:brawl is:brawler");
+  assert.equal(q({ canBeCommander: true, format: "standardbrawl" }).query, "f:standardbrawl is:brawler");
   assert.deepEqual(chips({ canBeCommander: true }), ["Can be your commander"]);
 });
 
@@ -141,7 +160,9 @@ test("paper price applies only when the game isn't Arena or MTGO", () => {
   const arena = q({ priceMax: 2, game: "arena" });
   assert.equal(arena.query, "game:arena");
   assert.equal(arena.hints[0].field, "price");
-  assert.deepEqual(chips({ priceMax: 2, game: "arena" }), ["On Arena"]);
+  // The chip stays, says the price isn't used, and can clear it.
+  assert.deepEqual(chips({ priceMax: 2, game: "arena" }), ["On Arena", "$2 or less: not used on Arena"]);
+  assert.deepEqual(chips({ priceMax: 2, game: "mtgo" }), ["On MTGO", "$2 or less: not used on MTGO"]);
   assert.deepEqual(chips({ priceMax: 2 }), ["$2 or less"]);
   assert.deepEqual(chips({ priceMax: 0.5 }), ["$0.50 or less"]);
   assert.equal(normalizeCriteria({ priceMax: -1 }).priceMax, null);

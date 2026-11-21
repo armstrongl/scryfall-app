@@ -9,7 +9,7 @@ import {
 } from "../query.js";
 import { rarityName } from "../cards.js";
 import { errorMessage } from "../scryfall.js";
-import { announce, checkbox, field, h, helpLink, infoTip, replace, uid } from "./dom.js";
+import { checkbox, field, h, helpLink, infoTip, replace, uid } from "./dom.js";
 
 /** The most sets the Set list shows at once, besides the ticked ones. */
 const SET_RESULTS = 8;
@@ -113,7 +113,7 @@ export function createCriteriaForm(onChange, options = {}) {
   setSearch.setAttribute("aria-describedby", setStatus.id);
   // Named by aria-label: a hidden legend in a .checks group would take the
   // group's full width and push the page wider on a phone.
-  const setResults = h("fieldset", { class: "checks set-results", id: "f-set-results", "aria-label": "Sets" });
+  const setResults = h("fieldset", { class: "checks set-results", id: "f-set-results", "aria-label": "Sets", hidden: true });
 
   function renderSets() {
     const text = setSearch.value.trim().toLowerCase();
@@ -128,13 +128,17 @@ export function createCriteriaForm(onChange, options = {}) {
       return checkbox(label, checked, (e) => toggleSet(s, e.target.checked), { value: s.code, name: "sets" }).el;
     };
     replace(setResults, chosenSets.map((s) => box(s, true)), matches.map((s) => box(s, false)));
+    setResults.hidden = setResults.childElementCount === 0;
     if (allSets && text && matches.length === 0) setResults.append(h("p", { class: "hint", text: "No sets match." }));
   }
 
   function toggleSet(s, on) {
     chosenSets = on ? [...chosenSets.filter((x) => x.code !== s.code), { code: s.code, name: s.name }] : chosenSets.filter((x) => x.code !== s.code);
     emit();
+    // The list is drawn again, so focus moves to the new box for this set.
+    const hadFocus = setResults.contains(document.activeElement);
     renderSets();
+    if (hadFocus) setResults.querySelector(`input[value="${s.code}"]`)?.focus();
   }
 
   async function loadSets() {
@@ -145,7 +149,6 @@ export function createCriteriaForm(onChange, options = {}) {
       allSets = await options.loadSets();
       setSearch.disabled = false;
       setStatus.textContent = `${allSets.length.toLocaleString()} sets, newest first. Type to find one.`;
-      announce("The sets are loaded.");
     } catch (e) {
       setStatus.textContent = `Couldn't load the sets. ${errorMessage(e)} To try again, close Printing and open it.`;
     } finally {
@@ -262,6 +265,15 @@ export function createCriteriaForm(onChange, options = {}) {
 
   /** Shows the builder's hints next to their fields. */
   function showHints(hints) {
+    // A year the filter can't use is dropped from the criteria, so the
+    // form says why here.
+    const badYear = [yearMin, yearMax].some((i) => {
+      const n = Number(i.value.trim());
+      return i.value.trim() !== "" && (!Number.isInteger(n) || n < 1993 || n > 2100);
+    });
+    if (badYear && !hints.some((x) => x.field === "year")) {
+      hints = [...hints, { field: "year", message: "Enter a year from 1993, the year of the first Magic cards, to 2100." }];
+    }
     for (const [key, el] of Object.entries(hintSlots)) {
       const hint = hints.find((x) => x.field === key);
       el.textContent = hint ? hint.message : "";

@@ -43,8 +43,8 @@ This index lists the text the app shows or announces from `index.html`, `src/mai
 | `TIPS.keyword` | `src/ui/criteria-form.js` | Matches a keyword ability, such as flying, trample, or ward. |
 | `TIPS.rulesText` | `src/ui/criteria-form.js` | Matches words in the card's rules text, such as "draw a card". |
 | `TIPS.roles` | `src/ui/criteria-form.js` | Finds cards that do any of the jobs you tick, such as creature removal or ramp. It uses Scryfall Tagger tags, which the community maintains. |
-| `TIPS.abilityCount` | `src/ui/criteria-form.js` | Counts the paragraphs of rules text. Flying and trample on one line count as one ability. Keywords only means the card has keywords and nothing else. |
-| `TIPS.commander` | `src/ui/criteria-form.js` | Finds cards that can lead a Commander or Brawl deck, such as legendary creatures. |
+| `TIPS.abilityCount` | `src/ui/criteria-form.js` | Counts the lines of rules text. Keywords on one line, such as flying and trample, count as one ability. Keywords only means the card has keywords and nothing else. |
+| `TIPS.commander` | `src/ui/criteria-form.js` | Finds cards that can lead a Commander or Brawl deck, such as legendary creatures. In Brawl formats, it includes legendary planeswalkers too. |
 | `TIPS.creatureAbilities` | `src/ui/criteria-form.js` | Finds cards with every keyword you tick. For example, Flying and Lifelink finds cards with both. |
 | `TIPS.firstPrinted` | `src/ui/criteria-form.js` | The year the card was first printed, in any set. A reprint of an old card counts as old. |
 | `TIPS.set` | `src/ui/criteria-form.js` | Finds cards printed in any of the sets you tick. Type part of a set name, or its code, such as DSK. |
@@ -65,7 +65,7 @@ This index lists the text the app shows or announces from `index.html`, `src/mai
 | Page | Address | Summary | Links |
 | --- | --- | --- | --- |
 | Get started | `#help/get-started` | What Cascade does and where things are. | 6 |
-| Find cards | `#help/find-cards` | Presets, filters, random draws, and Browse all. | 30 |
+| Find cards | `#help/find-cards` | Presets, filters, random draws, and Browse all. | 31 |
 | Card details | `#help/card-details` | Rules text, keywords, rulings, legality, and prices. | 19 |
 | Explore | `#help/explore` | Synergies, similar cards, counters, and combos for any card. | 7 |
 | Combos | `#help/combos` | Find card combos on Commander Spellbook, and learn what bracket tags mean. | 16 |
@@ -198,8 +198,8 @@ This index lists the text the app shows or announces from `index.html`, `src/mai
 | text | No sets match. |
 | text | Loading the sets… |
 | text | {…} sets, newest first. Type to find one. |
-| announce | The sets are loaded. |
 | text | Couldn't load the sets. {…} To try again, close Printing and open it. |
+| message | Enter a year from 1993, the year of the first Magic cards, to 2100. |
 | text | Card |
 | field | Number of abilities |
 | field | Keyword ability |

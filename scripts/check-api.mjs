@@ -95,6 +95,19 @@ console.log(`${price.status === 200 && price.body.total_cards > 0 ? "ok  " : "BA
 // age, the game filter must look at every printing, or Opt is lost.
 const opt = await search(`!"Opt" ${buildQuery({ ...emptyCriteria(), game: "arena", yearMax: 2001 }).query}`);
 console.log(`${opt.body.total_cards === 1 ? "ok  " : "BAD "} First printed checks every printing (Opt, 2000, on Arena): ${opt.status} ${opt.body.total_cards ?? opt.body.code}`);
+// A known card for each Number of abilities choice, and one that must not match.
+const abilityCards = [
+  ["none", "Grizzly Bears", 1], ["keywords", "Serra Angel", 1], ["1", "Llanowar Elves", 1],
+  ["2", "Thragtusk", 1], ["3plus", "Sheoldred, the Apocalypse", 1], ["2", "Llanowar Elves", 0],
+];
+for (const [count, name, want] of abilityCards) {
+  const r = await search(`!"${name}" ${buildQuery({ ...emptyCriteria(), abilityCount: count }).query}`);
+  const got = r.body.total_cards ?? 0;
+  console.log(`${got === want ? "ok  " : "BAD "} Abilities ${count}: ${name} ${want ? "matches" : "doesn't match"} (${r.status} ${got})`);
+}
+// Brawl allows legendary planeswalkers as commanders.
+const walker = await search(`!"Teferi, Hero of Dominaria" ${buildQuery({ ...emptyCriteria(), format: "brawl", canBeCommander: true }).query}`);
+console.log(`${walker.body.total_cards === 1 ? "ok  " : "BAD "} Brawl commander: a legendary planeswalker matches (${walker.status} ${walker.body.total_cards ?? walker.body.code})`);
 const sets = await get("/sets");
 console.log(`${sets.status === 200 && setOptions(sets.body).some((x) => x.code === "dsk") ? "ok  " : "BAD "} The set list: ${sets.status}, ${setOptions(sets.body).length} sets to choose from`);
 

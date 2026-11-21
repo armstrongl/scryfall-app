@@ -204,11 +204,11 @@ export function normalizeCriteria(input) {
     rarities: pick(input.rarities, RARITIES),
     keyword: str(input.keyword),
     oracleText: str(input.oracleText),
-    popularity: Object.hasOwn(POPULARITY, input.popularity ?? "") ? input.popularity : null,
+    popularity: typeof input.popularity === "string" && Object.hasOwn(POPULARITY, input.popularity) ? input.popularity : null,
     yearMin: toYear(input.yearMin),
     yearMax: toYear(input.yearMax),
     sets: toSets(input.sets),
-    abilityCount: ABILITY_COUNTS.includes(input.abilityCount) ? input.abilityCount : null,
+    abilityCount: typeof input.abilityCount === "string" && ABILITY_COUNTS.includes(input.abilityCount) ? input.abilityCount : null,
     creatureKeywords: pick(input.creatureKeywords, CREATURE_KEYWORDS),
     powMin: toWholeNumber(input.powMin),
     powMax: toWholeNumber(input.powMax),
@@ -325,6 +325,11 @@ export function buildQuery(input) {
   if (hasAge) {
     range("year", c.yearMin, c.yearMax, "The first year is after the last year, so no cards match.");
     parts.push("not:reprint");
+    // Scryfall checks these against the same printing as the year.
+    const same = [c.sets.length && "Set", c.rarities.length && "Rarity", c.priceMax !== null && priceApplies(c) && "Paper price"].filter(Boolean);
+    if (same.length) {
+      hints.push({ field: "year", message: `With First printed, Scryfall checks ${joinAnd(same)} on the card's first printing only.` });
+    }
   }
 
   const sets = orGroup(c.sets.map((s) => `e:${s.code}`));
@@ -340,7 +345,9 @@ export function buildQuery(input) {
   const roles = orGroup(ROLE_TAGS.filter((t) => c.roles.includes(t)).map((t) => `otag:${t}`));
   if (roles) parts.push(roles);
 
-  if (c.canBeCommander) parts.push("is:commander");
+  // Brawl allows any legendary planeswalker as commander too, and Scryfall's
+  // is:brawler includes them.
+  if (c.canBeCommander) parts.push(BRAWL_FORMATS.includes(c.format) ? "is:brawler" : "is:commander");
 
   if (c.priceMax !== null) {
     if (priceApplies(c)) parts.push(`usd<=${c.priceMax}`);
@@ -358,6 +365,9 @@ export function buildQuery(input) {
   }
   return { query, hints, error };
 }
+
+/** Formats where Brawl's commander rules apply. */
+const BRAWL_FORMATS = ["brawl", "standardbrawl"];
 
 /** Paper prices don't apply to cards on Arena or MTGO. */
 const priceApplies = (c) => c.game !== "arena" && c.game !== "mtgo";
@@ -433,9 +443,11 @@ export function filterChips(input) {
     chips.push({ id: "roles", label: cap(joinOr(words)), clear: { roles: [] } });
   }
   if (c.canBeCommander) chips.push({ id: "canBeCommander", label: "Can be your commander", clear: { canBeCommander: false } });
-  if (c.priceMax !== null && priceApplies(c)) {
+  if (c.priceMax !== null) {
     const price = Number.isInteger(c.priceMax) ? `$${c.priceMax}` : `$${c.priceMax.toFixed(2)}`;
-    chips.push({ id: "price", label: `${price} or less`, clear: { priceMax: null } });
+    // On Arena or MTGO the price isn't used. The chip says so, and can clear it.
+    const label = priceApplies(c) ? `${price} or less` : `${price} or less: not used on ${c.game === "mtgo" ? "MTGO" : "Arena"}`;
+    chips.push({ id: "price", label, clear: { priceMax: null } });
   }
   if (c.rawQuery.trim()) {
     const label = c.rawLabel.trim() || `Custom search: ${short(c.rawQuery.trim())}`;

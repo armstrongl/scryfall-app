@@ -36,8 +36,8 @@ This index lists the text the app shows or announces from `index.html`, `src/mai
 | `TIPS.openSearch` | `src/ui/discover.js` | Opens this search on the Scryfall website, in a new tab. |
 | `TIPS.game` | `src/ui/criteria-form.js` | Shows only cards you can play in this game: MTG Arena, Magic Online (MTGO), or paper. |
 | `TIPS.rebalanced` | `src/ui/criteria-form.js` | Leaves out rebalanced cards: digital-only versions that MTG Arena changed for balance. Their names start with A-. |
-| `TIPS.colorMode` | `src/ui/criteria-form.js` | How the colors you choose filter cards. Exactly: only those colors. At least: those colors and maybe more. At most: no other colors. Any: no color filter. |
-| `TIPS.colorIdentity` | `src/ui/criteria-form.js` | Matches the colors in a card's rules text as well as its cost, the way Commander and Brawl decks are built. |
+| `TIPS.colorMode` | `src/ui/criteria-form.js` | How the colors you choose filter cards. Exactly: only those colors. At least: those colors and maybe more. At most: no other colors. Any: no color filter. Ticking a color with Any picks a mode for you. |
+| `TIPS.colorIdentity` | `src/ui/criteria-form.js` | Matches the colors in a card's rules text as well as its cost, the way Commander and Brawl decks are built. Commander and Brawl formats tick it for you. |
 | `TIPS.typeLine` | `src/ui/criteria-form.js` | Matches words in the type line, such as Elf, Equipment, or Legendary. |
 | `TIPS.manaValue` | `src/ui/criteria-form.js` | The total amount of mana in a card's cost. For example, a card that costs {2}{G}{G} has a mana value of 4. |
 | `TIPS.keyword` | `src/ui/criteria-form.js` | Matches a keyword ability, such as flying, trample, or ward. |

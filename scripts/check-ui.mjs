@@ -474,6 +474,46 @@ async function moreFilters(b, check) {
 }
 
 /**
+ * Colors for Commander-type formats. Lands have no color, so green lands
+ * for Commander need color identity. Picking such a format ticks Use color
+ * identity, and ticking a color with the mode on Any picks a mode that fits.
+ */
+async function commanderColors(b, check) {
+  const { ev, until } = b;
+  await ev(`location.hash = "#discover"`);
+  await until(`!document.querySelector("#view-discover").hidden`, 3000);
+  if (await ev(`document.querySelector("#filters-toggle").getAttribute("aria-expanded") !== "true"`)) await ev(click("#filters-toggle"));
+  await ev(setValue("#view-discover .preset-row select", "builtin-arena-standard", "change"));
+  await ev(clickText("#view-discover button", "Apply"));
+  const box = (label) => `[...document.querySelectorAll("#filters-panel label.check")].find((l) => l.textContent.trim() === ${JSON.stringify(label)}).querySelector("input")`;
+
+  await ev(setValue("#f-format", "commander", "change"));
+  check("picking Commander ticks Use color identity", await until(`document.querySelector("#f-identity").checked`, 3000));
+  await ev(`${box("Green")}.click()`);
+  await ev(`${box("Land")}.click()`);
+  check("green lands for Commander: identity, at most green", await until(`${QUERY} === "f:commander game:arena -is:rebalanced id<=g t:land"`, 3000), await ev(QUERY));
+  check("the color mode shows At most", await ev(`document.querySelector("#f-color-mode").value === "atMost"`));
+  check("the color chip names color identity", await ev(`${CHIPS}.includes("Color identity at most green")`), await ev(CHIPS));
+  check("no hint asks for a color mode", await ev(`!/Choose a color mode/.test(document.querySelector("#filters-panel").textContent)`));
+
+  // Unticking identity changes a mode the app chose, but not one chosen by hand.
+  await ev(`document.querySelector("#f-identity").click()`);
+  check("without identity, the chosen mode becomes At least", await until(`${QUERY}.includes("c>=g")`, 3000), await ev(QUERY));
+  await ev(setValue("#f-color-mode", "exactly", "change"));
+  await ev(`document.querySelector("#f-identity").click()`);
+  check("a mode chosen by hand stays", await until(`${QUERY}.includes("id=g")`, 3000), await ev(QUERY));
+
+  // Other formats read colors as card color.
+  await ev(setValue("#view-discover .preset-row select", "builtin-arena-standard", "change"));
+  await ev(clickText("#view-discover button", "Apply"));
+  await ev(`${box("Red")}.click()`);
+  check("Standard: ticking Red finds red cards", await until(`${QUERY} === "f:standard game:arena -is:rebalanced c>=r"`, 3000), await ev(QUERY));
+  check("Standard doesn't tick Use color identity", await ev(`!document.querySelector("#f-identity").checked`));
+  await ev(setValue("#view-discover .preset-row select", "builtin-arena-standard", "change"));
+  await ev(clickText("#view-discover button", "Apply"));
+}
+
+/**
  * Redraws prefer cards that weren't drawn recently for the same search. A
  * small pool (175 cards or fewer) is drawn from one search page, so a redraw
  * with enough new cards repeats none, and it sends no random-card requests.
@@ -1067,6 +1107,7 @@ for (const { width, scheme } of CONFIGS) {
     await help(b, check);
     // Reloads the page, so it runs after the checks that need drawn cards.
     await moreFilters(b, check);
+    await commanderColors(b, check);
     check("no horizontal page scroll", !(await b.ev("document.documentElement.scrollWidth > window.innerWidth")));
     check("no console errors", b.errors.length === 0, b.errors.join(" | "));
   } catch (e) {

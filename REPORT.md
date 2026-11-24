@@ -525,3 +525,28 @@ Cards are easier to buy in paper, requested on 24 November 2026. The plan was ap
 
 - The estimate uses Scryfall's TCGplayer price for the saved printing. The store's cart can cost more or less, because it chooses the printing and condition.
 - Cardmarket has no known link that fills a list, so it gets **Copy** only.
+
+# Colors for Commander formats (24 November 2026)
+
+A search for green lands in Commander showed no lands. Lands have no color, so `c>=g t:land` finds only double-faced cards with a green spell on the front, and the app shows the front face. On 24 November 2026, all 16 results on Arena were of this kind, such as [Bala Ged Recovery](https://scryfall.com/search?q=%21%22Bala+Ged+Recovery%22). Also, a color ticked with the mode on **Any** was left out of the search, with only a hint.
+
+## Changes from the plan
+
+`PLAN.md` section 4.1 sets the color mode to **Any** by default. The default stays, but ticking a color with the mode on **Any** now changes the mode: **At most** with color identity, and **At least** without it. Item 7 in the v1 list above still applies to criteria from a preset or a backup.
+
+## Decisions
+
+These were chosen on 24 November 2026:
+
+- Choosing a format in `IDENTITY_FORMATS` (`src/query.js`) ticks **Use color identity**. It can still be unticked.
+- With color identity, a ticked color picks **At most**, so green finds every card a green deck can play, colorless lands included (`id<=g`). Without it, **At least** (`c>=g`).
+
+Where the docs were silent:
+
+- Choosing a format outside the list doesn't untick **Use color identity**, so a choice made by hand is never undone.
+- A mode the app chose follows **Use color identity** when it changes. A mode chosen by hand stays. When the last color is unticked, a mode the app chose goes back to **Any**.
+- Applying a preset or loading saved criteria never changes the colors or the mode.
+
+## Tests
+
+- Written first and seen failing: `tests/color-filters.test.js`, which failed because `IDENTITY_FORMATS`, `usesIdentity`, and `autoColorMode` didn't exist, and the `commanderColors` browser check in `scripts/check-ui.mjs`, which failed because the format list had no `f-format` ID and the form didn't change the mode.

@@ -142,6 +142,25 @@ export function setOptions(body) {
     .map((s) => ({ code: s.code, name: s.name, released: typeof s.released_at === "string" ? s.released_at : "" }))
     .sort((a, b) => (a.released === b.released ? a.name.localeCompare(b.name) : a.released < b.released ? 1 : -1));
 }
+/**
+ * Formats whose decks are built by color identity: Commander and its
+ * variants, Oathbreaker, and Brawl. Lands have no color, so in these
+ * formats a color filter must check identity to find lands.
+ */
+export const IDENTITY_FORMATS = Object.freeze([
+  "commander", "oathbreaker", "standardbrawl", "brawl", "competitivebrawl", "paupercommander", "duel", "predh",
+]);
+/** @param {string|null} format */
+export const usesIdentity = (format) => IDENTITY_FORMATS.includes(format);
+
+/**
+ * The color mode to use when a color is ticked while the mode is Any. With
+ * identity, At most: the cards a deck of those colors can play, colorless
+ * lands included. Without it, At least: cards that have those colors.
+ * @param {boolean} useIdentity
+ */
+export const autoColorMode = (useIdentity) => (useIdentity ? "atMost" : "atLeast");
+
 const COLOR_MODES = ["any", "exactly", "atLeast", "atMost"];
 const OPERATORS = { exactly: "=", atLeast: ">=", atMost: "<=" };
 

@@ -7,6 +7,17 @@ Sections:
 - **Added**, **Changed**, **Fixed**, and **Removed** cover what someone using the app sees.
 - **Project** covers changes for people and agents who work on the code: tests, scripts, and agent instructions.
 
+## 24 November 2026
+
+### Added
+
+- **Buy** on every card in **Discover** that exists in paper. It opens the card on TCGplayer in a new tab, and shows the price in nerd mode. ([#51](https://github.com/armstrongl/scryfall-app/pull/51))
+- **Buy cards** on a list. Choose the sections and whether to add basic lands, see an estimated total and the cards left out, and open the list in TCGplayer Mass Entry or the Card Kingdom Deck Builder with every card filled in, or copy it for any other store. ([#51](https://github.com/armstrongl/scryfall-app/pull/51))
+
+### Project
+
+- Tests for the new `src/buy.js`, two real fixtures for a paper card's Arena-only printing and a card made only for Arena, and browser checks for the **Buy** link and the **Buy cards** panel. ([#51](https://github.com/armstrongl/scryfall-app/pull/51))
+
 ## 20 November 2026
 
 ### Added

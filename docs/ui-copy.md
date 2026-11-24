@@ -53,6 +53,7 @@ This index lists the text the app shows or announces from `index.html`, `src/mai
 | `TIPS.exportArena` | `src/ui/lists-view.js` | Shows the deck as text to copy and import into MTG Arena. |
 | `TIPS.findCombos` | `src/ui/lists-view.js` | Shows the list as text to paste into Find My Combos on Commander Spellbook. |
 | `TIPS.openList` | `src/ui/lists-view.js` | Opens every card in this list on the Scryfall website, in a new tab. |
+| `TIPS.buyList` | `src/ui/lists-view.js` | Shows the cards to buy, with an estimated total, and opens them in TCGplayer or Card Kingdom with the list filled in. |
 | `TIPS.refresh` | `src/ui/lists-view.js` | Gets current legality, prices, and images from Scryfall. Quantities, sections, and notes stay the same. |
 | `TIPS.listKind` | `src/ui/lists-view.js` | A deck gets deck checks and stats for its format. A collection is a plain list of cards. |
 | `TIPS.section` | `src/ui/add-panel.js` | Maybe holds cards you're considering, and the Arena export leaves it out. Commander holds a Brawl deck's commander. |
@@ -69,7 +70,7 @@ This index lists the text the app shows or announces from `index.html`, `src/mai
 | Card details | `#help/card-details` | Rules text, keywords, rulings, legality, and prices. | 19 |
 | Explore | `#help/explore` | Synergies, similar cards, counters, and combos for any card. | 7 |
 | Combos | `#help/combos` | Find card combos on Commander Spellbook, and learn what bracket tags mean. | 16 |
-| Lists and decks | `#help/lists-and-decks` | Save cards, check decks, and export them to MTG Arena. | 9 |
+| Lists and decks | `#help/lists-and-decks` | Save cards, check decks, export them to MTG Arena, and buy them. | 12 |
 | Nerd mode | `#help/nerd-mode` | More details on every card. | 2 |
 | Your data | `#help/your-data` | Where your lists are stored, and how to back them up. | 10 |
 | Sync with GitHub | `#help/sync` | Keep your lists on every device, in a private GitHub repository. | 5 |
@@ -159,6 +160,8 @@ This index lists the text the app shows or announces from `index.html`, `src/mai
 | text | Released |
 | text | Price |
 | text | EDHREC rank |
+| aria-label | Buy {…} on TCGplayer{…} |
+| text | Buy |
 | text | Details |
 | aria-label | Details for {…} |
 | text | Explore |
@@ -563,6 +566,7 @@ This index lists the text the app shows or announces from `index.html`, `src/mai
 | text | Combos for your commander |
 | text | Commander Spellbook is a separate site. Links open it in a new tab. |
 | text | Learn more about combos and bracket tags |
+| text | Buy cards |
 | text | Open on Scryfall (part {…} of {…}) |
 | text | Open on Scryfall |
 | text | Rename |
@@ -602,6 +606,28 @@ This index lists the text the app shows or announces from `index.html`, `src/mai
 | message | Storage is not available in this browser window. Lists are lost when you close the page. |
 | field | Kind |
 | field | Sort by |
+| checkbox | Basic lands |
+| text | Left out, because they have no paper printing: {…}. |
+| text | Left out: {…}. Tick Basic lands to add them. |
+| text | Not in the total, because they have no saved price: {…}. |
+| text | Some cards were saved before the app kept prices, so they aren't in the total. To get their prices, select More, then Refresh card data. |
+| text | No cards to buy. Tick a section to add its cards. |
+| aria-label | Cards to buy |
+| text | Open on {…} (part {…} of {…}) |
+| text | Open on {…} |
+| text | These cards have no saved price, so there's no estimated total. |
+| text | Estimated total: {…}, from Scryfall's TCGplayer prices as of {…}. |
+| text | TCGplayer |
+| text | Card Kingdom |
+| text | The store opens in a new tab with the list filled in. Choose the printing and condition there, then add the cards to your cart. Store prices change daily and can differ from the estimate. |
+| text | Copy |
+| text | Copied the list of cards to buy. |
+| text | Can't copy automatically. The text is selected, so copy it by hand. |
+| text | For another store, copy the list and paste it into the store's bulk entry or deck builder. |
+| text | Buy cards |
+| text | Cards to include |
+| text | Close |
+| text | Learn more about buying cards |
 | text | Deck stats |
 | text | {…}: {…}, {…}. Average mana value of spells: {…}. |
 | text | Mana curve (spells) |

@@ -4,6 +4,7 @@
 // the frame around the image, never on the image itself.
 
 import { cardKey, imageAlt, needsTextVersion, rarityName, legalityName } from "../cards.js";
+import { cardBuyLink } from "../buy.js";
 import { announce, h, replace } from "./dom.js";
 
 const SIZES = {
@@ -143,6 +144,25 @@ function nerdStats(snapshot) {
 }
 
 /**
+ * The Buy link for a tile: the card on TCGplayer. Prices wait for nerd mode,
+ * so the price shows in the label only there. No tooltip: tiles have no room
+ * for one. Null for a card with no paper printing or no saved link.
+ * @param {import("../cards.js").CardSnapshot} snapshot
+ */
+function buyLink(snapshot) {
+  const buy = cardBuyLink(snapshot);
+  if (!buy) return null;
+  const price = buy.price ? `$${buy.price}` : null;
+  return h("a", {
+    href: buy.url,
+    target: "_blank",
+    rel: "noopener",
+    class: "button ghost buy",
+    "aria-label": `Buy ${snapshot.name} on TCGplayer${price ? `, ${price}` : ""}`,
+  }, "Buy", price ? h("span", { class: "nerd-only", text: price }) : null);
+}
+
+/**
  * A card tile: image, name, saved marker, nerd stats, and actions. The tile
  * has `data-card-key` so markers can update when lists change.
  * @param {import("../cards.js").CardSnapshot} snapshot
@@ -168,6 +188,7 @@ export function cardTile(snapshot, opts = {}) {
   h("div", { class: "tile-actions" },
     opts.onDetails ? h("button", { type: "button", class: "ghost", text: "Details", "aria-label": `Details for ${snapshot.name}`, onclick: opts.onDetails }) : null,
     opts.onExplore ? h("button", { type: "button", class: "ghost", text: "Explore", "aria-label": `Explore ${snapshot.name}: synergies, similar cards, counters, and combos`, onclick: opts.onExplore }) : null,
+    buyLink(snapshot),
     opts.onAdd ? h("button", { type: "button", class: "primary", text: "Add", "aria-label": `Add ${snapshot.name} to a list`, onclick: opts.onAdd }) : null));
   return tile;
 }

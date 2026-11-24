@@ -13,6 +13,7 @@ import {
 } from "./config.js";
 import { FIND_MY_COMBOS_URL } from "./combos.js";
 import { scryfallListUrls } from "./links.js";
+import { CARD_KINGDOM_BUILDER, TCGPLAYER_MASS_ENTRY } from "./buy.js";
 
 /** The nerd mode tooltip. The Nerd mode help page repeats it word for word. */
 export const NERD_MODE_TIP =
@@ -51,6 +52,7 @@ export const TIPS = {
   exportArena: "Shows the deck as text to copy and import into MTG Arena.",
   findCombos: "Shows the list as text to paste into Find My Combos on Commander Spellbook.",
   openList: "Opens every card in this list on the Scryfall website, in a new tab.",
+  buyList: "Shows the cards to buy, with an estimated total, and opens them in TCGplayer or Card Kingdom with the list filled in.",
   refresh: "Gets current legality, prices, and images from Scryfall. Quantities, sections, and notes stay the same.",
   listKind: "A deck gets deck checks and stats for its format. A collection is a plain list of cards.",
   section: "Maybe holds cards you're considering, and the Arena export leaves it out. Commander holds a Brawl deck's commander.",
@@ -86,6 +88,7 @@ const GATHERER = "https://gatherer.wizards.com";
 const MTG_WIKI = "https://mtg.fandom.com/wiki/Main_Page";
 const BRACKET_TAGS = `${SPELLBOOK_SITE}/syntax-guide/#bracket-tags`;
 const SALT = `${SPELLBOOK_SITE}/salt/`;
+const TCGPLAYER = "https://www.tcgplayer.com";
 const FAN_CONTENT_POLICY = "https://company.wizards.com/en/legal/fancontentpolicy";
 const SAFARI_7_DAYS = "https://webkit.org/blog/10218/full-third-party-cookie-blocking-and-more/";
 const HOME_SCREEN = "https://support.apple.com/guide/iphone/bookmark-a-website-iph42ab2f3a7/ios";
@@ -256,7 +259,7 @@ export const DOC_PAGES = [
               `The official rulings, which explain how the card works with the ${link("game rules", RULES)}. Select **Show rulings** to load them.`,
               `Legality in ${format("Standard", "standard")}, Standard Brawl, ${format("Brawl", "brawl")}, ${format("Alchemy", "alchemy")}, ${format("Historic", "historic")}, ${format("Timeless", "timeless")}, ${format("Pioneer", "pioneer")}, and ${format("Commander", "commander")}.`,
               `Whether the card is on the ${link("Commander Game Changers list", GAME_CHANGERS)}.`,
-              `The printing, prices, and links to buy the card on ${link("TCGplayer", "https://www.tcgplayer.com")}, ${link("Cardmarket", "https://www.cardmarket.com")}, or ${link("Cardhoarder", "https://www.cardhoarder.com")}.`,
+              `The printing, prices, and links to buy the card on ${link("TCGplayer", TCGPLAYER)}, ${link("Cardmarket", "https://www.cardmarket.com")}, or ${link("Cardhoarder", "https://www.cardhoarder.com")}.`,
               `Links to the card on ${link("Scryfall", SCRYFALL_SITE)}, ${link("EDHREC", EDHREC)}, and ${link("Gatherer", GATHERER)}, the official card database, and to its combos on ${link("Commander Spellbook", SPELLBOOK_SITE)}.`,
             ],
           },
@@ -374,7 +377,7 @@ export const DOC_PAGES = [
   {
     id: "lists-and-decks",
     title: "Lists and decks",
-    summary: "Save cards, check decks, and export them to MTG Arena.",
+    summary: "Save cards, check decks, export them to MTG Arena, and buy them.",
     sections: [
       {
         heading: "Save cards to a list",
@@ -417,6 +420,24 @@ export const DOC_PAGES = [
           },
           { p: `To find combos in a list, select **Find combos**. The ${help("Combos", "combos")} help page explains how.` },
           { p: `To see a whole list on the ${link("Scryfall", SCRYFALL_SITE)} website, select **Open on Scryfall**. A long list opens in two or more parts, because Scryfall searches have a length limit.` },
+        ],
+      },
+      {
+        heading: "Buy cards",
+        blocks: [
+          { p: `To buy one card in paper, select **Buy** on the card in **Discover**. The card opens on ${link("TCGplayer", TCGPLAYER)} in a new tab. In nerd mode, **Buy** shows the card's price. A card with no paper printing, such as a card made only for MTG Arena, has no **Buy** link.` },
+          { p: "To buy many cards, add them to a list first." },
+          {
+            steps: [
+              "Open the list in **Lists**, then select **Buy cards**.",
+              "Under **Cards to include**, tick the sections to buy. **Commander**, **Main deck**, and **Sideboard** start ticked. **Maybe** and **Basic lands** start unticked, because most players already own basic lands.",
+              `Select **Open on TCGplayer** or **Open on Card Kingdom**. ${link("TCGplayer Mass Entry", TCGPLAYER_MASS_ENTRY)} or the ${link("Card Kingdom Deck Builder", CARD_KINGDOM_BUILDER)} opens in a new tab, with the list filled in.`,
+              "On the store's page, choose the printing and condition, then add the cards to your cart.",
+            ],
+          },
+          { p: "The panel shows an estimated total from the prices saved with the list. Prices come from Scryfall, which gets them from TCGplayer. They change daily, so the store's total can be different. To get current prices, select **More**, then **Refresh card data**." },
+          { p: "The panel says which cards it leaves out: cards with no paper printing, and basic lands when **Basic lands** is unticked. A card with no saved price is still in the list, but not in the total." },
+          { p: "A very long list opens in two or more parts, because a link has a length limit. For any other store, select **Copy** and paste the list into the store's bulk entry or deck builder." },
         ],
       },
     ],

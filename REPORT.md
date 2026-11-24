@@ -486,3 +486,37 @@ Each filter adds a field to the saved criteria with an "off" default, so presets
 - The EDHREC rank counts Commander decks only, so **Popularity** is a rough guide for Standard.
 - The **Number of abilities** count follows Scryfall's search of each face of a double-faced card, not the card as a whole.
 - A year before 1993 is dropped from the search. The form says why, but no chip shows it.
+
+# Buying cards (24 November 2026)
+
+Cards are easier to buy in paper, requested on 24 November 2026. The plan was approved item by item before the build.
+
+- Every card in **Discover** has a **Buy** link. It opens Scryfall's TCGplayer link for the card in a new tab. In nerd mode, the link shows the price.
+- A list has **Buy cards**. Its panel lets you choose the sections and basic lands to include. It shows an estimated total from the saved prices and names the cards it leaves out. **Open on TCGplayer** and **Open on Card Kingdom** open the store's bulk-entry page with the list filled in. **Copy** gives the list as text for any other store.
+- The logic is in the pure module `src/buy.js`. It uses only the card data saved with each card (`prices`, `purchaseUris`, and `games`), so buying sends no new Scryfall requests.
+
+## Changes from the plan
+
+`PLAN.md` has no buying feature beyond the links in **Details**. This is new work.
+
+## Decisions
+
+- The bulk-entry links use the format of [Commander Spellbook's buy links](https://github.com/SpaceCowMedia/commander-spellbook-site/blob/main/src/services/vendors.service.ts): a `c` parameter with "quantity name" lines joined by `||`. Both stores were loaded in headless Chrome on 24 November 2026. They filled in split, adventure, transform, and modal double-faced cards by their full names, so the links use the full name.
+- `store.tcgplayer.com/massentry` redirects to `www.tcgplayer.com/massentry`, so the app links to the second address directly.
+- A link is at most 7,500 characters (`MAX_BUY_URL_LENGTH`). Both stores filled every line from a 7,822-character link and failed at 10,692. A longer list gets parts, like **Open on Scryfall**.
+- The plan said the tile link shows the price. The design rules keep prices for nerd mode, so the price shows in the link only in nerd mode. The link's accessible name always has the price.
+- The tile link has no tooltip, because the design rules keep tooltips off card tiles. The **Lists and decks** help page explains it.
+- The same card in two sections or two printings is one line, with the quantities added. The store chooses the printing.
+- The total uses each card's USD price, or its foil price when that's the only one. A card with no saved price stays in the list but not in the total, and the panel names it.
+- A card counts as paper unless its saved `games` leaves out paper. Cards saved before the app kept `games` count as paper, and the panel asks for **Refresh card data** to get their prices.
+- The store links get no affiliate code. Single-card links keep Scryfall's.
+
+## Tests
+
+- Written first and seen failing: `tests/buy.test.js` (the single-card link, the list to buy, the total, the left-out cards, the text, and the links and their split), with real fixtures. The first limit, 4,000 characters, failed the 100-card Brawl test. The limit was then measured against the live stores.
+- The browser checks for the **Buy** link and the **Buy cards** panel in `scripts/check-ui.mjs` were written before the UI, and failed on the old app because the link and the button didn't exist.
+
+## Known problems
+
+- The estimate uses Scryfall's TCGplayer price for the saved printing. The store's cart can cost more or less, because it chooses the printing and condition.
+- Cardmarket has no known link that fills a list, so it gets **Copy** only.

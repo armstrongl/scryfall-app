@@ -50,6 +50,14 @@ Cascade's look is a blend of GitHub's [Primer](https://primer.style) and Vercel'
 - Spicy means rarely played, by EDHREC rank. Ticking several creature abilities finds cards with all of them.
 - A real meta filter waits for a data source: [issue #37](https://github.com/armstrongl/scryfall-app/issues/37).
 
+## Buying cards
+
+Chosen on 24 November 2026:
+
+- A card in **Discover** gets a **Buy** link to Scryfall's TCGplayer link, which carries Scryfall's affiliate code. Its price shows only in nerd mode, like other prices.
+- Discover buys one card at a time. To buy many, add them to a list and use **Buy cards**.
+- **Buy cards** on a list opens TCGplayer Mass Entry and the Card Kingdom Deck Builder, and has **Copy** for any other store. Basic lands start left out, with a checkbox to add them.
+
 ## Card images
 
 Never crop, clip, cover, stretch, filter, or transform a card image, and never put an element over one. Every marker, such as **Saved in**, goes in the caption below the image.

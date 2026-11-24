@@ -145,21 +145,20 @@ function nerdStats(snapshot) {
 
 /**
  * The Buy link for a tile: the card on TCGplayer. Prices wait for nerd mode,
- * so the price shows in the label only there. No tooltip: tiles have no room
- * for one. Null for a card with no paper printing or no saved link.
+ * so the price shows only there. The card name is hidden text, so the link's
+ * name is "Buy {card} on TCGplayer", with the price only when it shows. No
+ * tooltip: tiles have no room for one. Null for a card with no paper
+ * printing.
  * @param {import("../cards.js").CardSnapshot} snapshot
  */
 function buyLink(snapshot) {
   const buy = cardBuyLink(snapshot);
   if (!buy) return null;
-  const price = buy.price ? `$${buy.price}` : null;
-  return h("a", {
-    href: buy.url,
-    target: "_blank",
-    rel: "noopener",
-    class: "button ghost buy",
-    "aria-label": `Buy ${snapshot.name} on TCGplayer${price ? `, ${price}` : ""}`,
-  }, "Buy", price ? h("span", { class: "nerd-only", text: price }) : null);
+  return h("a", { href: buy.url, target: "_blank", rel: "noopener", class: "button ghost buy" },
+    "Buy",
+    h("span", { class: "visually-hidden", text: ` ${snapshot.name} on TCGplayer` }),
+    // The leading space keeps the name readable. The button's gap spaces it on screen.
+    buy.price ? h("span", { class: "nerd-only", text: ` $${buy.price}` }) : null);
 }
 
 /**

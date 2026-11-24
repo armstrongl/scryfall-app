@@ -6,8 +6,12 @@
 // a `c` parameter with "quantity name" lines joined by "||". The links only
 // fill the store's page. The store's own button adds the cards to the cart.
 
+import { SECTIONS } from "./config.js";
+
 /** TCGplayer Mass Entry. store.tcgplayer.com/massentry redirects here. */
 export const TCGPLAYER_MASS_ENTRY = "https://www.tcgplayer.com/massentry";
+/** TCGplayer's product search, the same link Commander Spellbook uses for one card. */
+export const TCGPLAYER_SEARCH = "https://www.tcgplayer.com/search/magic/product";
 /** Card Kingdom's Deck Builder. */
 export const CARD_KINGDOM_BUILDER = "https://www.cardkingdom.com/builder";
 /**
@@ -25,43 +29,61 @@ export const BUY_SECTIONS = ["commander", "main", "sideboard"];
  * @property {number} quantity
  */
 
-/** False only when Scryfall says the card has no paper printing. */
+/** Formats that allow every paper card, and no card made only for digital play. */
+const PAPER_FORMATS = ["vintage", "legacy", "commander"];
+
+/**
+ * True when the card exists in paper. `games` is for the saved printing
+ * only, so a paper card saved from its Arena-only printing (such as a
+ * Jumpstart: Historic Horizons reprint) has `games: ["arena"]`. Legality is
+ * for the card, so any status other than "not_legal" in a paper format means
+ * a paper printing exists. A card saved without this data counts as paper.
+ */
 function inPaper(card) {
-  return !Array.isArray(card.games) || card.games.includes("paper");
+  if (!Array.isArray(card.games) || card.games.includes("paper")) return true;
+  if (!card.legalities) return false;
+  return PAPER_FORMATS.some((f) => card.legalities[f] && card.legalities[f] !== "not_legal");
 }
 
-/** The USD price of one copy as text, the foil price when that's all there is, or null. */
+/** The non-foil USD price of the saved printing, as text, or null. */
 function usdPrice(card) {
-  return card.prices?.usd ?? card.prices?.usdFoil ?? null;
+  return card.prices?.usd ?? null;
 }
 
 /**
- * The buy link for one card: Scryfall's TCGplayer link, and its price.
- * Null when the card has no paper printing or no saved link.
+ * The buy link for one card: Scryfall's TCGplayer link for the saved
+ * printing, and its price. When that printing has no link but the card is in
+ * paper, a TCGplayer search for the card's front face, with no price. Null
+ * for a card with no paper printing.
  * @param {import("./cards.js").CardSnapshot} card
  * @returns {{url: string, price: string|null}|null}
  */
 export function cardBuyLink(card) {
+  if (!inPaper(card)) return null;
   const url = card.purchaseUris?.tcgplayer;
-  if (!url || !inPaper(card)) return null;
-  return { url, price: usdPrice(card) };
+  if (url) return { url, price: usdPrice(card) };
+  const q = encodeURIComponent(card.frontName ?? card.name);
+  return { url: `${TCGPLAYER_SEARCH}?productLineName=magic&q=${q}`, price: null };
 }
 
 /**
  * The cards to buy from list entries, one line per card name.
  * @param {import("./lists.js").Entry[]} entries
  * @param {{sections?: string[], basics?: boolean}} [opts]
- * @returns {{items: BuyItem[], count: number, totalCents: number, unpriced: string[], noPaper: string[], basics: number, oldData: number}}
+ * @returns {{items: BuyItem[], count: number, totalCents: number, priced: number, unpriced: string[], noPaper: string[], basics: number, oldData: number}}
  */
 export function buyList(entries, opts = {}) {
   const sections = opts.sections ?? BUY_SECTIONS;
   const byName = new Map();
   const unpriced = new Set();
+  const priced = new Set();
   const noPaper = new Set();
   let totalCents = 0;
   let basics = 0;
   let oldData = 0;
-  for (const e of entries) {
+  // Lines follow the section order: commander, main deck, sideboard, maybe.
+  const ordered = SECTIONS.flatMap((s) => entries.filter((e) => e.section === s));
+  for (const e of ordered) {
     if (!sections.includes(e.section)) continue;
     const card = e.card;
     if (card.isBasicLand && !opts.basics) {
@@ -72,10 +94,13 @@ export function buyList(entries, opts = {}) {
       noPaper.add(card.name);
       continue;
     }
-    if (card.prices === undefined) oldData += 1;
     const price = usdPrice(card);
-    if (price === null) unpriced.add(card.name);
-    else totalCents += Math.round(Number(price) * 100) * e.quantity;
+    if (card.prices === undefined) oldData += 1;
+    else if (price === null) unpriced.add(card.name);
+    else {
+      totalCents += Math.round(Number(price) * 100) * e.quantity;
+      priced.add(card.name);
+    }
     const item = byName.get(card.name);
     if (item) item.quantity += e.quantity;
     else byName.set(card.name, { name: card.name, quantity: e.quantity });
@@ -85,6 +110,7 @@ export function buyList(entries, opts = {}) {
     items,
     count: items.reduce((n, i) => n + i.quantity, 0),
     totalCents,
+    priced: priced.size,
     unpriced: [...unpriced],
     noPaper: [...noPaper],
     basics,

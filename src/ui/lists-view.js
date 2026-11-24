@@ -342,9 +342,9 @@ export function createListsView(app) {
     const boxes = [
       ...sectionsFor(list).map((s) => checkbox(SECTION_NAMES[s], sections.has(s), (e) => {
         if (e.target.checked) sections.add(s); else sections.delete(s);
-        update();
+        changed();
       })),
-      checkbox("Basic lands", false, (e) => { basics = e.target.checked; update(); }),
+      checkbox("Basic lands", false, (e) => { basics = e.target.checked; changed(); }),
     ];
 
     function update() {
@@ -353,28 +353,29 @@ export function createListsView(app) {
       const notes = [
         r.noPaper.length ? `Left out, because they have no paper printing: ${r.noPaper.join(", ")}.` : null,
         r.basics ? `Left out: ${plural(r.basics, "basic land")}. Tick Basic lands to add them.` : null,
-        r.unpriced.length && r.unpriced.length < r.items.length ? `Not in the total, because they have no saved price: ${r.unpriced.join(", ")}.` : null,
+        r.unpriced.length && r.priced ? `Not in the total, because they have no saved price: ${r.unpriced.join(", ")}.` : null,
         r.oldData ? "Some cards were saved before the app kept prices, so they aren't in the total. To get their prices, select More, then Refresh card data." : null,
       ].filter(Boolean);
       if (r.items.length === 0) {
         replace(body, h("p", { class: "empty", text: "No cards to buy. Tick a section to add its cards." }),
           notes.map((n) => h("p", { class: "hint", text: n })));
-        return;
+        return "No cards to buy.";
       }
       const text = buyText(r.items);
       const area = h("textarea", { readOnly: true, rows: String(Math.min(12, r.items.length + 1)), class: "mono", value: text, "aria-label": "Cards to buy" });
+      // Only the first link is primary, so a list in parts has one primary button.
       const storeLinks = (urls, store, primary) => urls.map((u, i) => h("a", {
         href: u,
         target: "_blank",
         rel: "noopener",
-        class: primary ? "button primary" : "button",
+        class: primary && i === 0 ? "button primary" : "button",
         text: urls.length > 1 ? `Open on ${store} (part ${i + 1} of ${urls.length})` : `Open on ${store}`,
       }));
+      const summary = `${plural(r.count, "card")} to buy. ${r.priced === 0
+        ? "These cards have no saved price, so there's no estimated total."
+        : `Estimated total: ${formatUsd(r.totalCents)}, from Scryfall's TCGplayer prices as of ${formatDate(included[0])}.`}`;
       replace(body,
-        h("p", {}, `${plural(r.count, "card")} to buy. `,
-          r.unpriced.length === r.items.length
-            ? "These cards have no saved price, so there's no estimated total."
-            : `Estimated total: ${formatUsd(r.totalCents)}, from Scryfall's TCGplayer prices as of ${formatDate(included[0])}.`),
+        h("p", { text: summary }),
         notes.map((n) => h("p", { class: "hint", text: n })),
         h("div", { class: "row wrap" }, storeLinks(tcgplayerUrls(r.items), "TCGplayer", true), storeLinks(cardKingdomUrls(r.items), "Card Kingdom", false)),
         h("p", { class: "hint", text: "The store opens in a new tab with the list filled in. Choose the printing and condition there, then add the cards to your cart. Store prices change daily and can differ from the estimate." }),
@@ -389,8 +390,11 @@ export function createListsView(app) {
             },
           })),
         h("p", { class: "hint", text: "For another store, copy the list and paste it into the store's bulk entry or deck builder." }));
+      return summary;
     }
     update();
+    // A checkbox change updates the panel in place, and says what changed.
+    const changed = () => announce(update());
 
     return h("section", { class: "panel-box", "aria-labelledby": "buy-title" },
       h("h2", { id: "buy-title", text: "Buy cards" }),

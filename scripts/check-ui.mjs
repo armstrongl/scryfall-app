@@ -338,9 +338,11 @@ async function discover(b, check) {
     const t = document.querySelector(".results .tile");
     return ["Details for", "Explore", "Add"].every((p) => [...t.querySelectorAll("button")].some((x) => (x.getAttribute("aria-label") ?? "").startsWith(p)));
   })()`));
+  // A drawn card made only for Arena has no Buy link, so this can't require one. Browse does.
   check("a tile's Buy link, when it has one, opens the card on TCGplayer in a new tab", await ev(`[...document.querySelectorAll(".results .tile a.buy")].every((a) =>
-    a.href.startsWith("https://partner.tcgplayer.com/") && a.target === "_blank" && a.rel.includes("noopener")
-    && /^Buy .+ on TCGplayer/.test(a.getAttribute("aria-label")) && !!a.closest(".tile-actions"))`));
+    (a.href.startsWith("https://partner.tcgplayer.com/") || a.href.startsWith("https://www.tcgplayer.com/search/magic/product?"))
+    && a.target === "_blank" && a.rel.includes("noopener")
+    && / on TCGplayer$/.test(a.querySelector(".visually-hidden")?.textContent ?? "") && !!a.closest(".tile-actions"))`));
   check("nothing sits on top of the card image", await ev(`(() => {
     const img = document.querySelector(".results .tile img");
     if (!img) return true;
@@ -608,14 +610,17 @@ async function browse(b, check) {
   await ev(clickText("#view-discover button", "Show cards"));
   check("Browse lists matching cards", await until(`document.querySelectorAll(".results .tile").length > 1`, 30000));
   const PRICED_BUY = `[...document.querySelectorAll(".results .tile a.buy")].find((a) => a.querySelector(".nerd-only"))`;
-  check("Browse tiles have Buy links named with the card, the store, and the price", await ev(`/^Buy .+ on TCGplayer, \\$\\d+\\.\\d\\d$/.test(${PRICED_BUY}?.getAttribute("aria-label") ?? "")`),
-    await ev(`[...document.querySelectorAll(".results .tile a.buy")].slice(0, 3).map((a) => a.getAttribute("aria-label")).join(" | ")`));
-  check("a Buy link says Buy, with no price and no tooltip, outside nerd mode", await ev(`(() => {
+  // What a screen reader reads (every text that isn't display: none), and what shows on screen.
+  const spoken = (a) => `[...${a}.childNodes].filter((n) => n.nodeType === 3 || getComputedStyle(n).display !== "none").map((n) => n.textContent).join("").replace(/\\s+/g, " ").trim()`;
+  const shown = (a) => `[...${a}.childNodes].filter((n) => n.nodeType === 3 || (getComputedStyle(n).display !== "none" && !n.classList.contains("visually-hidden"))).map((n) => n.textContent).join("").trim()`;
+  check("Browse tiles have Buy links named with the card and the store", await ev(`/^Buy .+ on TCGplayer$/.test(${spoken(PRICED_BUY)})`), await ev(spoken(PRICED_BUY)));
+  check("a Buy link shows Buy, with no price, no price for screen readers, and no tooltip, outside nerd mode", await ev(`(() => {
     const a = ${PRICED_BUY};
-    return a.innerText.trim() === "Buy" && getComputedStyle(a.querySelector(".nerd-only")).display === "none" && !a.hasAttribute("aria-describedby");
+    return ${shown("a")} === "Buy" && !/\\$/.test(${spoken("a")}) && !a.hasAttribute("aria-label") && !a.hasAttribute("aria-describedby");
   })()`));
   await ev(click("#density-toggle"));
-  check("nerd mode shows the price in the Buy link", await ev(`/^Buy\\s+\\$\\d+\\.\\d\\d$/.test(${PRICED_BUY}.innerText.trim())`), await ev(`${PRICED_BUY}.innerText`));
+  check("nerd mode shows the price in the Buy link, and screen readers hear it", await ev(`/^Buy\\s*\\$\\d+\\.\\d\\d$/.test(${shown(PRICED_BUY)}) && /^Buy .+ on TCGplayer \\$\\d+\\.\\d\\d$/.test(${spoken(PRICED_BUY)})`),
+    `${await ev(shown(PRICED_BUY))} | ${await ev(spoken(PRICED_BUY))}`);
   check("the Buy link fits in its tile in nerd mode", await ev(`(() => { const a = ${PRICED_BUY}; const t = a.closest(".tile").getBoundingClientRect(); const r = a.getBoundingClientRect(); return r.right <= t.right + 0.5 && a.scrollWidth <= a.clientWidth + 1; })()`));
   await ev(click("#density-toggle"));
   const mvs = await ev(`[...document.querySelectorAll(".results .tile")].map((t) => Number(t.dataset.mv))`);
@@ -659,7 +664,8 @@ async function lists(b, check) {
     const ck = links.find((a) => a.href.startsWith("https://www.cardkingdom.com/builder?c="));
     return !!tcg && !!ck && [tcg, ck].every((a) => a.target === "_blank" && a.rel.includes("noopener"));
   })()`));
-  check("Buy cards shows an estimated total or says there's no price", /Estimated total|no saved price/i.test(await ev(`${BUY}.textContent`)));
+  check("Buy cards shows the count and an estimated total, or says there's no total", /^1 card to buy\. (Estimated total: \$\d[\d,]*\.\d\d, from Scryfall's TCGplayer prices as of |These cards have no saved price, so there's no estimated total\.)/
+    .test(await ev(`${BUY}.querySelector(".buy-body > p")?.textContent ?? ""`)), await ev(`${BUY}.querySelector(".buy-body > p")?.textContent`));
   check("Buy cards ticks Main deck and Sideboard, not Maybe or Basic lands", await ev(`(() => {
     const box = (label) => [...${BUY}.querySelectorAll("label")].find((l) => l.textContent.trim() === label)?.querySelector("input");
     return box("Main deck")?.checked === true && box("Sideboard")?.checked === true && box("Maybe")?.checked === false && box("Basic lands")?.checked === false;
@@ -671,6 +677,7 @@ async function lists(b, check) {
   await ev(`(() => { const box = [...${BUY}.querySelectorAll("label")].find((l) => l.textContent.trim() === "Main deck").querySelector("input"); box.focus(); box.click(); })()`);
   await sleep(200);
   check("unticking Main deck empties the list to buy and hides the store links", await ev(`document.querySelector("textarea[aria-label='Cards to buy']") === null && ${BUY}.querySelectorAll("a.button").length === 0 && /No cards to buy/.test(${BUY}.textContent)`));
+  check("unticking Main deck announces the change", await until(`document.getElementById("live")?.textContent === "No cards to buy."`, 2000), await ev(`document.getElementById("live")?.textContent`));
   check("focus stays on the Main deck checkbox", await ev(`document.activeElement?.closest("label")?.textContent.trim() === "Main deck"`), await ev(FOCUS));
   check("the Buy cards panel has no horizontal scroll", await ev(`${BUY}.scrollWidth <= ${BUY}.clientWidth + 1`));
   await ev(clickText("#view-lists section[aria-labelledby=buy-title] button", "Close"));

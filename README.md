@@ -107,7 +107,7 @@ To see a whole list on Scryfall, select **Open on Scryfall**. A long list opens 
 
 ### Buy cards
 
-To buy one card in paper, select **Buy** on the card in **Discover**. The card opens on [TCGplayer](https://www.tcgplayer.com) in a new tab, through Scryfall's link. In nerd mode, **Buy** shows the price. A card with no paper printing has no **Buy** link.
+To buy one card in paper, select **Buy** on the card in **Discover**. The card opens on [TCGplayer](https://www.tcgplayer.com) in a new tab, through Scryfall's link. In nerd mode, **Buy** shows the price. When the card shows a printing that is only on MTG Arena, **Buy** searches TCGplayer for the card by name. A card made only for MTG Arena has no **Buy** link.
 
 To buy many cards, add them to a list, then:
 

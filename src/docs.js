@@ -425,7 +425,7 @@ export const DOC_PAGES = [
       {
         heading: "Buy cards",
         blocks: [
-          { p: `To buy one card in paper, select **Buy** on the card in **Discover**. The card opens on ${link("TCGplayer", TCGPLAYER)} in a new tab. In nerd mode, **Buy** shows the card's price. A card with no paper printing, such as a card made only for MTG Arena, has no **Buy** link.` },
+          { p: `To buy one card in paper, select **Buy** on the card in **Discover**. The card opens on ${link("TCGplayer", TCGPLAYER)} in a new tab. In nerd mode, **Buy** shows the card's price. Some paper cards show a printing that is only on MTG Arena. For those, **Buy** searches TCGplayer for the card by name, with no price. A card made only for MTG Arena has no **Buy** link.` },
           { p: "To buy many cards, add them to a list first." },
           {
             steps: [
@@ -436,7 +436,7 @@ export const DOC_PAGES = [
             ],
           },
           { p: "The panel shows an estimated total from the prices saved with the list. Prices come from Scryfall, which gets them from TCGplayer. They change daily, so the store's total can be different. To get current prices, select **More**, then **Refresh card data**." },
-          { p: "The panel says which cards it leaves out: cards with no paper printing, and basic lands when **Basic lands** is unticked. A card with no saved price is still in the list, but not in the total." },
+          { p: "The panel says which cards it leaves out: cards made only for digital play, and basic lands when **Basic lands** is unticked. A card with no saved price is still in the list, but not in the total. The total uses non-foil prices only." },
           { p: "A very long list opens in two or more parts, because a link has a length limit. For any other store, select **Copy** and paste the list into the store's bulk entry or deck builder." },
         ],
       },

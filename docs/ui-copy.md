@@ -160,8 +160,8 @@ This index lists the text the app shows or announces from `index.html`, `src/mai
 | text | Released |
 | text | Price |
 | text | EDHREC rank |
-| aria-label | Buy {…} on TCGplayer{…} |
 | text | Buy |
+| text | {…} on TCGplayer |
 | text | Details |
 | aria-label | Details for {…} |
 | text | Explore |
@@ -612,6 +612,7 @@ This index lists the text the app shows or announces from `index.html`, `src/mai
 | text | Not in the total, because they have no saved price: {…}. |
 | text | Some cards were saved before the app kept prices, so they aren't in the total. To get their prices, select More, then Refresh card data. |
 | text | No cards to buy. Tick a section to add its cards. |
+| text | No cards to buy. |
 | aria-label | Cards to buy |
 | text | Open on {…} (part {…} of {…}) |
 | text | Open on {…} |

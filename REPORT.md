@@ -491,7 +491,7 @@ Each filter adds a field to the saved criteria with an "off" default, so presets
 
 Cards are easier to buy in paper, requested on 24 November 2026. The plan was approved item by item before the build.
 
-- Every card in **Discover** has a **Buy** link. It opens Scryfall's TCGplayer link for the card in a new tab. In nerd mode, the link shows the price.
+- Every card in **Discover** that exists in paper has a **Buy** link. It opens Scryfall's TCGplayer link for the printing in a new tab, or a TCGplayer search by name when that printing has no link. In nerd mode, the link shows the price.
 - A list has **Buy cards**. Its panel lets you choose the sections and basic lands to include. It shows an estimated total from the saved prices and names the cards it leaves out. **Open on TCGplayer** and **Open on Card Kingdom** open the store's bulk-entry page with the list filled in. **Copy** gives the list as text for any other store.
 - The logic is in the pure module `src/buy.js`. It uses only the card data saved with each card (`prices`, `purchaseUris`, and `games`), so buying sends no new Scryfall requests.
 
@@ -504,17 +504,22 @@ Cards are easier to buy in paper, requested on 24 November 2026. The plan was ap
 - The bulk-entry links use the format of [Commander Spellbook's buy links](https://github.com/SpaceCowMedia/commander-spellbook-site/blob/main/src/services/vendors.service.ts): a `c` parameter with "quantity name" lines joined by `||`. Both stores were loaded in headless Chrome on 24 November 2026. They filled in split, adventure, transform, and modal double-faced cards by their full names, so the links use the full name.
 - `store.tcgplayer.com/massentry` redirects to `www.tcgplayer.com/massentry`, so the app links to the second address directly.
 - A link is at most 7,500 characters (`MAX_BUY_URL_LENGTH`). Both stores filled every line from a 7,822-character link and failed at 10,692. A longer list gets parts, like **Open on Scryfall**.
-- The plan said the tile link shows the price. The design rules keep prices for nerd mode, so the price shows in the link only in nerd mode. The link's accessible name always has the price.
+- The plan said the tile link shows the price. The design rules keep prices for nerd mode, so the price shows in the link only in nerd mode. The card name is visually hidden text in the link, so a screen reader hears "Buy {card} on TCGplayer", and the price only in nerd mode.
 - The tile link has no tooltip, because the design rules keep tooltips off card tiles. The **Lists and decks** help page explains it.
 - The same card in two sections or two printings is one line, with the quantities added. The store chooses the printing.
-- The total uses each card's USD price, or its foil price when that's the only one. A card with no saved price stays in the list but not in the total, and the panel names it.
-- A card counts as paper unless its saved `games` leaves out paper. Cards saved before the app kept `games` count as paper, and the panel asks for **Refresh card data** to get their prices.
+- The total uses non-foil USD prices only. A card with no saved price stays in the list but not in the total, and the panel names it. A card saved before the app kept prices is counted once, in a note that asks for **Refresh card data**.
+- `games` is for one printing, not for the card. Discover searches with `game:arena`, so it often shows a paper card by its Arena-only printing, such as Abzan Falconer from Jumpstart: Historic Horizons (`j21`), with `games: ["arena"]` and no buy links. A card counts as paper when its printing is in paper, or when Vintage, Legacy, or Commander lists it as anything but "not legal". On 24 November 2026, all 175 cards in a sample of `game:arena -in:paper` were not legal in all three, and Abzan Falconer's `j21` printing was legal in all three. A card saved before the app kept `games` counts as paper.
+- When the printing has no TCGplayer link, **Buy** opens a TCGplayer search for the card's front face, the link Commander Spellbook's site uses for one card. That link has no price.
+- Lines in the list to buy follow the section order: commander, main deck, sideboard.
+- A checkbox change in **Buy cards** announces the new count and total. Only the first **Open on TCGplayer** link is primary, so a list in parts has one primary button.
 - The store links get no affiliate code. Single-card links keep Scryfall's.
 
 ## Tests
 
 - Written first and seen failing: `tests/buy.test.js` (the single-card link, the list to buy, the total, the left-out cards, the text, and the links and their split), with real fixtures. The first limit, 4,000 characters, failed the 100-card Brawl test. The limit was then measured against the live stores.
-- The browser checks for the **Buy** link and the **Buy cards** panel in `scripts/check-ui.mjs` were written before the UI, and failed on the old app because the link and the button didn't exist.
+- The browser checks for the **Buy** link and the **Buy cards** panel in `scripts/check-ui.mjs` were written before the UI, and failed on the old app because the link and the button didn't exist. The focus check for the panel's checkboxes was changed after its first run to focus the box before the click, as a tap does. It was proved able to fail by making a checkbox change drop focus.
+- An Opus review found that the paper check used `games`, which dropped paper cards shown by their Arena printing. Tests with two new real fixtures, `card-arena-printing` (Abzan Falconer, `j21`) and `card-digital-only` (Absorb Energy, `ymid`), were written first and seen failing, then the fix went in. The same review led to more tests. The unit tests for foil-only prices and for old cards counted once, and the browser checks for the link's name, its price for screen readers, and the announcement, were run against the code before the fix and seen failing. The test with 99 cards named like the real fixtures, and the stricter check of the total line, passed on the old code too: they guard behavior that was already right.
+- The Discover draw check can't require a **Buy** link, because a drawn card can be made only for Arena. The Browse checks require one.
 
 ## Known problems
 

@@ -11,6 +11,7 @@ import {
 } from "../lists.js";
 import { FIND_MY_COMBOS_URL, listCombos } from "../combos.js";
 import { scryfallListUrls } from "../links.js";
+import { BUY_SECTIONS, buyList, buyText, cardKingdomUrls, formatUsd, tcgplayerUrls } from "../buy.js";
 import { deckStats } from "../stats.js";
 import { errorMessage } from "../scryfall.js";
 import { cardMedia, glowClass, manaCost } from "./card-view.js";
@@ -18,7 +19,7 @@ import { openDetails } from "./details.js";
 import { openExplore } from "./explore-panel.js";
 import { openAddPanel } from "./add-panel.js";
 import { TIPS } from "../docs.js";
-import { announce, confirmBox, copyText, field, formatDate, h, helpLink, message, plural, replace, withTip } from "./dom.js";
+import { announce, checkbox, confirmBox, copyText, field, formatDate, h, helpLink, message, plural, replace, withTip } from "./dom.js";
 
 const KIND_LABEL = (list) => (list.kind === "deck" ? `${DECK_FORMAT_NAMES[list.format] ?? "Standard"} deck` : "Collection");
 const COLOR_ORDER = ["W", "U", "B", "R", "G"];
@@ -182,6 +183,15 @@ export function createListsView(app) {
         copy.focus();
       },
     });
+    const buyBtn = h("button", {
+      type: "button",
+      text: "Buy cards",
+      disabled: list.entries.length === 0,
+      onclick: () => {
+        replace(slot, buyPanel(list, () => { slot.replaceChildren(); buyBtn.focus(); }));
+        (slot.querySelector("a.button") ?? slot.querySelector("input"))?.focus();
+      },
+    });
     const urls = scryfallListUrls(list.entries.map((e) => e.card.frontName ?? e.card.name));
     const scryfallLinks = urls.map((u, i) => withTip(h("a", {
       href: u,
@@ -310,13 +320,88 @@ export function createListsView(app) {
         h("p", { class: "tagline" }, h("span", { class: "badge", text: KIND_LABEL(list) }), ` ${plural(totalQuantity(list.entries), "card")}`)),
       app.storageOk ? null : message("warn", "Storage is not available in this browser window. Lists are lost when you close the page."),
       reminder(),
-      h("div", { class: "list-actions" }, withTip(exportBtn, TIPS.exportArena), withTip(combosBtn, TIPS.findCombos), scryfallLinks, moreBtn),
+      h("div", { class: "list-actions" }, withTip(exportBtn, TIPS.exportArena), withTip(combosBtn, TIPS.findCombos), withTip(buyBtn, TIPS.buyList), scryfallLinks, moreBtn),
       moreMenu,
       slot,
       h("div", { class: "toolbar" }, field("Kind", kindSelect, undefined, TIPS.listKind), formatField, field("Sort by", sortSelect)),
       refreshNote(list.id),
       deckPanel,
       sectionEls);
+  }
+
+  /**
+   * The Buy cards panel: sections and basic lands to include, the estimated
+   * total, store links that open with the list filled in, and the list as
+   * text for any other store. Changing a checkbox updates the rest in place,
+   * so focus stays on the checkbox.
+   */
+  function buyPanel(list, close) {
+    const sections = new Set(BUY_SECTIONS);
+    let basics = false;
+    const body = h("div", { class: "buy-body" });
+    const boxes = [
+      ...sectionsFor(list).map((s) => checkbox(SECTION_NAMES[s], sections.has(s), (e) => {
+        if (e.target.checked) sections.add(s); else sections.delete(s);
+        changed();
+      })),
+      checkbox("Basic lands", false, (e) => { basics = e.target.checked; changed(); }),
+    ];
+
+    function update() {
+      const r = buyList(list.entries, { sections: [...sections], basics });
+      const included = list.entries.filter((e) => sections.has(e.section)).map((e) => e.card.fetchedAt).filter(Boolean).sort();
+      const notes = [
+        r.noPaper.length ? `Left out, because they have no paper printing: ${r.noPaper.join(", ")}.` : null,
+        r.basics ? `Left out: ${plural(r.basics, "basic land")}. Tick Basic lands to add them.` : null,
+        r.unpriced.length && r.priced ? `Not in the total, because they have no saved price: ${r.unpriced.join(", ")}.` : null,
+        r.oldData ? "Some cards were saved before the app kept prices, so they aren't in the total. To get their prices, select More, then Refresh card data." : null,
+      ].filter(Boolean);
+      if (r.items.length === 0) {
+        replace(body, h("p", { class: "empty", text: "No cards to buy. Tick a section to add its cards." }),
+          notes.map((n) => h("p", { class: "hint", text: n })));
+        return "No cards to buy.";
+      }
+      const text = buyText(r.items);
+      const area = h("textarea", { readOnly: true, rows: String(Math.min(12, r.items.length + 1)), class: "mono", value: text, "aria-label": "Cards to buy" });
+      // Only the first link is primary, so a list in parts has one primary button.
+      const storeLinks = (urls, store, primary) => urls.map((u, i) => h("a", {
+        href: u,
+        target: "_blank",
+        rel: "noopener",
+        class: primary && i === 0 ? "button primary" : "button",
+        text: urls.length > 1 ? `Open on ${store} (part ${i + 1} of ${urls.length})` : `Open on ${store}`,
+      }));
+      const summary = `${plural(r.count, "card")} to buy. ${r.priced === 0
+        ? "These cards have no saved price, so there's no estimated total."
+        : `Estimated total: ${formatUsd(r.totalCents)}, from Scryfall's TCGplayer prices as of ${formatDate(included[0])}.`}`;
+      replace(body,
+        h("p", { text: summary }),
+        notes.map((n) => h("p", { class: "hint", text: n })),
+        h("div", { class: "row wrap" }, storeLinks(tcgplayerUrls(r.items), "TCGplayer", true), storeLinks(cardKingdomUrls(r.items), "Card Kingdom", false)),
+        h("p", { class: "hint", text: "The store opens in a new tab with the list filled in. Choose the printing and condition there, then add the cards to your cart. Store prices change daily and can differ from the estimate." }),
+        area,
+        h("div", { class: "row" },
+          h("button", {
+            type: "button",
+            text: "Copy",
+            onclick: async () => {
+              const ok = await copyText(text, area);
+              announce(ok ? "Copied the list of cards to buy." : "Can't copy automatically. The text is selected, so copy it by hand.");
+            },
+          })),
+        h("p", { class: "hint", text: "For another store, copy the list and paste it into the store's bulk entry or deck builder." }));
+      return summary;
+    }
+    update();
+    // A checkbox change updates the panel in place, and says what changed.
+    const changed = () => announce(update());
+
+    return h("section", { class: "panel-box", "aria-labelledby": "buy-title" },
+      h("h2", { id: "buy-title", text: "Buy cards" }),
+      h("fieldset", { class: "checks" }, h("legend", { text: "Cards to include" }), boxes.map((b) => b.el)),
+      body,
+      h("div", { class: "row" }, h("button", { type: "button", text: "Close", onclick: close })),
+      h("p", { class: "hint" }, helpLink("lists-and-decks", "Learn more about buying cards")));
   }
 
   /** Mana curve, colors, and card types for the main deck. */

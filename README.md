@@ -1,6 +1,6 @@
 # Cascade
 
-Cascade helps you discover Magic: The Gathering cards, learn what they do, and see how they work together. You can draw random cards or browse every card that matches your filters. You can find synergies, similar cards, and counters for any card, find combos on [Commander Spellbook](https://commanderspellbook.com), save cards to lists, check Standard and Brawl decks, and export decks for MTG Arena. The app runs in your browser and gets card data and images from the [Scryfall API](https://scryfall.com/docs/api). It has no server and no accounts.
+Cascade helps you discover Magic: The Gathering cards, learn what they do, and see how they work together. You can draw random cards or browse every card that matches your filters. You can find synergies, similar cards, and counters for any card, find combos on [Commander Spellbook](https://commanderspellbook.com), save cards to lists, check Standard and Brawl decks, export decks for MTG Arena, and buy the cards in paper. The app runs in your browser and gets card data and images from the [Scryfall API](https://scryfall.com/docs/api). It has no server and no accounts.
 
 Cascade is a personal app first. It's tuned for Standard and [Brawl](https://magic.wizards.com/en/formats/brawl) on [MTG Arena](https://magic.wizards.com/en/mtgarena), and for discovering cards and how they interact.
 
@@ -105,13 +105,26 @@ If you remove a card from a list, select **Undo** in the message that appears to
 
 To see a whole list on Scryfall, select **Open on Scryfall**. A long list opens in two or more parts, because Scryfall searches have a length limit.
 
+### Buy cards
+
+To buy one card in paper, select **Buy** on the card in **Discover**. The card opens on [TCGplayer](https://www.tcgplayer.com) in a new tab, through Scryfall's link. In nerd mode, **Buy** shows the price. When the card shows a printing that is only on MTG Arena, **Buy** searches TCGplayer for the card by name. A card made only for MTG Arena has no **Buy** link.
+
+To buy many cards, add them to a list, then:
+
+1. Open the list in **Lists**, then select **Buy cards**.
+2. Tick the sections to buy. **Commander**, **Main deck**, and **Sideboard** start ticked. **Maybe** and **Basic lands** start unticked.
+3. Select **Open on TCGplayer** or **Open on Card Kingdom**. [TCGplayer Mass Entry](https://www.tcgplayer.com/massentry) or the [Card Kingdom Deck Builder](https://www.cardkingdom.com/builder) opens with the list filled in.
+4. On the store's page, choose the printing and condition, then add the cards to your cart.
+
+The panel shows an estimated total from the Scryfall prices saved with the list, and names the cards it leaves out. A very long list opens in two or more parts. For any other store, select **Copy** and paste the list into its bulk entry.
+
 ## Where your data is stored
 
 Your lists, presets, history, and settings are stored in your browser, on your device. The app has no server and no accounts. To use the same lists on more than one device, turn on sync with GitHub (see the next section).
 
 If you clear your browser's site data for the app, your data is deleted from that browser. To keep a copy, open **Data** and select **Export backup**. To restore it, select a backup file under **Import backup**. You can also use a backup to move your data to another device.
 
-The app sends Scryfall your card searches. It also sends Scryfall IDs: those of a list's cards when you refresh the list, and a card's ID when you select **Show rulings**. It doesn't send list names, notes, or anything else about you. If you turn on sync, it sends your lists, custom presets, and synced settings to your own private repository on [GitHub](https://github.com). When you select **Export to GitHub**, the app also sends a full backup there, with your history and every setting. The app sends GitHub nothing else. The app sends Commander Spellbook nothing: its links put a card name or colors in the address, and you paste a list there yourself. Backups made by this version use backup schema 3, which adds deletion markers for sync. This version also imports schema 1 and 2 backups from earlier versions.
+The app sends Scryfall your card searches. It also sends Scryfall IDs: those of a list's cards when you refresh the list, and a card's ID when you select **Show rulings**. It doesn't send list names, notes, or anything else about you. If you turn on sync, it sends your lists, custom presets, and synced settings to your own private repository on [GitHub](https://github.com). When you select **Export to GitHub**, the app also sends a full backup there, with your history and every setting. The app sends GitHub nothing else. The app sends Commander Spellbook nothing: its links put a card name or colors in the address, and you paste a list there yourself. The app sends stores nothing either: the **Buy cards** links put the card names and quantities in the address, and the store gets them only when you open a link. Backups made by this version use backup schema 3, which adds deletion markers for sync. This version also imports schema 1 and 2 backups from earlier versions.
 
 ### Sync between devices with GitHub
 
@@ -136,7 +149,7 @@ While sync is on, **Export to GitHub** under **Backup** saves a full backup (wit
 | `src/config.js` | The app name, API settings, and other constants. |
 | `src/scryfall.js` | The Scryfall API client. All API requests go through its queue, which spaces requests at least 500 ms apart. |
 | `src/github.js` | The GitHub API client for sync. It is the only code that sends requests to GitHub. |
-| `src/query.js`, `src/cards.js`, `src/lists.js`, `src/deck-rules.js`, `src/export.js`, `src/draw.js`, `src/synergy.js`, `src/explore.js`, `src/browse.js`, `src/saved.js`, `src/stats.js`, `src/links.js`, `src/glossary.js`, `src/docs.js`, `src/combos.js`, `src/sync.js` | App logic with no DOM code. The tests cover these modules. |
+| `src/query.js`, `src/cards.js`, `src/lists.js`, `src/deck-rules.js`, `src/export.js`, `src/draw.js`, `src/synergy.js`, `src/explore.js`, `src/browse.js`, `src/saved.js`, `src/stats.js`, `src/links.js`, `src/buy.js`, `src/glossary.js`, `src/docs.js`, `src/combos.js`, `src/sync.js` | App logic with no DOM code. The tests cover these modules. |
 | `src/docs.js` | The help pages shown in the **Help** view, and the text of every tooltip (`TIPS`). |
 | `src/storage/` | Data storage in IndexedDB, with a memory fallback, and the sync cycle (`sync.js`). |
 | `src/ui/` | The views, including the Help view (`help-view.js`), and the DOM helpers. |

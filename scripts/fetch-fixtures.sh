@@ -47,6 +47,9 @@ get card-planeswalker.json "/cards/named?exact=Teferi%2C%20Hero%20of%20Dominaria
 get card-landfall.json "/cards/named?exact=Lotus%20Cobra"
 get card-enchantress.json "/cards/named?exact=Starfield%20Mystic"
 get card-flyer.json "/cards/named?exact=Serra%20Angel"
+# A paper card's digital-only Arena printing, and a card made only for Arena.
+get card-arena-printing.json "/cards/named?exact=Abzan%20Falconer&set=j21"
+get card-digital-only.json "/cards/named?exact=Absorb%20Energy&set=ymid"
 
 # Added for the Set filter: the full list of sets.
 get sets.json "/sets"

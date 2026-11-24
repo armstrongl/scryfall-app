@@ -161,6 +161,21 @@ export const usesIdentity = (format) => IDENTITY_FORMATS.includes(format);
  */
 export const autoColorMode = (useIdentity) => (useIdentity ? "atMost" : "atLeast");
 
+/**
+ * The color mode after the colors or Use color identity change. `auto` says
+ * whether the app chose the current mode. A mode the app chose follows
+ * identity, and goes back to Any when no color is ticked. A mode chosen by
+ * hand stays.
+ * @param {{mode: string, anyColor: boolean, identity: boolean, auto: boolean}} state
+ * @returns {{mode: string, auto: boolean}}
+ */
+export function nextColorMode({ mode, anyColor, identity, auto }) {
+  if (mode === "any" && anyColor) return { mode: autoColorMode(identity), auto: true };
+  if (!auto) return { mode, auto: false };
+  if (!anyColor) return { mode: "any", auto: false };
+  return { mode: autoColorMode(identity), auto: true };
+}
+
 const COLOR_MODES = ["any", "exactly", "atLeast", "atMost"];
 const OPERATORS = { exactly: "=", atLeast: ">=", atMost: "<=" };
 

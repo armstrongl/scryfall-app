@@ -487,6 +487,7 @@ async function commanderColors(b, check) {
   await ev(clickText("#view-discover button", "Apply"));
   const box = (label) => `[...document.querySelectorAll("#filters-panel label.check")].find((l) => l.textContent.trim() === ${JSON.stringify(label)}).querySelector("input")`;
 
+  await ev(`window.__heard = []; new MutationObserver(() => { const t = document.querySelector("#live").textContent; if (t) window.__heard.push(t); }).observe(document.querySelector("#live"), { childList: true, characterData: true, subtree: true })`);
   await ev(setValue("#f-format", "commander", "change"));
   check("picking Commander ticks Use color identity", await until(`document.querySelector("#f-identity").checked`, 3000));
   await ev(`${box("Green")}.click()`);
@@ -495,6 +496,14 @@ async function commanderColors(b, check) {
   check("the color mode shows At most", await ev(`document.querySelector("#f-color-mode").value === "atMost"`));
   check("the color chip names color identity", await ev(`${CHIPS}.includes("Color identity at most green")`), await ev(CHIPS));
   check("no hint asks for a color mode", await ev(`!/Choose a color mode/.test(document.querySelector("#filters-panel").textContent)`));
+  check("the changes the form makes on its own are announced", await until(`/Use color identity/.test(window.__heard.join(" | ")) && /Color mode: At most/.test(window.__heard.join(" | "))`, 3000), await ev(`window.__heard.join(" | ")`));
+
+  // Removing another chip keeps a mode the app chose.
+  await ev(`[...document.querySelectorAll(".chips .chip button")].find((x) => x.getAttribute("aria-label") === "Remove filter: Land").click()`);
+  await ev(`${box("Green")}.click()`);
+  check("unticking the last color returns the mode to Any", await until(`document.querySelector("#f-color-mode").value === "any"`, 3000), await ev(`document.querySelector("#f-color-mode").value`));
+  check("no hint asks for a color", await ev(`!/Choose at least one color/.test(document.querySelector("#filters-panel").textContent)`));
+  await ev(`${box("Green")}.click()`);
 
   // Unticking identity changes a mode the app chose, but not one chosen by hand.
   await ev(`document.querySelector("#f-identity").click()`);

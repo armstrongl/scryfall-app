@@ -532,7 +532,7 @@ A search for green lands in Commander showed no lands. Lands have no color, so `
 
 ## Changes from the plan
 
-`PLAN.md` section 4.1 sets the color mode to **Any** by default. The default stays, but ticking a color with the mode on **Any** now changes the mode: **At most** with color identity, and **At least** without it. Item 7 in the v1 list above still applies to criteria from a preset or a backup.
+`PLAN.md` section 4.1 sets the color mode to **Any** by default. The default stays, but ticking a color with the mode on **Any** now changes the mode: **At most** with color identity, and **At least** without it. The "Choose a color mode" hint from the first build (item 7 under the v1 changes from the plan) still shows for criteria from a preset or a backup, until a color or **Use color identity** changes.
 
 ## Decisions
 
@@ -545,8 +545,12 @@ Where the docs were silent:
 
 - Choosing a format outside the list doesn't untick **Use color identity**, so a choice made by hand is never undone.
 - A mode the app chose follows **Use color identity** when it changes. A mode chosen by hand stays. When the last color is unticked, a mode the app chose goes back to **Any**.
-- Applying a preset or loading saved criteria never changes the colors or the mode.
+- Applying a preset or loading saved criteria doesn't change the colors or the mode. A reload forgets which mode the app chose, so after a reload the mode counts as chosen by hand. Removing another filter's chip keeps it.
+- Choosing a format changes the mode only when it ticks **Use color identity**.
+- **Any** chosen by hand with colors ticked lasts until the next color or identity change, which picks a mode again.
+- Each change the form makes on its own is announced, for example "Color mode: At most."
 
 ## Tests
 
 - Written first and seen failing: `tests/color-filters.test.js`, which failed because `IDENTITY_FORMATS`, `usesIdentity`, and `autoColorMode` didn't exist, and the `commanderColors` browser check in `scripts/check-ui.mjs`, which failed because the format list had no `f-format` ID and the form didn't change the mode.
+- An Opus review found that removing any chip made the app forget that it chose the mode, so unticking identity or the last color left the mode as it was. The pure `nextColorMode()` in `src/query.js`, its unit test, and browser checks for chip removal, the return to **Any**, and the announcements were written first and seen failing, then the fix went in.

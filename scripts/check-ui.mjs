@@ -325,10 +325,13 @@ async function discover(b, check) {
   check("the Arena Brawl preset uses Brawl and color identity", /f:brawl/.test(await ev(QUERY))
     && await ev(`[...document.querySelectorAll(".chips .chip")].some((c) => /^Brawl/.test(c.textContent))`));
   // The newest Standard set comes from Scryfall's set list, so it shows up
-  // after the first count.
+  // after the first count. The list is large and waits in the queue, so
+  // this check waits longer than most.
   const NEWEST = `document.querySelector('#view-discover .preset-row option[value="builtin-newest-standard"]')`;
-  check("the Newest Standard set preset is listed, named in plain words", await until(`!!${NEWEST}`)
-    && /^Newest Standard set: \S.* \(built in\)$/.test(await ev(`${NEWEST}.textContent`)), await ev(`${NEWEST}?.textContent`));
+  check("the Newest Standard set preset is listed, named in plain words", await until(`!!${NEWEST}`, 45000)
+    && /^Newest Standard set: \S.* \(built in\)$/.test(await ev(`${NEWEST}.textContent`)),
+  // On a failure, say which of its requests the page sent.
+  await ev(`${NEWEST}?.textContent ?? (performance.getEntriesByType("resource").filter((r) => /api\\.scryfall\\.com\\/(sets|cards\\/random\\?q=e)/.test(r.name)).map((r) => r.name.replace(/^.*\\.com/, "") + " " + r.responseStatus + " " + Math.round(r.duration) + " ms").join(", ") || "no set requests")`));
   const setName = (await ev(`${NEWEST}?.textContent`) ?? "").replace(/^Newest Standard set: /, "").replace(/ \(built in\)$/, "");
   await ev(setValue("#view-discover .preset-row select", "builtin-newest-standard", "change"));
   check("the Newest Standard set preset can't be renamed or deleted", await ev(`document.querySelector("#view-discover .preset-row select").value === "builtin-newest-standard"`) && await ev(`[...document.querySelectorAll("#view-discover .preset-row button")].filter((x) => /^(Rename|Delete)$/.test(x.textContent)).every((x) => x.hidden)`));

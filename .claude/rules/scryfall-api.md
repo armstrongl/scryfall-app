@@ -12,7 +12,7 @@ The [Scryfall API](https://scryfall.com/docs/api) is the app's only source of ca
 
 ## The queue
 
-- Every request to `api.scryfall.com` goes through the queue in `src/scryfall.js`. No other module calls `fetch` for the API.
+- Every request to `api.scryfall.com` goes through the queue in `src/scryfall.js`. No other module calls `fetch` for the API. `tests/api-boundary.test.js` fails when another module in `src/` names `api.scryfall.com` or `API_BASE`, or when a module other than `src/scryfall.js` and `src/github.js` calls `fetch`. In Claude Code, a hook blocks the edit.
 - One request at a time, at least 500 ms between request starts, and after a 429 a 30-second pause, then one retry. Don't lower these values. See [rate limits and good citizenship](https://scryfall.com/docs/api/rate-limits).
 - `createClient()` takes `fetchImpl`, so tests pass a fake fetch instead of mocking a global.
 

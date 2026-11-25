@@ -4,7 +4,7 @@ This is the routine for every change, from start to finish. The [ship skill](../
 
 ## Start
 
-1. Other agents may be working at the same time, each in its own worktree. Fetch first: `git fetch origin`.
+1. Other agents may be working at the same time, each in its own worktree. Fetch first: `git fetch origin`. If the clone has no `commit-msg` hook, install the copy in `.githooks/` (`AGENTS.md` has the command).
 2. Make a branch from `origin/main` in your own worktree under `~/worktrees/`: `git worktree add ~/worktrees/scryfall-app-<name> -b <name> origin/main`. Name the branch for the change, such as `explore-icons`. In a Paradev (formerly Superset) workspace, the workspace already is the worktree. Name the workspace with `paradev ws update "$SUPERSET_WORKSPACE_ID" --name <name>`.
 3. Don't edit the main checkout at `~/Projects/scryfall-app`. Another agent may be using it.
 4. For a large change or one with open questions, plan first. Bring the plan as a page with inputs ([plan-with-options](../../.agents/skills/plan-with-options/SKILL.md)). For one quick choice, ask one question in the session.

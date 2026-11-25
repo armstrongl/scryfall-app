@@ -739,11 +739,23 @@ async function lists(b, check) {
   await until(`!/Refreshing/.test(document.querySelector("#view-lists").textContent)`, 15000);
   await sleep(300);
   check("after More, then Refresh, focus goes back to More", await ev(`document.activeElement?.id === "list-more-btn"`), await ev(FOCUS));
+  check("a collection has no Sample hand button", await ev(`![...document.querySelectorAll("#view-lists .list-actions button")].some((x) => x.textContent.trim() === "Sample hand")`));
   await ev(setValue("#kind-select", "deck", "change"));
   await sleep(500);
   check("deck stats show for a deck", await ev(`!!document.querySelector(".deck-stats .curve")`));
+  await sampleHand(b, check);
   await ev(setValue("#format-select", "brawl", "change"));
   await sleep(500);
+  await ev(clickText("#view-lists .list-actions button", "Sample hand"));
+  await sleep(300);
+  await ev(clickText("#view-lists section[aria-labelledby=hand-title] button", "Mulligan"));
+  await sleep(200);
+  check("in Brawl, the first mulligan is free", await ev(`(() => {
+    const p = document.querySelector("#view-lists section[aria-labelledby=hand-title]");
+    return p.querySelectorAll(".hand > li").length === 7 && !/Put on bottom/.test(p.textContent) && /free/i.test(p.querySelector(".hand-status")?.textContent ?? "");
+  })()`), await ev(`document.querySelector(".hand-status")?.textContent`));
+  await ev(clickText("#view-lists section[aria-labelledby=hand-title] button", "Close"));
+  await sleep(200);
   check("Brawl checks replace Standard checks", /Brawl deck checks/.test(await ev(`document.querySelector("#checks-title")?.textContent ?? ""`)));
   check("deck checks link to their help page", await ev(`!!document.querySelector("#view-lists a[href='#help/lists-and-decks']")`));
   await tooltipsIn(b, "#view-lists", "Lists", check);
@@ -794,6 +806,79 @@ async function lists(b, check) {
   check("Dismiss moves focus to the list heading", await ev(`document.activeElement?.id === "lists-title"`), await ev(FOCUS));
   check("no toast or bar floats over the page", await ev(`[...document.querySelectorAll("body *")].every((n) => !["fixed", "sticky"].includes(getComputedStyle(n).position) || n.closest("dialog") || n.id === "inspector" || n.classList.contains("skip"))`),
     await ev(`[...document.querySelectorAll("body *")].filter((n) => ["fixed", "sticky"].includes(getComputedStyle(n).position)).map((n) => n.tagName + "." + n.className).join(", ")`));
+}
+
+/**
+ * Sample hand on a deck: draw, mulligan, put on bottom, odds, focus, card
+ * images left whole, and no sideways scroll. The deck is the one card in the
+ * UI check list, raised to 20 copies so that a hand and draws fit.
+ */
+async function sampleHand(b, check) {
+  const { ev, until } = b;
+  await ev(setValue("#view-lists .entry input.qty", "20", "change"));
+  await sleep(500);
+  const PANEL = `document.querySelector("#view-lists section[aria-labelledby=hand-title]")`;
+  const CARDS = `${PANEL}.querySelectorAll(".hand > li").length`;
+  const btn = (text) => `[...${PANEL}.querySelectorAll("button")].find((x) => x.textContent.trim() === ${JSON.stringify(text)})`;
+  check("a deck has a Sample hand button", await ev(`[...document.querySelectorAll("#view-lists .list-actions button")].some((x) => x.textContent.trim() === "Sample hand")`));
+  await ev(clickText("#view-lists .list-actions button", "Sample hand"));
+  await sleep(300);
+  check("Sample hand opens a panel with 7 cards", await ev(`!!${PANEL} && ${CARDS} === 7`), await ev(`${PANEL} && ${CARDS}`));
+  check("focus moves to Draw a card", await ev(`document.activeElement?.textContent.trim() === "Draw a card"`), await ev(FOCUS));
+  check("the panel shows the three odds as percentages", await ev(`(() => {
+    const items = [...${PANEL}.querySelectorAll(".hand-odds li")].map((li) => li.textContent);
+    return items.length === 3 && items.every((t) => /\\d+%/.test(t));
+  })()`), await ev(`[...${PANEL}.querySelectorAll(".hand-odds li")].map((li) => li.textContent).join(" | ")`));
+  check("the panel links to its help page", await ev(`!!${PANEL}.querySelector("a[href='#help/lists-and-decks']")`));
+  check("card images in the hand are whole: nothing covers them, and no transform, filter, clip, or cover", await ev(`(() => {
+    const imgs = [...${PANEL}.querySelectorAll(".hand img")];
+    if (!imgs.length) return ${PANEL}.querySelectorAll(".hand .is-text").length === 7;
+    return imgs.every((img) => {
+      img.scrollIntoView({ block: "center" });
+      const r = img.getBoundingClientRect();
+      const cs = getComputedStyle(img);
+      const points = [[r.left + r.width / 2, r.top + r.height / 2], [r.left + 2, r.top + 2], [r.right - 2, r.bottom - 2]];
+      return points.every(([x, y]) => document.elementFromPoint(x, y) === img)
+        && cs.transform === "none" && cs.filter === "none" && cs.clipPath === "none" && cs.objectFit !== "cover";
+    });
+  })()`));
+
+  await ev(`${btn("Draw a card")}.click()`);
+  await sleep(200);
+  check("Draw a card adds the top card to the hand", await ev(`${CARDS} === 8`), await ev(`${CARDS}`));
+  check("Draw a card announces the card", await until(`/^Drew /.test(document.getElementById("live")?.textContent ?? "")`, 2000), await ev(`document.getElementById("live")?.textContent`));
+  check("focus stays on Draw a card", await ev(`document.activeElement?.textContent.trim() === "Draw a card"`), await ev(FOCUS));
+  check("no mulligan after a draw", await ev(`${btn("Mulligan")}.disabled === true`));
+
+  await ev(`${btn("New hand")}.click()`);
+  await sleep(200);
+  check("New hand deals 7 cards again", await ev(`${CARDS} === 7 && ${btn("Mulligan")}.disabled === false`));
+  await ev(`${btn("Mulligan")}.click()`);
+  await sleep(200);
+  check("Mulligan deals 7 new cards, each with Put on bottom", await ev(`${CARDS} === 7 && [...${PANEL}.querySelectorAll(".hand > li")].every((li) => [...li.querySelectorAll("button")].some((x) => x.textContent.trim() === "Put on bottom"))`));
+  check("Put on bottom is below the card image, not over it", await ev(`[...${PANEL}.querySelectorAll(".hand > li")].every((li) => {
+    const m = li.querySelector(".card-media").getBoundingClientRect();
+    const x = [...li.querySelectorAll("button")].find((x) => x.textContent.trim() === "Put on bottom").getBoundingClientRect();
+    return x.top >= m.bottom - 0.5;
+  })`));
+  check("each Put on bottom name starts with its visible text", await ev(`[...${PANEL}.querySelectorAll(".hand .to-bottom")].every((x) => x.getAttribute("aria-label").startsWith("Put on bottom: "))`));
+  check("Draw a card waits until the card is on the bottom", await ev(`${btn("Draw a card")}.disabled === true`));
+  check("Mulligan announces the card to put on the bottom", await until(`/Put 1 card on the bottom/.test(document.getElementById("live")?.textContent ?? "")`, 2000), await ev(`document.getElementById("live")?.textContent`));
+  check("focus stays on Mulligan", await ev(`document.activeElement?.textContent.trim() === "Mulligan"`), await ev(FOCUS));
+  check("the Sample hand panel has no horizontal scroll", await ev(`${PANEL}.scrollWidth <= ${PANEL}.clientWidth + 1`));
+  check("no horizontal page scroll with a hand shown", !(await ev("document.documentElement.scrollWidth > window.innerWidth")));
+  await ev(`[...${PANEL}.querySelectorAll(".hand button")].find((x) => x.textContent.trim() === "Put on bottom").click()`);
+  await sleep(200);
+  check("Put on bottom leaves 6 cards and no more Put on bottom buttons", await ev(`${CARDS} === 6 && !/Put on bottom/.test(${PANEL}.querySelector(".hand").textContent)`));
+  check("after the last card goes to the bottom, focus moves to Draw a card", await ev(`document.activeElement?.textContent.trim() === "Draw a card" && !document.activeElement.disabled`), await ev(FOCUS));
+  // 20 cards: a new hand of 7, then 13 draws, empties the library.
+  await ev(`${btn("New hand")}.click()`);
+  for (let i = 0; i < 13; i++) await ev(`${btn("Draw a card")}.click()`);
+  await sleep(200);
+  check("when the library runs out, Draw a card turns off and focus moves to New hand", await ev(`${btn("Draw a card")}.disabled === true && document.activeElement === ${btn("New hand")}`), await ev(FOCUS));
+  await ev(`${btn("Close")}.click()`);
+  await sleep(200);
+  check("closing Sample hand returns focus to it", await ev(`document.activeElement?.textContent.trim() === "Sample hand"`), await ev(FOCUS));
 }
 
 /** Lists: Import deck. Paste text, review the lines that didn't match, fix or skip them, and save. */

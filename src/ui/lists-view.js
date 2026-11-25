@@ -1,7 +1,7 @@
 // The Lists view: list index and list detail, with deck checks, deck stats,
-// Arena export, Open on Scryfall, and refresh of card data.
+// sample hands, Arena export, Open on Scryfall, and refresh of card data.
 
-import { BACKUP_REMINDER_DAYS, DECK_FORMAT_NAMES, DECK_FORMATS, SECTION_NAMES } from "../config.js";
+import { BACKUP_REMINDER_DAYS, DECK_FORMAT_NAMES, DECK_FORMATS, HAND_SIZE, SECTION_NAMES } from "../config.js";
 import { makeSnapshot } from "../cards.js";
 import { checkDeck } from "../deck-rules.js";
 import { arenaText, needsBackupReminder } from "../export.js";
@@ -13,6 +13,7 @@ import { FIND_MY_COMBOS_URL, listCombos } from "../combos.js";
 import { scryfallListUrls } from "../links.js";
 import { BUY_SECTIONS, buyList, buyText, cardKingdomUrls, formatUsd, tcgplayerUrls } from "../buy.js";
 import { deckStats } from "../stats.js";
+import { canDraw, canMulligan, drawCard, libraryOf, mulligan, newHand, openingOdds, putOnBottom } from "../hand.js";
 import { errorMessage } from "../scryfall.js";
 import { cardMedia, glowClass, manaCost } from "./card-view.js";
 import { openDetails } from "./details.js";
@@ -224,6 +225,14 @@ export function createListsView(app) {
         (slot.querySelector("a.button") ?? slot.querySelector("input"))?.focus();
       },
     });
+    const handBtn = isDeck ? h("button", {
+      type: "button",
+      text: "Sample hand",
+      onclick: () => {
+        replace(slot, handPanel(list, () => { slot.replaceChildren(); handBtn.focus(); }));
+        slot.querySelector(".hand-actions button:not(:disabled), button")?.focus();
+      },
+    }) : null;
     const urls = scryfallListUrls(list.entries.map((e) => e.card.frontName ?? e.card.name));
     const scryfallLinks = urls.map((u, i) => withTip(h("a", {
       href: u,
@@ -367,7 +376,7 @@ export function createListsView(app) {
         h("p", { class: "tagline" }, h("span", { class: "badge", text: KIND_LABEL(list) }), ` ${plural(totalQuantity(list.entries), "card")}`)),
       app.storageOk ? null : message("warn", "Storage is not available in this browser window. Lists are lost when you close the page."),
       reminder(),
-      h("div", { class: "list-actions" }, withTip(exportBtn, TIPS.exportArena), withTip(combosBtn, TIPS.findCombos), withTip(buyBtn, TIPS.buyList), scryfallLinks, moreBtn),
+      h("div", { class: "list-actions" }, withTip(exportBtn, TIPS.exportArena), handBtn ? withTip(handBtn, TIPS.sampleHand) : null, withTip(combosBtn, TIPS.findCombos), withTip(buyBtn, TIPS.buyList), scryfallLinks, moreBtn),
       moreMenu,
       slot,
       h("div", { class: "toolbar" }, field("Kind", kindSelect, undefined, TIPS.listKind), formatField, field("Sort by", sortSelect)),
@@ -449,6 +458,123 @@ export function createListsView(app) {
       body,
       h("div", { class: "row" }, h("button", { type: "button", text: "Close", onclick: close })),
       h("p", { class: "hint" }, helpLink("lists-and-decks", "Learn more about buying cards")));
+  }
+
+  /**
+   * The Sample hand panel: a shuffled hand from the main deck, with Draw a
+   * card, Mulligan (the London mulligan), New hand, and the odds of a good
+   * start. Nothing is saved. Each action updates the panel in place, and
+   * focus stays on a control that is still there.
+   */
+  function handPanel(list, close) {
+    const library = libraryOf(list.entries);
+    const closeRow = h("div", { class: "row" }, h("button", { type: "button", text: "Close", onclick: close }));
+    const learnMore = h("p", { class: "hint" }, helpLink("lists-and-decks", "Learn more about sample hands"));
+    if (library.length === 0) {
+      return h("section", { class: "panel-box", "aria-labelledby": "hand-title" },
+        h("h2", { id: "hand-title", text: "Sample hand" }),
+        h("p", { class: "empty", text: "The main deck has no cards. Add cards to the Main deck section to draw a sample hand." }),
+        closeRow, learnMore);
+    }
+    const options = { freeMulligan: isBrawlFormat(list.format) };
+    let state = newHand(library, Math.random, options);
+    const status = h("p", { class: "hand-status" });
+    const cards = h("ul", { class: "hand", "aria-label": "Cards in hand" });
+    const drawBtn = h("button", {
+      type: "button",
+      text: "Draw a card",
+      onclick: () => {
+        const card = state.library[0]?.card;
+        state = drawCard(state);
+        update();
+        // A disabled button loses focus, so focus moves on when the library runs out.
+        (drawBtn.disabled ? newBtn : drawBtn).focus();
+        announce(`Drew ${card.name}.${state.library.length ? "" : " The library is empty."}`);
+      },
+    });
+    const mulliganBtn = h("button", {
+      type: "button",
+      text: "Mulligan",
+      onclick: () => {
+        state = mulligan(state, Math.random);
+        update();
+        (mulliganBtn.disabled ? newBtn : mulliganBtn).focus();
+        announce(state.toBottom
+          ? `Mulligan. Drew ${HAND_SIZE} new cards. Put ${plural(state.toBottom, "card")} on the bottom.`
+          : `Free mulligan. Drew ${HAND_SIZE} new cards.`);
+      },
+    });
+    const newBtn = h("button", {
+      type: "button",
+      text: "New hand",
+      onclick: () => {
+        state = newHand(library, Math.random, options);
+        update();
+        newBtn.focus();
+        announce(`Drew a new hand of ${plural(state.hand.length, "card")}.`);
+      },
+    });
+
+    function statusText() {
+      const parts = [];
+      if (state.mulligans) {
+        parts.push(state.freeMulligan && state.mulligans === 1
+          ? "Free mulligan: in Brawl, the first mulligan is free."
+          : `Mulligans: ${state.mulligans}${state.freeMulligan ? ", the first one free" : ""}.`);
+      }
+      parts.push(state.toBottom
+        ? `Put ${plural(state.toBottom, "card")} on the bottom: select Put on bottom under ${state.toBottom === 1 ? "a card" : "each one"}.`
+        : `${plural(state.hand.length, "card")} in hand, ${plural(state.library.length, "card")} in the library.`);
+      if (state.drawn) parts.push(`Drawn after the opening hand: ${state.drawn}.`);
+      return parts.join(" ");
+    }
+
+    function update() {
+      const firstDrawn = state.hand.length - state.drawn;
+      replace(cards, state.hand.map((item, i) => h("li", {},
+        cardMedia(item.card, { size: "normal" }),
+        h("p", { class: "hand-name", text: item.card.name }),
+        i >= firstDrawn ? h("p", { class: "hint", text: "Drawn" }) : null,
+        state.toBottom ? h("button", {
+          type: "button",
+          class: "to-bottom",
+          text: "Put on bottom",
+          "aria-label": `Put on bottom: ${item.card.name}`,
+          onclick: () => {
+            state = putOnBottom(state, item.id);
+            update();
+            const left = state.toBottom;
+            announce(`Put ${item.card.name} on the bottom.${left ? ` ${plural(left, "more card")} to put on the bottom.` : ""}`);
+            const next = [...cards.querySelectorAll("button.to-bottom")];
+            (left ? next[Math.min(i, next.length - 1)] : drawBtn).focus();
+          },
+        }) : null)));
+      status.textContent = statusText();
+      drawBtn.disabled = !canDraw(state);
+      mulliganBtn.disabled = !canMulligan(state);
+    }
+    update();
+
+    const odds = openingOdds(list.entries);
+    const pct = (p) => `${Math.round(p * 100)}%`;
+    const oddsEl = odds
+      ? h("div", {},
+        h("h3", { text: "Odds of a good start" }),
+        h("ul", { class: "hand-odds" },
+          h("li", { text: `2 to 4 lands in the opening hand: ${pct(odds.twoToFourLands)}` }),
+          h("li", { text: `A land to play each turn up to turn 4: ${pct(odds.landDrops.play)} on the play, ${pct(odds.landDrops.draw)} on the draw` }),
+          h("li", { text: `A card with mana value 2 by turn 2: ${pct(odds.twoDrop.play)} on the play, ${pct(odds.twoDrop.draw)} on the draw` })),
+        h("p", { class: "hint", text: `From the main deck: ${plural(odds.cards, "card")}, ${plural(odds.lands, "land")}, and ${plural(odds.twoDrops, "spell")} with mana value 2. The odds are for a ${HAND_SIZE}-card hand with no mulligan.` }))
+      : h("p", { class: "hint", text: `Add at least ${HAND_SIZE} cards to the main deck to see the odds of a good start.` });
+
+    return h("section", { class: "panel-box", "aria-labelledby": "hand-title" },
+      h("h2", { id: "hand-title", text: "Sample hand" }),
+      h("div", { class: "row wrap hand-actions" }, drawBtn, mulliganBtn, newBtn),
+      status,
+      cards,
+      oddsEl,
+      closeRow,
+      learnMore);
   }
 
   /** Mana curve, colors, and card types for the main deck. */

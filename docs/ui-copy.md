@@ -54,6 +54,7 @@ This index lists the text the app shows or announces from `index.html`, `src/mai
 | `TIPS.importDeck` | `src/ui/lists-view.js` | Makes a deck from pasted deck text, such as the text from the Export button in MTG Arena or from a deck site. |
 | `TIPS.findCombos` | `src/ui/lists-view.js` | Shows the list as text to paste into Find My Combos on Commander Spellbook. |
 | `TIPS.openList` | `src/ui/lists-view.js` | Opens every card in this list on the Scryfall website, in a new tab. |
+| `TIPS.sampleHand` | `src/ui/lists-view.js` | Draws a random opening hand from the main deck, so you can try mulligans and see the odds of a good start. |
 | `TIPS.buyList` | `src/ui/lists-view.js` | Shows the cards to buy, with an estimated total, and opens them in TCGplayer or Card Kingdom with the list filled in. |
 | `TIPS.duplicateList` | `src/ui/lists-view.js` | Makes a new list with the same cards, kind, and format. Changes to the copy don't change this list. |
 | `TIPS.refresh` | `src/ui/lists-view.js` | Gets current legality, prices, and images from Scryfall. Quantities, sections, and notes stay the same. |
@@ -72,11 +73,11 @@ This index lists the text the app shows or announces from `index.html`, `src/mai
 | Card details | `#help/card-details` | Rules text, keywords, rulings, legality, and prices. | 19 |
 | Explore | `#help/explore` | Synergies, similar cards, counters, and combos for any card. | 7 |
 | Combos | `#help/combos` | Find card combos on Commander Spellbook, and learn what bracket tags mean. | 16 |
-| Lists and decks | `#help/lists-and-decks` | Save cards, check decks, import and export them for MTG Arena, and buy them. | 17 |
+| Lists and decks | `#help/lists-and-decks` | Save cards, check decks, draw sample hands, import and export decks for MTG Arena, and buy cards. | 22 |
 | Nerd mode | `#help/nerd-mode` | More details on every card. | 2 |
 | Your data | `#help/your-data` | Where your lists are stored, and how to back them up. | 10 |
 | Sync with GitHub | `#help/sync` | Keep your lists on every device, in a private GitHub repository. | 5 |
-| Glossary | `#help/glossary` | The Magic terms the app uses, with links to learn more. | 46 |
+| Glossary | `#help/glossary` | The Magic terms the app uses, with links to learn more. | 49 |
 
 ## `index.html`
 
@@ -608,6 +609,7 @@ This index lists the text the app shows or announces from `index.html`, `src/mai
 | text | Commander Spellbook is a separate site. Links open it in a new tab. |
 | text | Learn more about combos and bracket tags |
 | text | Buy cards |
+| text | Sample hand |
 | text | Open on Scryfall (part {…} of {…}) |
 | text | Open on Scryfall |
 | text | Rename |
@@ -672,6 +674,34 @@ This index lists the text the app shows or announces from `index.html`, `src/mai
 | text | Cards to include |
 | text | Close |
 | text | Learn more about buying cards |
+| text | Close |
+| text | Learn more about sample hands |
+| text | Sample hand |
+| text | The main deck has no cards. Add cards to the Main deck section to draw a sample hand. |
+| aria-label | Cards in hand |
+| text | Draw a card |
+| announce | Drew {…}.{…} |
+| text | The library is empty. |
+| text | Mulligan |
+| text | Mulligan. Drew {…} new cards. Put {…} on the bottom. |
+| text | Free mulligan. Drew {…} new cards. |
+| text | New hand |
+| announce | Drew a new hand of {…}. |
+| text | Free mulligan: in Brawl, the first mulligan is free. |
+| text | Mulligans: {…}{…}. |
+| text | Put {…} on the bottom: select Put on bottom under {…}. |
+| text | Drawn after the opening hand: {…}. |
+| text | Drawn |
+| text | Put on bottom |
+| aria-label | Put on bottom: {…} |
+| announce | Put {…} on the bottom.{…} |
+| text | Odds of a good start |
+| text | 2 to 4 lands in the opening hand: {…} |
+| text | A land to play each turn up to turn 4: {…} on the play, {…} on the draw |
+| text | A card with mana value 2 by turn 2: {…} on the play, {…} on the draw |
+| text | From the main deck: {…}, {…}, and {…} with mana value 2. The odds are for a {…}-card hand with no mulligan. |
+| text | Add at least {…} cards to the main deck to see the odds of a good start. |
+| text | Sample hand |
 | text | Deck stats |
 | text | {…}: {…}, {…}. Average mana value of spells: {…}. |
 | text | Mana curve (spells) |

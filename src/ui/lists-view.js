@@ -182,6 +182,7 @@ export function createListsView(app) {
         copy.focus();
       },
     });
+    const editBtn = isDeck ? h("button", { type: "button", id: "edit-in-discover", text: "Edit in Discover", onclick: () => app.showDeck(list.id) }) : null;
     const combosBtn = h("button", {
       type: "button",
       text: "Find combos",
@@ -376,7 +377,7 @@ export function createListsView(app) {
         h("p", { class: "tagline" }, h("span", { class: "badge", text: KIND_LABEL(list) }), ` ${plural(totalQuantity(list.entries), "card")}`)),
       app.storageOk ? null : message("warn", "Storage is not available in this browser window. Lists are lost when you close the page."),
       reminder(),
-      h("div", { class: "list-actions" }, withTip(exportBtn, TIPS.exportArena), handBtn ? withTip(handBtn, TIPS.sampleHand) : null, withTip(combosBtn, TIPS.findCombos), withTip(buyBtn, TIPS.buyList), scryfallLinks, moreBtn),
+      h("div", { class: "list-actions" }, withTip(exportBtn, TIPS.exportArena), handBtn ? withTip(handBtn, TIPS.sampleHand) : null, withTip(combosBtn, TIPS.findCombos), withTip(buyBtn, TIPS.buyList), editBtn ? withTip(editBtn, TIPS.editInDiscover) : null, scryfallLinks, moreBtn),
       moreMenu,
       slot,
       h("div", { class: "toolbar" }, field("Kind", kindSelect, undefined, TIPS.listKind), formatField, field("Sort by", sortSelect)),

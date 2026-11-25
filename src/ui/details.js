@@ -89,7 +89,8 @@ function rulingsArea(app, snapshot) {
  * Everything about one card.
  * @param {import("../main.js").App} app
  * @param {import("../cards.js").CardSnapshot} snapshot
- * @param {{titleId?: string, headingLevel?: "h2", image?: boolean, onAdd?: () => void, onExplore?: () => void}} [opts]
+ * @param {{titleId?: string, headingLevel?: "h2", image?: boolean, onAdd?: () => void, onExplore?: () => void, deck?: () => Node}} [opts]
+ *   deck: makes the deck mode count with − and +.
  */
 export function cardDetails(app, snapshot, opts = {}) {
   const s = snapshot;
@@ -109,6 +110,7 @@ export function cardDetails(app, snapshot, opts = {}) {
       manaCost(s.manaCost)),
     h("p", { class: "details-type", text: [s.typeLine, pt].filter(Boolean).join(" · ") }),
     opts.image ? h("div", { class: "details-image" }, cardMedia(s, { size: "normal" })) : null,
+    opts.deck ? opts.deck() : null,
     places.length ? h("p", { class: "tile-saved" }, `★ ${savedText(places)}`, places.length > 1 ? `: ${places.map((p) => p.listName).join(", ")}` : "") : null,
     (opts.onAdd || opts.onExplore) ? h("div", { class: "row wrap" },
       opts.onAdd ? h("button", { type: "button", class: "primary", text: "Add to list", onclick: opts.onAdd }) : null,
@@ -153,7 +155,7 @@ export function cardDetails(app, snapshot, opts = {}) {
  * bottom on phones. Escape or Close returns focus to where it was.
  * @param {import("../main.js").App} app
  * @param {import("../cards.js").CardSnapshot} snapshot
- * @param {{onAdd?: () => void, onExplore?: () => void}} [opts]
+ * @param {{onAdd?: () => void, onExplore?: () => void, deck?: () => Node}} [opts]
  */
 export function openDetails(app, snapshot, opts = {}) {
   const returnFocus = document.activeElement;
@@ -169,7 +171,7 @@ export function openDetails(app, snapshot, opts = {}) {
   const wrap = (fn) => (fn ? () => { close(true); fn(); } : undefined);
   dialog.append(
     h("div", { class: "sheet-bar" }, closeBtn),
-    cardDetails(app, snapshot, { titleId: "details-title", image: true, onAdd: wrap(opts.onAdd), onExplore: wrap(opts.onExplore) }));
+    cardDetails(app, snapshot, { titleId: "details-title", image: true, onAdd: wrap(opts.onAdd), onExplore: wrap(opts.onExplore), deck: opts.deck }));
   dialog.addEventListener("cancel", (e) => {
     e.preventDefault();
     close();
@@ -200,7 +202,7 @@ export function createInspector(app) {
   const render = (snapshot, opts) => {
     current = snapshot.scryfallId;
     last = { snapshot, opts };
-    replace(body, cardDetails(app, snapshot, { headingLevel: "h2", onAdd: opts.onAdd, onExplore: opts.onExplore }));
+    replace(body, cardDetails(app, snapshot, { headingLevel: "h2", onAdd: opts.onAdd, onExplore: opts.onExplore, deck: opts.deck }));
   };
   return {
     el,

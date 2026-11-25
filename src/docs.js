@@ -52,6 +52,10 @@ export const TIPS = {
   exportArena: "Shows the deck as text to copy and import into MTG Arena.",
   importDeck: "Makes a deck from pasted deck text, such as the text from the Export button in MTG Arena or from a deck site.",
   findCombos: "Shows the list as text to paste into Find My Combos on Commander Spellbook.",
+  editInDiscover: "Opens Discover in deck mode with this deck, so you can add and remove copies from each card.",
+  deckMode: "Choose a deck to work on. Each card then shows its count in the deck, with − and + to remove or add a copy.",
+  deckAddsTo: "The deck section that + adds to and − removes from. The count on each card is for this section.",
+  deckStop: "Ends deck mode. The deck and your filters stay as they are.",
   openList: "Opens every card in this list on the Scryfall website, in a new tab.",
   sampleHand: "Draws a random opening hand from the main deck, so you can try mulligans and see the odds of a good start.",
   buyList: "Shows the cards to buy, with an estimated total, and opens them in TCGplayer or Card Kingdom with the list filled in.",
@@ -401,6 +405,27 @@ export const DOC_PAGES = [
           { p: "A list is a **Collection** or a **Deck**. A deck has a format: **Standard**, **Standard Brawl**, or **Brawl**. You can change the kind and the format at any time, and the cards stay." },
           { p: "If you remove a card from a list, select **Undo** to put it back." },
           { p: "To try a different build without losing the one that works, select **More**, then **Duplicate**. The copy has the same cards, kind, and format, and its name ends in (copy). Changes to the copy don't change the first list. It uses the card data saved with the list, so it sends no requests to Scryfall. With GitHub sync on, the copy syncs as a new list." },
+        ],
+      },
+      {
+        heading: "Work on a deck in Discover",
+        blocks: [
+          { p: "Deck mode keeps one deck in view while you look for cards. Each card shows how many copies are in the deck, with **−** and **+** to remove or add one copy." },
+          {
+            steps: [
+              "In Discover, choose a deck in the **Deck** menu. Or open a deck in **Lists** and select **Edit in Discover**.",
+              "Find cards with **Draw random** or **Browse all**. Under each card's type line, select **+** to add a copy or **−** to remove one.",
+              "To end deck mode, select **Stop**. The deck and your filters stay as they are.",
+            ],
+          },
+          { p: "When deck mode starts, the filters change to the deck's format and colors, one time: the commander's color identity for a Brawl deck, or the colors of the cards in a Standard deck. Each one shows as a filter chip, and you can remove it." },
+          { p: "The deck bar above the cards shows the deck's name, its card count (for example \"58 of 60\"), and how many problems the deck checks find. **Open deck** opens it in **Lists**." },
+          { p: "**Adds to** sets the section that **+** adds to and **−** removes from: **Main deck**, **Sideboard**, or **Maybe** for Standard, and **Main deck**, **Commander**, or **Maybe** for Brawl. The count on each card is for that section, and the card says when it's in another section too." },
+          { p: "**+** stops at the copy limit: 4 copies in Standard, counting the sideboard, and 1 in Brawl, counting the commander. Basic lands, cards whose text allows more copies, and **Maybe** have no such limit. To go past the limit on purpose, change the quantity in **Lists**." },
+          { p: "If **−** removes the last copy, select **Undo** on the card to put it back." },
+          { p: "**Hide cards in the deck** leaves out cards that are already in the main deck, the commander section, or the sideboard. Cards in **Maybe** still show. A note says how many are hidden. A card you add stays in view until the next draw or search." },
+          { p: "The details of a card show the same count, **−**, and **+**. The **Add** button still adds a card to any list." },
+          { p: "The chosen deck is kept on this device only. It doesn't sync and isn't in backups. It stays after you reload the page, and deck mode stops if the deck is deleted or becomes a collection." },
         ],
       },
       {

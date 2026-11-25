@@ -57,3 +57,25 @@ test("settings keep nerd mode, Discover mode, and browse sort through storage", 
   assert.equal(back.discoverMode, "browse");
   assert.deepEqual(back.browseSort, { order: "cmc", dir: "desc" });
 });
+
+test("the deck mode choice stays on this device: not in settings, backups, or the sync data", async () => {
+  const storage = createStorage(createMemoryBackend(), fakeClock());
+  assert.equal(await storage.getDeckMode(), null);
+  const list = createList("Elves", "deck", fakeClock());
+  await storage.saveList(list);
+  await storage.saveDeckMode({ listId: list.id, section: "sideboard", hide: true });
+  assert.deepEqual(await storage.getDeckMode(), { listId: list.id, section: "sideboard", hide: true });
+
+  const backup = await storage.exportAll();
+  assert.ok(!JSON.stringify(backup).includes("deckMode"), "the backup has no deck mode");
+  assert.ok(!JSON.stringify(backup.settings).includes(list.id), "the settings don't name the deck");
+  const synced = await storage.collect();
+  assert.ok(!JSON.stringify(synced).includes("deckMode") && !JSON.stringify(synced.settings).includes(list.id), "sync data has no deck mode");
+
+  // Replace writes everything else, and the choice stays.
+  await storage.importAll(backup, "replace");
+  assert.deepEqual(await storage.getDeckMode(), { listId: list.id, section: "sideboard", hide: true });
+
+  await storage.saveDeckMode(null);
+  assert.equal(await storage.getDeckMode(), null);
+});

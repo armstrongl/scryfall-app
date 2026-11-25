@@ -24,6 +24,8 @@ import { createMemoryBackend } from "./memory.js";
  */
 
 const SYNC_KEY = "sync";
+/** The meta record for the deck chosen in Discover, on this device only. */
+const DECK_MODE_KEY = "deckMode";
 
 /**
  * Builds the Storage interface on top of a backend.
@@ -191,6 +193,21 @@ export function createStorage(backend, clock = defaultClock) {
     /** Removes the GitHub connection and its token. */
     async clearSyncState() {
       await backend.delete("meta", SYNC_KEY);
+    },
+    /**
+     * The deck chosen in Discover, as stored. It belongs to this device, so
+     * it is kept apart from the settings: it never syncs and is never in a
+     * backup, and an import leaves it as it is. cleanDeckMode() in
+     * src/deck-mode.js checks it against the lists.
+     * @returns {Promise<any>}
+     */
+    async getDeckMode() {
+      return (await backend.get("meta", DECK_MODE_KEY))?.value ?? null;
+    },
+    /** @param {import("../deck-mode.js").DeckMode|null} value Null ends deck mode. */
+    async saveDeckMode(value) {
+      if (value) await backend.put("meta", { key: DECK_MODE_KEY, value });
+      else await backend.delete("meta", DECK_MODE_KEY);
     },
   };
 }

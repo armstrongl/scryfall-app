@@ -61,7 +61,7 @@ Chosen on 24 November 2026:
 
 ## Card images
 
-Never crop, clip, cover, stretch, filter, or transform a card image, and never put an element over one. Every marker, such as **Saved in**, goes in the caption below the image.
+Never crop, clip, cover, stretch, filter, or transform a card image, and never put an element over one. Every marker, such as **Saved in**, goes in the caption below the image. Nothing is fixed or sticky over the page, because it would cover cards while the page scrolls: the deck mode bar sits above the results on every screen (issue #39), and the only sticky element is the inspector in its own column.
 
 ## Layout and access
 

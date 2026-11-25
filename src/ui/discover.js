@@ -14,6 +14,8 @@ import { openExplore } from "./explore-panel.js";
 import { createInspector, openDetails } from "./details.js";
 import { cardMedia, cardTile, fillSaved } from "./card-view.js";
 import { createCriteriaForm } from "./criteria-form.js";
+import { createDeckMode } from "./deck-bar.js";
+import { startingCriteria } from "../deck-mode.js";
 import { TIPS } from "../docs.js";
 import { announce, confirmBox, field, formatDate, formatNumber, h, message, plural, replace, withTip } from "./dom.js";
 
@@ -57,9 +59,34 @@ export function createDiscoverView(app) {
   let sort = normalizeSort(app.settings.browseSort);
   const inspector = createInspector(app);
 
+  // Deck mode ----------------------------------------------------------------------
+  const deck = createDeckMode(app, {
+    onStart: (list) => {
+      // The deck's format and colors, once. The chips can remove them.
+      form.set(startingCriteria(list, form.get()));
+      onCriteria(form.get());
+      applyHide();
+    },
+    onHideChange: () => applyHide(),
+    onStop: () => applyHide(),
+  });
+
+  /**
+   * Hides cards that are in the deck, when that's on. With no tiles given,
+   * it checks every card: when deck mode starts or stops and when the
+   * switch changes. New cards from a draw or Load more pass only
+   * themselves, so a card you just added stays in place.
+   * @param {Iterable<HTMLElement>} [tiles]
+   */
+  function applyHide(tiles) {
+    const keys = deck.hidden();
+    for (const t of tiles ?? results.querySelectorAll(".tile[data-card-key]")) t.hidden = keys.has(t.dataset.cardKey);
+    deck.showHidden(results.querySelectorAll(".tile[data-card-key][hidden]").length);
+  }
+
   // Card actions -----------------------------------------------------------------
   const actions = (snapshot) => ({
-    onDetails: () => openDetails(app, snapshot, { onAdd: () => openAddPanel(app, snapshot), onExplore: () => openExplore(app, snapshot) }),
+    onDetails: () => openDetails(app, snapshot, { onAdd: () => openAddPanel(app, snapshot), onExplore: () => openExplore(app, snapshot), deck: () => deck.stepper(snapshot) }),
     onExplore: () => openExplore(app, snapshot),
     onAdd: () => openAddPanel(app, snapshot),
   });
@@ -67,8 +94,8 @@ export function createDiscoverView(app) {
   /** A tile wired to the inspector. */
   function tile(snapshot, extra = [], index) {
     const a = actions(snapshot);
-    const el = cardTile(snapshot, { ...a, saved: app.savedIn(snapshot), extra, lazy: index > 3, index });
-    const inspect = () => inspector.show(snapshot, { onAdd: a.onAdd, onExplore: a.onExplore });
+    const el = cardTile(snapshot, { ...a, saved: app.savedIn(snapshot), deck: deck.stepper(snapshot), extra, lazy: index > 3, index });
+    const inspect = () => inspector.show(snapshot, { onAdd: a.onAdd, onExplore: a.onExplore, deck: () => deck.stepper(snapshot) });
     el.addEventListener("mouseover", inspect);
     el.addEventListener("focusin", inspect);
     return el;
@@ -339,6 +366,7 @@ export function createDiscoverView(app) {
       app.saveSettings({ discoverMode: mode }, { quiet: true });
       results.replaceChildren();
       inspector.clear();
+      applyHide();
       browse = emptyBrowse("");
       replace(browseStatus, mode === "browse" ? "Choose a sort, then select Show cards." : "");
       drawNotes.replaceChildren();
@@ -377,6 +405,7 @@ export function createDiscoverView(app) {
     replace(drawNotes, notes);
     results.replaceChildren();
     inspector.clear();
+    applyHide();
     browseStatus.textContent = "";
 
     const query = current.query;
@@ -396,7 +425,9 @@ export function createDiscoverView(app) {
       if (query.includes("game:arena") && Array.isArray(card.games) && !card.games.includes("arena")) {
         extra.push(h("p", { class: "msg msg-warn", text: "Scryfall does not list this printing on Arena." }));
       }
-      results.append(tile(snapshot, extra, found.length));
+      const t = tile(snapshot, extra, found.length);
+      results.append(t);
+      applyHide([t]);
       found.push(snapshot);
       app.addHistory({ id: crypto.randomUUID(), card: snapshot, query, drawnAt: snapshot.fetchedAt });
     };
@@ -526,7 +557,9 @@ export function createDiscoverView(app) {
       const start = browse.cards.length;
       browse = mergePage(browse, list);
       const now = new Date().toISOString();
-      browse.cards.slice(start).forEach((card, i) => results.append(tile(makeSnapshot(card, now), [], fresh ? i : 99)));
+      const added = browse.cards.slice(start).map((card, i) => tile(makeSnapshot(card, now), [], fresh ? i : 99));
+      results.append(...added);
+      applyHide(added);
       const name = SORT_OPTIONS.find((o) => o.value === browse.sort.order)?.label ?? browse.sort.order;
       const label = name[0].toLowerCase() + name.slice(1);
       replace(browseStatus, `Showing ${formatNumber(browse.cards.length)} of ${formatNumber(browse.total ?? browse.cards.length)} cards, sorted by ${label}.`);
@@ -600,6 +633,7 @@ export function createDiscoverView(app) {
           h("p", { class: "row-title", text: item.card.name }),
           h("p", { class: "hint", text: item.card.typeLine }),
           saved,
+          deck.stepper(item.card),
           h("p", { class: "hint" }, h("time", { datetime: item.drawnAt, text: formatDate(item.drawnAt) })),
           h("div", { class: "row wrap" },
             h("button", { type: "button", class: "ghost", text: "Details", "aria-label": `Details for ${item.card.name}`, onclick: a.onDetails }),
@@ -621,6 +655,7 @@ export function createDiscoverView(app) {
       }
       fillSaved(marker, index.get(key));
     }
+    deck.refresh();
     inspector.refresh();
   }
 
@@ -630,6 +665,7 @@ export function createDiscoverView(app) {
       h("h1", { id: "discover-title", class: "view-title", text: "Discover" }),
       h("p", { class: "tagline", text: "Find cards, see what they do, and brew with them." })),
     h("section", { class: "panel-box search-box", "aria-label": "Search" },
+      h("div", { class: "deck-row" }, deck.menu),
       h("div", { class: "search-top" },
         h("div", { class: "preset-row" },
           field("Preset", presetSelect),
@@ -649,6 +685,8 @@ export function createDiscoverView(app) {
       drawNotes),
     h("div", { class: "results-layout" },
       h("section", { class: "results-col", "aria-label": "Results" },
+        deck.bar,
+        deck.hiddenNote,
         browseStatus,
         results,
         loadMoreBtn),
@@ -681,8 +719,21 @@ export function createDiscoverView(app) {
       renderPresets();
       renderHistory();
       loadNewestSet();
+      deck.refresh();
     },
     refreshSaved,
+    /** Updates the deck bar and every card's deck controls, after deck mode changes. */
+    refreshDeck() {
+      deck.refresh();
+      inspector.refresh();
+    },
+    /**
+     * Starts deck mode with this deck, from Edit in Discover in Lists.
+     * @param {string} listId
+     */
+    startDeck(listId) {
+      deck.start(listId, { focus: true });
+    },
     /** Called when Discover is shown. */
     show() {
       loadNewestSet();
@@ -699,6 +750,7 @@ export function createDiscoverView(app) {
       form.set(criteria);
       onCriteria(form.get());
       results.replaceChildren();
+      applyHide();
       browse = emptyBrowse("");
       replace(drawNotes, message("info", note));
       if (opts.mode) setMode(opts.mode, false);

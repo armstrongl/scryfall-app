@@ -5,11 +5,12 @@
 import { CARD_TYPES, COLOR_NAMES, COLORS, FORMAT_KEYS, FORMAT_NAMES, RARITIES } from "../config.js";
 import { TIPS } from "../docs.js";
 import {
-  ABILITY_COUNTS, CARD_ROLES, CREATURE_KEYWORDS, POPULARITY, abilityCountName, filterGroupCounts, normalizeCriteria,
+  ABILITY_COUNTS, CARD_ROLES, CREATURE_KEYWORDS, POPULARITY, abilityCountName, filterGroupCounts, nextColorMode,
+  normalizeCriteria, usesIdentity,
 } from "../query.js";
 import { rarityName } from "../cards.js";
 import { errorMessage } from "../scryfall.js";
-import { checkbox, field, h, helpLink, infoTip, replace, uid } from "./dom.js";
+import { announce, checkbox, field, h, helpLink, infoTip, replace, uid } from "./dom.js";
 
 /** The most sets the Set list shows at once, besides the ticked ones. */
 const SET_RESULTS = 8;
@@ -62,19 +63,53 @@ export function createCriteriaForm(onChange, options = {}) {
     onChange(criteria);
   };
 
+  // The color mode the form chose when a color was ticked with the mode on
+  // Any. It follows Use color identity until the mode is changed by hand.
+  let autoMode = false;
+  /** Fits the color mode to the colors and identity. Returns what it announces, or "". */
+  function fitColorMode() {
+    const before = colorMode.value;
+    const next = nextColorMode({
+      mode: before,
+      anyColor: colors.boxes.some((b) => b.input.checked),
+      identity: useIdentity.input.checked,
+      auto: autoMode,
+    });
+    colorMode.value = next.mode;
+    autoMode = next.auto;
+    return next.mode === before ? "" : `Color mode: ${colorMode.selectedOptions[0].textContent}.`;
+  }
+  const fitAndEmit = () => {
+    const said = fitColorMode();
+    emit();
+    if (said) announce(said);
+  };
+
+  // Commander-type formats check color identity: lands have no color.
   const format = select(
     [["", "Any format"], ...FORMAT_KEYS.map((k) => [k, FORMAT_NAMES[k] ? `${FORMAT_NAMES[k]} (${k})` : k])],
-    emit,
+    () => {
+      if (usesIdentity(format.value) && !useIdentity.input.checked) {
+        useIdentity.input.checked = true;
+        const said = fitColorMode();
+        emit();
+        announce(`Ticked Use color identity, for ${FORMAT_NAMES[format.value] ?? format.value}. ${said}`.trim());
+        return;
+      }
+      emit();
+    },
   );
+  format.id = "f-format";
   const game = select([["arena", "Arena"], ["mtgo", "MTGO"], ["paper", "Paper"], ["", "Any"]], emit);
   const rebalanced = checkbox("Exclude rebalanced cards", true, emit);
   const colorMode = select(
     [["any", "Any"], ["exactly", "Exactly"], ["atLeast", "At least"], ["atMost", "At most"]],
-    emit,
+    () => { autoMode = false; emit(); },
   );
-  const colors = checkGroup("Colors", COLORS.map((c) => [c, COLOR_NAMES[c]]), emit);
+  colorMode.id = "f-color-mode";
+  const colors = checkGroup("Colors", COLORS.map((c) => [c, COLOR_NAMES[c]]), fitAndEmit);
   const colorless = checkbox("Colorless", false, emit);
-  const useIdentity = checkbox("Use color identity (for Commander and Brawl)", false, emit);
+  const useIdentity = checkbox("Use color identity (for Commander and Brawl)", false, fitAndEmit, { id: "f-identity" });
   const types = checkGroup("Card types", CARD_TYPES.map((t) => [t, cap(t)]), emit);
   const typeText = h("input", { type: "text", autocomplete: "off", spellcheck: "false", oninput: emit });
   const mvMin = h("input", { type: "number", min: "0", step: "1", inputmode: "numeric", oninput: emit });
@@ -227,6 +262,9 @@ export function createCriteriaForm(onChange, options = {}) {
   /** @param {import("../query.js").Criteria} c */
   function set(c) {
     criteria = normalizeCriteria(c);
+    // A mode the app chose stays its choice while the mode and colors are
+    // kept, for example when another filter's chip is removed.
+    autoMode = autoMode && criteria.colorMode === colorMode.value && criteria.colors.length > 0;
     format.value = criteria.format ?? "";
     game.value = criteria.game ?? "";
     rebalanced.input.checked = criteria.excludeRebalanced;

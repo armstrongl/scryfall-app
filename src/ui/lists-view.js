@@ -6,7 +6,7 @@ import { makeSnapshot } from "../cards.js";
 import { checkDeck } from "../deck-rules.js";
 import { arenaText, needsBackupReminder } from "../export.js";
 import {
-  applyRefresh, createList, groupBySection, isBrawlFormat, removeEntry, renameList, restoreEntry, scryfallIds,
+  applyRefresh, createList, duplicateList, groupBySection, isBrawlFormat, removeEntry, renameList, restoreEntry, scryfallIds,
   sectionsFor, setFormat, setKind, totalQuantity, updateEntry,
 } from "../lists.js";
 import { FIND_MY_COMBOS_URL, listCombos } from "../combos.js";
@@ -220,6 +220,21 @@ export function createListsView(app) {
         input.focus();
       },
     });
+    const duplicateBtn = h("button", {
+      type: "button",
+      text: "Duplicate",
+      onclick: async () => {
+        // A second press while the copy saves would make a second copy.
+        duplicateBtn.disabled = true;
+        const copy = duplicateList(list);
+        if (await app.saveList(copy)) {
+          announce(`Made a copy of ${list.name}, named ${copy.name}.`);
+          location.hash = `#lists/${copy.id}`;
+        } else {
+          duplicateBtn.disabled = false;
+        }
+      },
+    });
     const refreshBtn = h("button", {
       type: "button",
       text: refreshing === list.id ? "Refreshing…" : "Refresh card data",
@@ -242,7 +257,7 @@ export function createListsView(app) {
         onCancel: () => { slot.replaceChildren(); moreBtn.focus(); },
       })),
     });
-    const moreMenu = h("div", { id: "list-more", class: "more-menu", hidden: true }, renameBtn, withTip(refreshBtn, TIPS.refresh), deleteBtn);
+    const moreMenu = h("div", { id: "list-more", class: "more-menu", hidden: true }, renameBtn, withTip(duplicateBtn, TIPS.duplicateList), withTip(refreshBtn, TIPS.refresh), deleteBtn);
     const moreBtn = h("button", {
       type: "button",
       id: "list-more-btn",

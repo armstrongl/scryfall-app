@@ -9,8 +9,14 @@ Sections:
 
 ## 25 November 2026
 
+### Added
+
+- **Duplicate** in the **More** menu of every list. It makes a new list with the same cards, kind, and format, named after the list with (copy) at the end, and opens it. Changes to the copy don't change the first list, and GitHub sync adds the copy as a new list. ([#58](https://github.com/armstrongl/scryfall-app/pull/58))
+
 ### Project
 
+- Claude Code hooks in `.claude/hooks/`. Before a tool call, a hook blocks a commit message, pull request, issue, or comment that breaks the voice rules, asks before a force push in any form, and blocks an edit that brings Scryfall API calls into a module other than `src/scryfall.js`. When Claude stops with changed files, a hook reminds once to run `npm test`. `.githooks/commit-msg` removes session links from commit messages in any clone, and `tests/api-boundary.test.js` keeps Scryfall API calls in `src/scryfall.js`. ([#62](https://github.com/armstrongl/scryfall-app/pull/62))
+- Unit tests for `duplicateList()`, a sync test for a copied list, and browser checks that duplicate a list, change the copy, and press **Duplicate** twice quickly. ([#58](https://github.com/armstrongl/scryfall-app/pull/58))
 - The agent instructions name Paradev, the new name for Superset, and give the `paradev ws update` command to name a workspace. A test fails when an agent instruction uses the old name. ([#53](https://github.com/armstrongl/scryfall-app/pull/53))
 - A new GitHub check, `pr-text`, reads the title, the description, and each commit message of a pull request. It fails on first-person words, third-person words for the person the app is built for, Claude session links, and attribution lines. The word lists are in `scripts/voice.mjs`, shared with the voice tests, and the checks run again when a title or description is edited. ([#55](https://github.com/armstrongl/scryfall-app/pull/55))
 

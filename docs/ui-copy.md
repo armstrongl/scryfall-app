@@ -54,6 +54,7 @@ This index lists the text the app shows or announces from `index.html`, `src/mai
 | `TIPS.findCombos` | `src/ui/lists-view.js` | Shows the list as text to paste into Find My Combos on Commander Spellbook. |
 | `TIPS.openList` | `src/ui/lists-view.js` | Opens every card in this list on the Scryfall website, in a new tab. |
 | `TIPS.buyList` | `src/ui/lists-view.js` | Shows the cards to buy, with an estimated total, and opens them in TCGplayer or Card Kingdom with the list filled in. |
+| `TIPS.duplicateList` | `src/ui/lists-view.js` | Makes a new list with the same cards, kind, and format. Changes to the copy don't change this list. |
 | `TIPS.refresh` | `src/ui/lists-view.js` | Gets current legality, prices, and images from Scryfall. Quantities, sections, and notes stay the same. |
 | `TIPS.listKind` | `src/ui/lists-view.js` | A deck gets deck checks and stats for its format. A collection is a plain list of cards. |
 | `TIPS.section` | `src/ui/add-panel.js` | Maybe holds cards you're considering, and the Arena export leaves it out. Commander holds a Brawl deck's commander. |
@@ -577,6 +578,8 @@ This index lists the text the app shows or announces from `index.html`, `src/mai
 | field | New name |
 | text | Rename |
 | text | Cancel |
+| text | Duplicate |
+| announce | Made a copy of {…}, named {…}. |
 | text | Refreshing… |
 | text | Refresh card data |
 | text | Delete list |

@@ -394,7 +394,7 @@ export const DOC_PAGES = [
           { p: "**Maybe** holds cards you're considering. The Arena export leaves it out." },
           { p: "A list is a **Collection** or a **Deck**. A deck has a format: **Standard**, **Standard Brawl**, or **Brawl**. You can change the kind and the format at any time, and the cards stay." },
           { p: "If you remove a card from a list, select **Undo** to put it back." },
-          { p: "To try a different build without losing the one that works, select **More**, then **Duplicate**. The copy has the same cards, kind, and format, and its name ends in (copy). It uses the card data saved with the list, so it sends no requests to Scryfall." },
+          { p: "To try a different build without losing the one that works, select **More**, then **Duplicate**. The copy has the same cards, kind, and format, and its name ends in (copy). Changes to the copy don't change the first list. It uses the card data saved with the list, so it sends no requests to Scryfall. With GitHub sync on, the copy syncs as a new list." },
         ],
       },
       {

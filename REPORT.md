@@ -604,8 +604,14 @@ Where the docs were silent:
 - A second duplicate of the same list gets the same name, such as "Elves (copy)" twice. Lists are told apart by ID, and **Rename** changes the name.
 - Each entry keeps the date it was added to the first list. The copy's own created and changed dates are the time of the copy.
 - The copy keeps every other field of the list, so a field added later is copied too.
+- **Duplicate** turns off while the copy saves, so a quick second press doesn't make a second copy.
 - The IndexedDB schema and the backup format didn't change.
 
 ## Tests
 
 - Written first and seen failing: two unit tests in `tests/lists.test.js` and one sync test in `tests/sync.test.js`, which failed because `duplicateList` didn't exist, and a browser check in `scripts/check-ui.mjs`, which failed because the **More** menu had no **Duplicate** button. The browser check duplicates a list, sees the copy open with the same cards, removes a card from the copy, and sees that the first list still has all its cards.
+- An Opus review found that a quick double press made two copies. A browser check for it was written first and seen failing, then the fix went in. The same review asked for the help page to say what the tooltip says, and for a unit test that changes a snapshot in the copy and sees the first list stay the same.
+
+## Known problems
+
+None known.

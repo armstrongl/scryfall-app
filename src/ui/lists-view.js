@@ -224,10 +224,14 @@ export function createListsView(app) {
       type: "button",
       text: "Duplicate",
       onclick: async () => {
+        // A second press while the copy saves would make a second copy.
+        duplicateBtn.disabled = true;
         const copy = duplicateList(list);
         if (await app.saveList(copy)) {
           announce(`Made a copy of ${list.name}, named ${copy.name}.`);
           location.hash = `#lists/${copy.id}`;
+        } else {
+          duplicateBtn.disabled = false;
         }
       },
     });

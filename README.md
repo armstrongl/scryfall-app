@@ -90,7 +90,7 @@ A list is a **Collection** or a **Deck**. A deck has a format: **Standard**, **S
 
 If you remove a card from a list, select **Undo** in the message that appears to put it back.
 
-To try a different build without losing the one that works, open the list, select **More**, then **Duplicate**. The copy has the same cards, kind, and format, and its name ends in (copy). It uses the card data saved with the list, so it sends no requests to Scryfall. With GitHub sync on, the copy syncs as a new list.
+To try a different build without losing the one that works, open the list, select **More**, then **Duplicate**. The copy has the same cards, kind, and format, and its name ends in (copy). Changes to the copy don't change the first list. It uses the card data saved with the list, so it sends no requests to Scryfall. With GitHub sync on, the copy syncs as a new list.
 
 ### Build and export a deck
 

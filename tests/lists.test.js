@@ -176,12 +176,15 @@ test("duplicate makes a new list with the same cards, kind, and format", async (
   const strip = ({ id, ...rest }) => rest;
   assert.deepEqual(copy.entries.map(strip), list.entries.map(strip));
 
-  // The first list is the same, and a change to the copy doesn't reach it.
+  // The first list is the same after changes to the copy.
   assert.deepEqual(list, before);
   const changed = removeEntry(updateEntry(copy, copy.entries[1].id, { quantity: 3 }, clock), copy.entries[2].id, clock);
   assert.equal(changed.entries.length, 2);
   assert.deepEqual(list, before);
-  assert.notEqual(copy.entries[0].card, list.entries[0].card);
+  // The copy shares no objects with the first list.
+  copy.entries[0].card.name = "Changed";
+  copy.entries[0].card.colorIdentity.push("U");
+  assert.deepEqual(list, before);
 });
 
 test("duplicate copies an empty collection", async () => {

@@ -641,6 +641,12 @@ dialog.sheet {
 .list-pips { display: inline-flex; gap: 2px; }
 
 .list-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.5rem 0 0.75rem; }
+.import-results { display: grid; gap: 0.5rem; min-width: 0; }
+.import-results h3, .import-results .hint { margin: 0; }
+.import-problems { list-style: none; padding: 0; margin: 0 0 0.75rem; display: grid; gap: 0.75rem; }
+.import-problems li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.25rem 0.5rem; align-items: center; }
+.import-problems li > button { grid-row: 1; grid-column: 2; }
+.import-problems li > .hint { grid-column: 1 / -1; }
 .buy-body { display: grid; gap: 0.5rem; margin-bottom: 0.75rem; min-width: 0; }
 .buy-body > p { margin: 0; }
 .more-menu {

@@ -615,3 +615,36 @@ Where the docs were silent:
 ## Known problems
 
 None known.
+
+# Deck import (25 November 2026)
+
+**Import deck** in **Lists** reads deck text from the MTG Arena **Export** button or a deck site, finds the cards on Scryfall, and saves them to a new or existing list. [Issue #14](https://github.com/armstrongl/scryfall-app/issues/14) has the plan.
+
+## What changed
+
+- `src/deck-import.js`, a new pure module: `parseDeckText()`, `parseCardLine()`, `arenaSetCodes()`, `cardMatchesName()`, `lookUpCards()`, and `addImported()`.
+- `src/scryfall.js` has `cards(identifiers)`, which sends any identifiers to the [collection endpoint](https://scryfall.com/docs/api/cards/collection), 75 per request, through the queue. `collection(ids)` now uses it. `setsBody()` keeps the whole `/sets` response, with each set's `arena_code`, and `sets()` shares its request.
+- `src/ui/import-panel.js` is the panel. The Lists index keeps it across re-renders, so a sync or a save doesn't clear the pasted text.
+
+## Decisions
+
+Where the docs were silent:
+
+- The lookup asks for printings by set code and collector number first. A line whose printing isn't found, or is a different card, is then asked for by name. A set code is mapped through Scryfall's `arena_code` first, then used as a Scryfall code. A code that is neither, such as `Y22` for an Alchemy set, is never guessed: the line is looked up by name.
+- The real `/cards/collection` responses show that Scryfall finds a name in any case and with other punctuation ("Lurrus of the Dream Den" finds Lurrus of the Dream-Den), and by one face name, but not by the full name of a split card ("Fire // Ice" is not found). So a name with `//` is sent as its first face, and each returned card is checked against the line's name.
+- Arena lists a companion in a **Companion** block and again in the **Sideboard**. The companion goes to the sideboard once. A companion with no sideboard copy goes to the sideboard too.
+- A deck name is read only from a `Name` line under an `About` header, the form described by guides to the Arena import. [Issue #45](https://github.com/armstrongl/scryfall-app/issues/45) still has to confirm that form before the export writes it.
+- A new list is a deck. An existing list keeps its kind. The **Format** choice applies to both, so importing into an existing list can change its format.
+- **Save list** waits until each line that didn't match is fixed or skipped, as the issue asks. **Skip all** skips the rest at once.
+- Changing the deck text after a lookup clears the results, so a save never uses cards from older text.
+- The format isn't chosen from the text. A **Commander** block can be Brawl or Standard Brawl, so the choice stays with the person importing.
+- Marking imported cards as owned waits for [issue #15](https://github.com/armstrongl/scryfall-app/issues/15).
+
+## Tests
+
+- Written first and seen failing: `tests/deck-import.test.js`, which failed because `src/deck-import.js` didn't exist; the two new client tests in `tests/scryfall.test.js`, which failed because `cards()` and `setsBody()` didn't exist; and the `importDeck` browser check in `scripts/check-ui.mjs`, which failed because Lists had no **Import deck** button.
+- The parser tests use a real Arena Brawl export, posted in [a public gist](https://gist.github.com/georgestephanis/76b27ac145f6bee4d82f2a8459c3243e), and the app's own **Export for Arena** text for the round trip. The lookup tests use three new real fixtures from `scripts/fetch-fixtures.sh`: `collection-import-printings`, `collection-import-names`, and `collection-import-faces`. A stand-in for the endpoint answers from those cards, and a test checks that it gives the same answer as each recorded response.
+
+## Known problems
+
+- MTGGoldfish blocks scripted requests, and Untapped.gg builds its deck text in the browser, so no text copied from those sites is in the tests yet. The `4x`, small-letter set code, and `*F*` forms are tested with text written in the form those sites use. [Issue #59](https://github.com/armstrongl/scryfall-app/issues/59) is to add real copies.

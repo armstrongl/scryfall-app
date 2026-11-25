@@ -51,6 +51,7 @@ This index lists the text the app shows or announces from `index.html`, `src/mai
 | `TIPS.price` | `src/ui/criteria-form.js` | The highest paper price, in dollars (USD), from Scryfall. Arena and MTGO cards have no paper price, so this works only when Game is Paper or Any. |
 | `TIPS.popularity` | `src/ui/criteria-form.js` | How often Commander decks on EDHREC play the card. Staples are in the most decks. Spicy cards are rarely played, with a rank over 10,000. |
 | `TIPS.exportArena` | `src/ui/lists-view.js` | Shows the deck as text to copy and import into MTG Arena. |
+| `TIPS.importDeck` | `src/ui/lists-view.js` | Makes a deck from pasted deck text, such as the text from the Export button in MTG Arena or from a deck site. |
 | `TIPS.findCombos` | `src/ui/lists-view.js` | Shows the list as text to paste into Find My Combos on Commander Spellbook. |
 | `TIPS.openList` | `src/ui/lists-view.js` | Opens every card in this list on the Scryfall website, in a new tab. |
 | `TIPS.buyList` | `src/ui/lists-view.js` | Shows the cards to buy, with an estimated total, and opens them in TCGplayer or Card Kingdom with the list filled in. |
@@ -71,11 +72,11 @@ This index lists the text the app shows or announces from `index.html`, `src/mai
 | Card details | `#help/card-details` | Rules text, keywords, rulings, legality, and prices. | 19 |
 | Explore | `#help/explore` | Synergies, similar cards, counters, and combos for any card. | 7 |
 | Combos | `#help/combos` | Find card combos on Commander Spellbook, and learn what bracket tags mean. | 16 |
-| Lists and decks | `#help/lists-and-decks` | Save cards, check decks, export them to MTG Arena, and buy them. | 12 |
+| Lists and decks | `#help/lists-and-decks` | Save cards, check decks, import and export them for MTG Arena, and buy them. | 16 |
 | Nerd mode | `#help/nerd-mode` | More details on every card. | 2 |
 | Your data | `#help/your-data` | Where your lists are stored, and how to back them up. | 10 |
 | Sync with GitHub | `#help/sync` | Keep your lists on every device, in a private GitHub repository. | 5 |
-| Glossary | `#help/glossary` | The Magic terms the app uses, with links to learn more. | 44 |
+| Glossary | `#help/glossary` | The Magic terms the app uses, with links to learn more. | 46 |
 
 ## `index.html`
 
@@ -514,6 +515,42 @@ This index lists the text the app shows or announces from `index.html`, `src/mai
 | text | Help |
 | text | How to use the app. |
 
+## `src/ui/import-panel.js`
+
+| Kind | Text |
+| --- | --- |
+| text | Not a card line. Start it with the number of copies, such as 4 Llanowar Elves. |
+| text | Scryfall has no card with this name. Check the spelling. |
+| field | Name |
+| text | Look up cards |
+| text | Save list |
+| text | A new list |
+| text | Looking up… |
+| text | Look up cards |
+| text | Found {…} of {…}. |
+| text | Skipped {…}. |
+| aria-label | Line {…} |
+| text | Skip |
+| aria-label | Skip line {…} |
+| text | Lines that didn't match |
+| text | Fix a line, then select Look up again. Or select Skip to leave it out. |
+| text | Look up again |
+| text | Skip all |
+| message | Paste deck text first. |
+| announce | Looking up the cards. |
+| announce | Looking up the cards. |
+| message | Fix or skip the lines that didn't match first. |
+| message | No cards to save. Paste deck text, then select Look up cards. |
+| message | Enter a name for the list. |
+| message | That list no longer exists. Choose another list. |
+| announce | Imported {…} into {…}. |
+| text | Paste the text from the Export button in MTG Arena, or a deck list from a site such as MTGGoldfish or Untapped.gg. Lines with a set code and collector number keep that printing. |
+| field | Deck text |
+| field | Import into |
+| field | Format |
+| text | Cancel |
+| text | Learn more about importing decks |
+
 ## `src/ui/lists-view.js`
 
 | Kind | Text |
@@ -540,6 +577,7 @@ This index lists the text the app shows or announces from `index.html`, `src/mai
 | field | Name |
 | field | Kind |
 | text | Make list |
+| text | Import deck |
 | text | Lists |
 | text | Collections, decks, and brews in progress. |
 | message | Storage is not available in this browser window. Lists are lost when you close the page. |

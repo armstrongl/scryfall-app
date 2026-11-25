@@ -199,3 +199,30 @@ test("the set list is asked for once through the queue and kept, and a failure c
   assert.equal(fetchImpl.calls[1].url, `${API_BASE}/sets`);
   assert.equal(fetchImpl.calls[1].init.headers.Accept, ACCEPT_HEADER);
 });
+
+test("cards() sends any identifiers, 75 per request, through the queue", async () => {
+  const clock = virtualClock();
+  const fetchImpl = fakeFetch(clock, (n, url, init) => {
+    const ids = JSON.parse(init.body).identifiers;
+    return response(200, { object: "list", not_found: [], data: ids.map((x) => ({ name: x.name })) });
+  });
+  const client = createClient({ fetchImpl, clock });
+  const identifiers = Array.from({ length: 80 }, (_, i) => ({ name: `Card ${i}` }));
+  const res = await client.cards(identifiers);
+  assert.equal(fetchImpl.calls.length, 2);
+  assert.equal(fetchImpl.calls[0].url, `${API_BASE}/cards/collection`);
+  assert.deepEqual(JSON.parse(fetchImpl.calls[0].init.body).identifiers[0], { name: "Card 0" });
+  assert.equal(JSON.parse(fetchImpl.calls[1].init.body).identifiers.length, 5);
+  assert.ok(fetchImpl.calls[1].at - fetchImpl.calls[0].at >= 500);
+  assert.equal(res.data.length, 80);
+});
+
+test("setsBody() keeps the whole /sets response, with Arena codes, and shares the request with sets()", async () => {
+  const clock = virtualClock();
+  const fetchImpl = fakeFetch(clock, () => response(200, fixture("sets")));
+  const client = createClient({ fetchImpl, clock });
+  const [body, options] = await Promise.all([client.setsBody(), client.sets()]);
+  assert.equal(fetchImpl.calls.length, 1);
+  assert.ok(body.data.some((s) => s.code === "dom" && s.arena_code === "dar"));
+  assert.ok(options.some((s) => s.code === "dom"));
+});

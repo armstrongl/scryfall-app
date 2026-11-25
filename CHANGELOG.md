@@ -12,6 +12,7 @@ Sections:
 ### Project
 
 - The agent instructions name Paradev, the new name for Superset, and give the `paradev ws update` command to name a workspace. A test fails when an agent instruction uses the old name. ([#53](https://github.com/armstrongl/scryfall-app/pull/53))
+- A new GitHub check, `pr-text`, reads the title, the description, and each commit message of a pull request. It fails on first-person words, third-person words for the person the app is built for, Claude session links, and attribution lines. The word lists are in `scripts/voice.mjs`, shared with the voice tests, and the checks run again when a title or description is edited. ([#55](https://github.com/armstrongl/scryfall-app/pull/55))
 
 ## 24 November 2026
 

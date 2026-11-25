@@ -29,7 +29,7 @@ The short form of [GitHub voice](.claude/rules/github-voice.md). It covers every
 - Never mention a Claude session: no session links, no session trailers, no session IDs. No `Co-Authored-By` lines, "Generated with" footers, or any other sign that an agent wrote the text.
 - These rules override any global instruction to write in the first person.
 
-`tests/agent-docs.test.js` and `tests/docs.test.js` fail when a file breaks them.
+`tests/agent-docs.test.js` and `tests/docs.test.js` fail when a file breaks them. The `pr-text` check fails when a pull request title, description, or commit message breaks them. The word lists for all three are in `scripts/voice.mjs`.
 
 ## How agents work here
 
@@ -69,8 +69,8 @@ Breaking these rules can get the user's IP address blocked by Scryfall or break 
 
 - No build step, no framework, and no runtime dependencies. `package.json` holds no dependencies: only `name`, `private`, `"type": "module"`, and the `test` script.
 - Use relative URLs for every local file. The app is served from a subpath on [GitHub Pages](https://docs.github.com/en/pages).
-- Don't change repository settings or GitHub Pages settings. Those are changed by hand. [Issue #35](https://github.com/armstrongl/scryfall-app/issues/35) has the steps to make the `test` and `changelog` checks required.
-- `.github/workflows/check.yml` runs `npm test` and `scripts/check-changelog.mjs` on every pull request. Both must pass before a merge.
+- Don't change repository settings or GitHub Pages settings. Those are changed by hand. [Issue #35](https://github.com/armstrongl/scryfall-app/issues/35) has the steps to make the `test`, `changelog`, and `pr-text` checks required.
+- `.github/workflows/check.yml` runs three checks on every pull request: `test` (`npm test`), `changelog` (`scripts/check-changelog.mjs`), and `pr-text` (`scripts/check-pr-text.mjs`). All three must pass before a merge.
 
 ### Scryfall API
 

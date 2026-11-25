@@ -6,6 +6,7 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { APP_NAME, MAX_DRAW, MIN_DRAW } from "../src/config.js";
 import { DOC_PAGES, NERD_MODE_TIP, TIPS, docPage, inlineParts, pageLinks, pageText } from "../src/docs.js";
 import { COPY_SOURCES } from "../scripts/ui-copy.mjs";
+import { THIRD_PERSON, hasThirdPerson } from "../scripts/voice.mjs";
 
 const allText = () => DOC_PAGES.map(pageText).join("\n");
 
@@ -83,6 +84,7 @@ test("inline parts mark UI labels in bold, with no HTML", () => {
 // The docs never use third-person words such as "she" or "the owner".
 // Quoted words are left out, so a rule can name the words it bans.
 // tests/agent-docs.test.js checks that the docs avoid the first person too.
+// The word lists are in scripts/voice.mjs, shared with the pull request check.
 const ROOT = new URL("../", import.meta.url);
 const DOC_FILES = [
   "README.md", "AGENTS.md", "CLAUDE.md", "REPORT.md", "PLAN.md", "CHANGELOG.md",
@@ -92,14 +94,12 @@ const DOC_FILES = [
     .map((d) => `.agents/skills/${d.name}/SKILL.md`),
   ...(existsSync(new URL("docs/", ROOT)) ? readdirSync(new URL("docs/", ROOT)).filter((f) => f.endsWith(".md")).map((f) => `docs/${f}`) : []),
 ];
-const THIRD_PERSON = /\bowner(?:'s|s)?\b|\bshe(?:'s)?\b|\bher\b|\bhers\b|\bherself\b|\bthe developer\b|\bLarah\b/i;
-const unquoted = (line) => line.replace(/"[^"]*"|“[^”]*”/g, "");
 
 test("the docs never use the third person", () => {
   const found = [];
   for (const file of DOC_FILES) {
     readFileSync(new URL(file, ROOT), "utf8").split("\n").forEach((line, i) => {
-      if (THIRD_PERSON.test(unquoted(line))) found.push(`${file}:${i + 1}: ${line.trim().slice(0, 90)}`);
+      if (hasThirdPerson(line)) found.push(`${file}:${i + 1}: ${line.trim().slice(0, 90)}`);
     });
   }
   for (const page of DOC_PAGES) if (THIRD_PERSON.test(pageText(page))) found.push(`help page ${page.id}`);

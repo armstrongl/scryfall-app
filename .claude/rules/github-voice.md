@@ -44,9 +44,11 @@ Link out freely: to card pages on [Scryfall](https://scryfall.com), API docs, he
 
 The voice tests skip text in quotes, so that a rule can name the words it bans. Check quoted text yourself.
 
+The `pr-text` check on GitHub (`scripts/check-pr-text.mjs`) applies the same rules to the pull request title, the description, and each commit message that the pull request adds. It uses the word lists in `scripts/voice.mjs`, the same lists as the voice tests. It skips quoted text, code spans, URLs, and fenced code for the person checks. Session links fail anywhere, even in quotes or code. Co-author trailers and "Generated with" footers fail at the start of a line, so prose can name them. Merge commits get only the session and attribution checks.
+
 ## Fixing old text
 
-When you find first-person, third-person, or session text in a file or in a pull request that is already merged, fix it as part of your change: edit the file, or edit the pull request title and description with `gh pr edit`. Rewrite git history only to remove a session link or trailer. That needs a force push, which `.claude/settings.json` sets to ask first. The setting matches `git push --force` and `git push -f` only. It doesn't catch `git push origin +main` or `git -C <path> push --force`, so never use those forms.
+When you find first-person, third-person, or session text in a file or in a pull request that is already merged, fix it as part of your change: edit the file, or edit the pull request title and description with `gh pr edit`. Rewrite git history only to remove a session link or trailer, or to reword a commit on a pull request branch that is not merged yet, when the `pr-text` check fails on it. That needs a force push (`git push --force-with-lease`), which `.claude/settings.json` sets to ask first. The setting matches `git push --force` and `git push -f` only. It doesn't catch `git push origin +main` or `git -C <path> push --force`, so never use those forms.
 
 ## Outside this repository
 

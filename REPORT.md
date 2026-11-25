@@ -281,7 +281,7 @@ The agent instructions were rebuilt so that every agent gets the same rules: Cla
 
 1. **Force pushes ask instead of being blocked.** A hard block would also stop the one allowed history rewrite: removing a session link. A prompt keeps that possible, with approval each time.
 2. **No hooks for now.** Hooks are a later body of work. [Issue #9](https://github.com/armstrongl/scryfall-app/issues/9) holds the plan.
-3. **No GitHub workflow for now.** [Issue #10](https://github.com/armstrongl/scryfall-app/issues/10) holds the plan for a check that runs on every pull request.
+3. **No GitHub workflow for now.** [Issue #10](https://github.com/armstrongl/scryfall-app/issues/10) held the plan for a check that runs on every pull request. The workflow came later: see "Changelog and pull request checks" and "Pull request text check".
 4. **No edits to old upgrade steps** stays a written rule, not a setting. A permission rule can't tell a new upgrade step from an edit to an old one.
 5. **`PLAN.md` changed only its voice.** What it specifies is unchanged.
 6. **Simplified Technical English** applies to pull request descriptions and issue bodies.
@@ -413,7 +413,7 @@ The request: persistent storage that works across devices. The plan was agreed o
 
 ## Known problems
 
-- [Issue #10](https://github.com/armstrongl/scryfall-app/issues/10) still has the checks for pull request titles, descriptions, and commit messages.
+- The checks for pull request titles, descriptions, and commit messages came later, in "Pull request text check".
 - `node scripts/check-ui.mjs` doesn't run on GitHub. It needs Chrome and live Scryfall requests.
 
 # Backups on GitHub (12 November 2026)
@@ -554,3 +554,35 @@ Where the docs were silent:
 
 - Written first and seen failing: `tests/color-filters.test.js`, which failed because `IDENTITY_FORMATS`, `usesIdentity`, and `autoColorMode` didn't exist, and the `commanderColors` browser check in `scripts/check-ui.mjs`, which failed because the format list had no `f-format` ID and the form didn't change the mode.
 - An Opus review found that removing any chip made the app forget that it chose the mode, so unticking identity or the last color left the mode as it was. The pure `nextColorMode()` in `src/query.js`, its unit test, and browser checks for chip removal, the return to **Any**, and the announcements were written first and seen failing, then the fix went in. The same review found that the **Can be your commander** label pointed at an old ID. `checkbox()` in `src/ui/dom.js` now uses the ID it is given, after a browser check for every checkbox label was seen failing.
+
+# Pull request text check (25 November 2026)
+
+[Issue #10](https://github.com/armstrongl/scryfall-app/issues/10) asked for a check of the text that no test can read. `.github/workflows/check.yml` now runs a third job, `pr-text`, on every pull request. It runs `scripts/check-pr-text.mjs`, which reads the pull request title, the description, and the message of each commit that the pull request adds. It fails on:
+
+- First-person words, and third-person words for the person the app is built for.
+- Claude Code session links, session trailers, and session IDs.
+- Co-author trailers and "Generated with" footers.
+
+The word lists are in `scripts/voice.mjs`. `tests/agent-docs.test.js`, `tests/docs.test.js`, and the check all import them, so they can't drift apart.
+
+## Decisions
+
+- The check runs again when a title or description is edited: the workflow listens for the `edited` event. The edit cancels any run in progress for the same pull request, and the new run repeats all three jobs.
+- Commits come from git, not the GitHub API: the range from `main` (the first parent of the merge commit that GitHub checks out) to the branch (the second parent). Old commits on `main` don't count. Merge commits on the branch get only the session and attribution checks, because git writes the rest of their messages.
+- The person checks skip quoted text, code spans, URLs, and fenced code (backtick or tilde), so a description can name a banned word in quotes. The first-person check matches the voice tests. The third-person check also skips code spans and URLs, which the docs test does not, because a `gh api` path in a code span often holds a placeholder that matches the list. Session links fail anywhere, even in quotes or code.
+- A commit that fails the check on a branch that is not merged yet can be reworded with a force push, which asks first. `.claude/rules/github-voice.md` allows that rewrite.
+- Co-author trailers and "Generated with" footers count only at the start of a line, after nothing but spaces, list marks, or emoji. A quote or code span before them means the line only names them.
+- The title and description reach the script through environment variables, never straight into a shell command.
+- `scripts/voice.mjs` is plain ESM with no DOM and no dependencies, so a hook script can import it too ([issue #9](https://github.com/armstrongl/scryfall-app/issues/9)).
+
+## Tests
+
+- Written first and seen failing: `tests/check-pr-text.test.js`, which failed because `scripts/voice.mjs` didn't exist, and then only its workflow test, until the `pr-text` job and the `edited` event were added.
+- An Opus review found that the third-person check failed on code spans and URLs, that a quoted "Generated with" at the start of a bullet failed, that tilde fences weren't skipped, and that a session trailer in a merge commit on the branch passed. Tests for each were written first and seen failing, then the fixes went in. The test repositories turn off git hooks, because a global commit-msg hook removed the session trailer from the test merge commit.
+- `tests/agent-docs.test.js` and `tests/docs.test.js` now import the lists. They were proved able to fail after the change: a line with a first-person and a third-person word added to `README.md` failed both, then the line was removed.
+
+## Known problems
+
+- The check can't stop a merge on its own. [Issue #35](https://github.com/armstrongl/scryfall-app/issues/35) has the steps to make the checks required.
+- The first-person check flags "US", as in "US dollars", because it ignores case. The voice tests do the same.
+- The check reads the text at the time of the run. A comment, a review, or an edit made after the merge isn't checked.

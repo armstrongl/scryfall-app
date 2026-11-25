@@ -226,3 +226,14 @@ test("setsBody() keeps the whole /sets response, with Arena codes, and shares th
   assert.ok(body.data.some((s) => s.code === "dom" && s.arena_code === "dar"));
   assert.ok(options.some((s) => s.code === "dom"));
 });
+
+test("setsBody() asks again after a failure", async () => {
+  const clock = virtualClock();
+  let fail = true;
+  const fetchImpl = fakeFetch(clock, () => (fail ? response(500, { object: "error", status: 500, details: "down" }) : response(200, fixture("sets"))));
+  const client = createClient({ fetchImpl, clock });
+  await assert.rejects(client.setsBody());
+  fail = false;
+  assert.ok((await client.setsBody()).data.length > 0);
+  assert.equal(fetchImpl.calls.length, 2);
+});

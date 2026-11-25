@@ -72,7 +72,7 @@ This index lists the text the app shows or announces from `index.html`, `src/mai
 | Card details | `#help/card-details` | Rules text, keywords, rulings, legality, and prices. | 19 |
 | Explore | `#help/explore` | Synergies, similar cards, counters, and combos for any card. | 7 |
 | Combos | `#help/combos` | Find card combos on Commander Spellbook, and learn what bracket tags mean. | 16 |
-| Lists and decks | `#help/lists-and-decks` | Save cards, check decks, import and export them for MTG Arena, and buy them. | 16 |
+| Lists and decks | `#help/lists-and-decks` | Save cards, check decks, import and export them for MTG Arena, and buy them. | 17 |
 | Nerd mode | `#help/nerd-mode` | More details on every card. | 2 |
 | Your data | `#help/your-data` | Where your lists are stored, and how to back them up. | 10 |
 | Sync with GitHub | `#help/sync` | Keep your lists on every device, in a private GitHub repository. | 5 |
@@ -525,7 +525,6 @@ This index lists the text the app shows or announces from `index.html`, `src/mai
 | text | Look up cards |
 | text | Save list |
 | text | A new list |
-| text | Looking up… |
 | text | Look up cards |
 | text | Found {…} of {…}. |
 | text | Skipped {…}. |
@@ -537,6 +536,7 @@ This index lists the text the app shows or announces from `index.html`, `src/mai
 | text | Look up again |
 | text | Skip all |
 | message | Paste deck text first. |
+| text | Looking up… |
 | announce | Looking up the cards. |
 | announce | Looking up the cards. |
 | message | Fix or skip the lines that didn't match first. |

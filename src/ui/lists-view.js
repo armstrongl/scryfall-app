@@ -82,7 +82,8 @@ export function createListsView(app) {
     h("h2", { id: "new-list-title", text: "New list" }),
     h("div", { class: "grid-3" }, field("Name", name), field("Kind", kind), formatField),
     err,
-    h("button", { type: "submit", class: "primary", text: "Make list" }));
+    // One primary button per view: the Import deck panel has it while open.
+    h("button", { type: "submit", class: importOpen ? "" : "primary", text: "Make list" }));
 
     const lists = app.lists.slice().sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
     const importBtn = h("button", {
@@ -90,7 +91,7 @@ export function createListsView(app) {
       id: "import-deck-btn",
       text: "Import deck",
       "aria-expanded": String(importOpen),
-      "aria-controls": "import-panel",
+      "aria-controls": importOpen ? "import-panel" : null,
       onclick: () => {
         importOpen = !importOpen;
         render();

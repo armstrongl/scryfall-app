@@ -14,8 +14,9 @@ import { fakeClock, fixture, snap } from "./helpers.js";
 //   and again in the Sideboard.
 // - The About and Name block is the deck name form that MTG Arena reads, as
 //   described in https://draftsim.com/mtg-arena-export-deck/ and other guides.
-// - "4x", lowercase set codes, and "*F*" foil marks are the forms that deck
-//   sites such as Moxfield use in their text exports.
+// - "4x", lowercase set codes, "*F*" foil marks, and headers with counts are
+//   written in the forms that deck sites use in their text exports. They are
+//   not copied from a site yet: issue #59.
 // - The rest is the app's own Export for Arena text (arenaText).
 const BRAWL_EXPORT = `Commander
 1 Daxos, Blessed by the Sun (THB) 9
@@ -242,4 +243,30 @@ test("round trip: Export for Arena text reads back to the same cards and section
     const want = list.entries.map((e) => [e.quantity, e.card.frontName, e.section]);
     assert.deepEqual(pick(parseDeckText(arenaText(list)).cards), want, list.name);
   }
+});
+
+test("a blank line inside a Deck block keeps the cards in the main deck when the text has a Sideboard header", () => {
+  const r = parseDeckText("Deck\n4 Opt\n\n4 Shock\n\nSideboard\n1 Duress");
+  assert.deepEqual(pick(r.cards), [[4, "Opt", "main"], [4, "Shock", "main"], [1, "Duress", "sideboard"]]);
+});
+
+test("headers can have a card count, such as Deck (60)", () => {
+  const r = parseDeckText("Deck (8)\n4 Opt\n4 Shock\nSideboard (1)\n1 Duress");
+  assert.deepEqual(r.problems, []);
+  assert.deepEqual(pick(r.cards), [[4, "Opt", "main"], [4, "Shock", "main"], [1, "Duress", "sideboard"]]);
+});
+
+test("a blank line ends a Commander, Companion, or About block", () => {
+  assert.deepEqual(pick(parseDeckText("Commander\n1 Krenko, Mob Boss\n\n99 Mountain").cards),
+    [[1, "Krenko, Mob Boss", "commander"], [99, "Mountain", "main"]]);
+  assert.deepEqual(pick(parseDeckText("Companion\n1 Lurrus of the Dream-Den\n\n4 Opt").cards),
+    [[1, "Lurrus of the Dream-Den", "sideboard"], [4, "Opt", "main"]]);
+  const about = parseDeckText("About\nName Foo\n\n4 Opt");
+  assert.equal(about.name, "Foo");
+  assert.deepEqual(pick(about.cards), [[4, "Opt", "main"]]);
+});
+
+test("Æ in a name matches Ae", () => {
+  assert.ok(cardMatchesName({ name: "Aether Vial" }, "Æther Vial"));
+  assert.ok(cardMatchesName({ name: "Æther Vial" }, "Aether Vial"));
 });

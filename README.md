@@ -113,7 +113,7 @@ To try a different build without losing the one that works, open the list, selec
 4. Select **Look up cards**. The app finds the cards with the Scryfall [collection endpoint](https://scryfall.com/docs/api/cards/collection), through its request queue. A line with a set code and collector number, such as `4 Llanowar Elves (FDN) 227`, keeps that printing. Arena set codes, such as `DAR` for Dominaria, are read from the `arena_code` of each Scryfall set.
 5. Fix or skip each line that didn't match, then select **Save list**.
 
-The import reads the **Commander**, **Deck**, **Sideboard**, and **Companion** headers, a blank line before the sideboard, `4x`, set codes in any case, foil marks such as `*F*`, and a **Name** line under **About**. Text from **Export for Arena** imports back to the same cards.
+The import reads the **Commander**, **Deck**, **Sideboard**, and **Companion** headers (with or without a count, such as `Deck (60)`), a blank line before the sideboard when the text has no **Sideboard** header, `4x`, set codes in any case, foil marks such as `*F*`, and a **Name** line under **About**. Text from **Export for Arena** imports back to the same cards.
 
 To see a whole list on Scryfall, select **Open on Scryfall**. A long list opens in two or more parts, because Scryfall searches have a length limit.
 

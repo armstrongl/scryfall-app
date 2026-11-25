@@ -59,14 +59,19 @@ export function createImportPanel(app, { onClose }) {
     const lists = app.lists.slice().sort((a, b) => a.name.localeCompare(b.name));
     replace(target, h("option", { value: NEW_LIST, text: "A new list" }), lists.map((l) => h("option", { value: l.id, text: l.name })));
     target.value = lists.some((l) => l.id === keep) ? keep : NEW_LIST;
-    nameField.hidden = target.value !== NEW_LIST;
+    const chosen = lists.find((l) => l.id === target.value);
+    nameField.hidden = !!chosen;
+    if (chosen) format.value = chosen.format;
   }
   refreshTargets();
 
   function setBusy(on) {
     busy = on;
     lookUpBtn.disabled = on;
-    lookUpBtn.textContent = on ? "Looking up…" : "Look up cards";
+    saveBtn.disabled = on;
+    // The results belong to the text that was looked up, so it can't change meanwhile.
+    text.readOnly = on;
+    if (!on) lookUpBtn.textContent = "Look up cards";
     for (const b of results.querySelectorAll("button")) b.disabled = on;
   }
 
@@ -123,6 +128,7 @@ export function createImportPanel(app, { onClose }) {
     }
     if (parsed.name && !name.value.trim()) name.value = parsed.name;
     setBusy(true);
+    lookUpBtn.textContent = "Looking up…";
     announce("Looking up the cards.");
     try {
       const r = await find(parsed.cards);
@@ -221,7 +227,11 @@ export function createImportPanel(app, { onClose }) {
     }
     const next = addImported(list, found, new Date().toISOString());
     const added = totalQuantity(next.entries) - totalQuantity(list.entries);
-    if (await app.saveList(next)) {
+    // Busy until the save ends, so a double press saves once.
+    setBusy(true);
+    const ok = await app.saveList(next);
+    setBusy(false);
+    if (ok) {
       announce(`Imported ${plural(added, "card")} into ${next.name}.`);
       reset();
       onClose();
@@ -239,6 +249,8 @@ export function createImportPanel(app, { onClose }) {
     busy = false;
     text.value = "";
     name.value = "";
+    target.value = NEW_LIST;
+    nameField.hidden = false;
     format.value = DECK_FORMATS[0];
     replace(err);
     setBusy(false);

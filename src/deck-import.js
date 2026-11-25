@@ -60,15 +60,19 @@ export function parseCardLine(text) {
  * - Card lines: see parseCardLine.
  * - Headers: About, Deck, Commander, Companion, and Sideboard.
  * - "Name …" in the About block is the deck name.
- * - With no Sideboard header, a blank line after main deck cards starts the
- *   sideboard, as in older Arena text.
+ * - A header can have a card count, such as "Deck (60)".
+ * - A blank line ends a Commander, Companion, or About block.
+ * - With no Sideboard header in the text, a blank line after main deck cards
+ *   starts the sideboard, as in older Arena text.
  * - Arena lists a companion in its own block and again in the sideboard. A
  *   companion goes to the sideboard, once.
  * @param {string} text
  * @returns {{name: string|null, cards: CardLine[], problems: ProblemLine[]}}
  */
 export function parseDeckText(text) {
-  const rows = String(text ?? "").replace(/^﻿/, "").split(/\r?\n/);
+  const rows = String(text ?? "").replace(/^\uFEFF/, "").split(/\r?\n/);
+  const headerOf = (t) => HEADERS[t.replace(/:$/, "").replace(/\s*\(\d+\)$/, "").trim().toLowerCase()];
+  const hasSideboardHeader = rows.some((row) => headerOf(row.trim()) === "sideboard");
   let name = null;
   /** @type {Section|"about"|"companion"} */
   let block = "main";
@@ -79,13 +83,16 @@ export function parseDeckText(text) {
   rows.forEach((raw, i) => {
     const t = raw.trim();
     if (!t) {
-      if (block === "main" && cardsInBlock > 0) {
+      if (block === "commander" || block === "companion" || block === "about") {
+        block = "main";
+        cardsInBlock = 0;
+      } else if (block === "main" && cardsInBlock > 0 && !hasSideboardHeader) {
         block = "sideboard";
         cardsInBlock = 0;
       }
       return;
     }
-    const header = HEADERS[t.replace(/:$/, "").trim().toLowerCase()];
+    const header = headerOf(t);
     if (header) {
       block = header;
       cardsInBlock = 0;
@@ -133,7 +140,7 @@ export function arenaSetCodes(setsBody) {
 
 /** Lowercase letters and digits only, without accents. */
 function squash(s) {
-  return String(s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  return String(s ?? "").replace(/æ/gi, "ae").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
 /**

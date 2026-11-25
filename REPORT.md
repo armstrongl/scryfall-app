@@ -636,15 +636,18 @@ Where the docs were silent:
 - A deck name is read only from a `Name` line under an `About` header, the form described by guides to the Arena import. [Issue #45](https://github.com/armstrongl/scryfall-app/issues/45) still has to confirm that form before the export writes it.
 - A new list is a deck. An existing list keeps its kind. The **Format** choice applies to both, so importing into an existing list can change its format.
 - **Save list** waits until each line that didn't match is fixed or skipped, as the issue asks. **Skip all** skips the rest at once.
-- Changing the deck text after a lookup clears the results, so a save never uses cards from older text.
+- Changing the deck text after a lookup clears the results, and the text can't change while a lookup runs, so a save never uses cards from older text.
+- A blank line ends a **Commander**, **Companion**, or **About** block. It starts the sideboard only when the text has no **Sideboard** header, so a blank line inside a **Deck** block keeps its cards in the main deck.
+- While the panel is open, it has the view's primary button, and **Make list** is secondary.
 - The format isn't chosen from the text. A **Commander** block can be Brawl or Standard Brawl, so the choice stays with the person importing.
 - Marking imported cards as owned waits for [issue #15](https://github.com/armstrongl/scryfall-app/issues/15).
 
 ## Tests
 
 - Written first and seen failing: `tests/deck-import.test.js`, which failed because `src/deck-import.js` didn't exist; the two new client tests in `tests/scryfall.test.js`, which failed because `cards()` and `setsBody()` didn't exist; and the `importDeck` browser check in `scripts/check-ui.mjs`, which failed because Lists had no **Import deck** button.
+- An Opus review found that a reopened panel kept the last list chosen with the format reset to Standard, so a second import could change a Brawl deck to Standard. It also found that a double press of **Save list** made two lists, that a blank line inside a **Deck** block moved cards to the sideboard, that headers with counts weren't read, that Commander and Companion blocks ran past a blank line, that Æ didn't match Ae, and that the open panel made a second primary button. Unit tests and browser checks for each were written first and seen failing, then the fixes went in.
 - The parser tests use a real Arena Brawl export, posted in [a public gist](https://gist.github.com/georgestephanis/76b27ac145f6bee4d82f2a8459c3243e), and the app's own **Export for Arena** text for the round trip. The lookup tests use three new real fixtures from `scripts/fetch-fixtures.sh`: `collection-import-printings`, `collection-import-names`, and `collection-import-faces`. A stand-in for the endpoint answers from those cards, and a test checks that it gives the same answer as each recorded response.
 
 ## Known problems
 
-- MTGGoldfish blocks scripted requests, and Untapped.gg builds its deck text in the browser, so no text copied from those sites is in the tests yet. The `4x`, small-letter set code, and `*F*` forms are tested with text written in the form those sites use. [Issue #59](https://github.com/armstrongl/scryfall-app/issues/59) is to add real copies.
+- MTGGoldfish blocks scripted requests, and Untapped.gg builds its deck text in the browser, so no text copied from those sites is in the tests yet. The `4x`, small-letter set code, `*F*`, and header count forms are tested with text written in the forms that deck sites use. [Issue #59](https://github.com/armstrongl/scryfall-app/issues/59) is to add real copies.

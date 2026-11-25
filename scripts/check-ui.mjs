@@ -1043,6 +1043,190 @@ async function help(b, check) {
   check("Help has no horizontal scroll", !(await ev("document.documentElement.scrollWidth > window.innerWidth")));
 }
 
+/** Presses Enter on the focused element, as a keyboard does. */
+async function pressEnter(b) {
+  for (const type of ["keyDown", "keyUp"]) {
+    await b.send("Input.dispatchKeyEvent", { type, key: "Enter", code: "Enter", windowsVirtualKeyCode: 13, text: type === "keyDown" ? "\r" : undefined });
+  }
+}
+
+/** The quantities of one card in a stored list, by section. */
+const storedCopies = (listId, cardKey) => `(async () => {
+  const db = await new Promise((r, j) => { const q = indexedDB.open("card-discovery"); q.onsuccess = () => r(q.result); q.onerror = () => j(q.error); });
+  const list = await new Promise((r) => { const q = db.transaction("lists").objectStore("lists").get(${JSON.stringify(listId)}); q.onsuccess = () => r(q.result); });
+  db.close();
+  const out = {};
+  for (const e of list?.entries ?? []) if ((e.card.oracleId ?? e.card.name) === ${cardKey}) out[e.section] = (out[e.section] ?? 0) + e.quantity;
+  return JSON.stringify(out);
+})()`;
+
+/**
+ * Deck mode (issue #39): choose a deck, add and remove copies from the
+ * card captions, Undo, the deck bar, hiding cards in the deck, the same
+ * controls in card details, keyboard focus, and no sideways scroll.
+ */
+async function deckMode(b, width, check) {
+  const { ev, until } = b;
+  const at = new Date().toISOString();
+  // An empty Standard deck, saved straight to the database, then a reload.
+  await ev(`new Promise((resolve, reject) => {
+    const q = indexedDB.open("card-discovery");
+    q.onsuccess = () => {
+      const db = q.result;
+      const tx = db.transaction("lists", "readwrite");
+      tx.objectStore("lists").put({ id: "deck-mode-check", name: "Deck mode check", kind: "deck", format: "standard", entries: [], createdAt: ${JSON.stringify(at)}, updatedAt: ${JSON.stringify(at)} });
+      tx.oncomplete = () => { db.close(); resolve(true); };
+      tx.onerror = () => reject(tx.error);
+    };
+    q.onerror = () => reject(q.error);
+  })`);
+  await ev(`location.hash = "#lists/deck-mode-check"`);
+  await b.send("Page.reload", {});
+  await sleep(500);
+  await until(`document.querySelector("#view-lists h1")?.textContent === "Deck mode check"`, 10000);
+
+  // Lists → Discover.
+  check("deck mode: a deck in Lists has Edit in Discover", await ev(`document.querySelector("#edit-in-discover")?.textContent.trim() === "Edit in Discover"`));
+  if (!(await ev(`!!document.querySelector("#edit-in-discover")`))) return;
+  await ev(click("#edit-in-discover"));
+  const BAR = `document.querySelector("#deck-bar")`;
+  const barText = `(${BAR}?.textContent ?? "")`;
+  check("deck mode: Edit in Discover opens Discover with the deck bar", await until(`!document.querySelector("#view-discover").hidden && !!${BAR} && !${BAR}.hidden`, 3000));
+  check("deck mode: the bar names the deck and gives its count", await ev(`/Deck mode check/.test(${barText}) && /0 of 60/.test(${barText})`), await ev(barText));
+  check("deck mode: the bar says how many problems the checks find", await ev(`/No problems|problem/.test(${barText})`), await ev(barText));
+  check("deck mode: the bar has Open deck and Stop", await ev(`(() => {
+    const open = [...${BAR}.querySelectorAll("a")].find((a) => a.textContent.trim() === "Open deck");
+    return open?.getAttribute("href") === "#lists/deck-mode-check" && document.querySelector("#deck-stop")?.textContent.trim() === "Stop";
+  })()`));
+  check("deck mode: the Deck menu shows the chosen deck", (await ev(`document.querySelector("#deck-select")?.value`)) === "deck-mode-check");
+  check("deck mode: the Deck menu has a label", await ev(`!!document.querySelector("label[for=deck-select]")`));
+  check("deck mode: the Deck menu lists decks and no collections", await ev(`(() => {
+    const names = [...document.querySelectorAll("#deck-select option")].map((o) => o.textContent);
+    return names.some((n) => n.startsWith("Deck mode check")) && !names.some((n) => n.startsWith("From another device"));
+  })()`), await ev(`[...document.querySelectorAll("#deck-select option")].map((o) => o.textContent).join(" | ")`));
+  check("deck mode: the filters start from the deck's format", await ev(`/Standard/.test(${CHIPS})`) && /f:standard/.test(await ev(QUERY)), await ev(CHIPS));
+  check("deck mode: Adds to lists the Standard sections", (await ev(`[...document.querySelectorAll("#deck-section option")].map((o) => o.value).join(",")`)) === "main,sideboard,maybe");
+
+  // Cards with counts.
+  await ev(setValue("#view-discover textarea", "t:goblin t:creature"));
+  await ev(click("#mode-browse"));
+  await ev(setValue("#browse-sort", "name", "change"));
+  await ev(setValue("#browse-dir", "asc", "change"));
+  await ev(clickText("#view-discover button", "Show cards"));
+  check("deck mode: Browse shows cards", await until(`document.querySelectorAll(".results .tile").length >= 3`, 30000));
+  const cardKey = await ev(`document.querySelector(".results .tile")?.dataset.cardKey`);
+  const T = `document.querySelector(".results .tile[data-card-key=" + JSON.stringify(${JSON.stringify(cardKey)}) + "]")`;
+  const deckText = `(${T}?.querySelector(".tile-deck")?.textContent ?? "")`;
+  const PLUS = `${T}?.querySelector(".tile-deck .deck-plus")`;
+  const MINUS = `${T}?.querySelector(".tile-deck .deck-minus")`;
+  check("deck mode: each card shows its count in the deck", await ev(`/0 in Main deck/.test(${deckText})`), await ev(deckText));
+  check("deck mode: the count and + and − are in the caption, not on the image", await ev(`(() => {
+    const t = ${T};
+    const s = t?.querySelector(".tile-deck");
+    return !!s && t.querySelector(".tile-info").contains(s) && !t.querySelector(".tile-frame").contains(s);
+  })()`));
+  check("deck mode: + and − are labeled for the card and the section", await ev(`/^Add a copy of .+ to Main deck$/.test(${PLUS}?.getAttribute("aria-label") ?? "") && /^Remove a copy of .+ from Main deck$/.test(${MINUS}?.getAttribute("aria-label") ?? "")`));
+  check("deck mode: the Add button stays", await ev(`!!${T}.querySelector(".tile-actions button[aria-label^='Add ']")`));
+  check("deck mode: nothing sits on top of the card image", await ev(`(() => {
+    const img = ${T}.querySelector("img");
+    if (!img) return true;
+    img.scrollIntoView({ block: "center" });
+    const r = img.getBoundingClientRect();
+    const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+    window.scrollTo(0, 0);
+    return hit === img;
+  })()`));
+
+  // + by keyboard, up to the copy limit.
+  await ev(`${PLUS}.focus()`);
+  await pressEnter(b);
+  check("deck mode: + adds a copy", await until(`/1 in Main deck/.test(${deckText})`, 3000), await ev(deckText));
+  check("deck mode: focus stays on + after adding", await ev(`document.activeElement === ${PLUS}`), await ev(FOCUS));
+  check("deck mode: the bar count goes up", await until(`/1 of 60/.test(${barText})`, 2000), await ev(barText));
+  check("deck mode: the copy is saved in the deck", await until(`${storedCopies("deck-mode-check", JSON.stringify(cardKey))}.then((s) => s === '{"main":1}')`, 3000), await ev(storedCopies("deck-mode-check", JSON.stringify(cardKey))));
+  for (let n = 2; n <= 4; n++) {
+    await pressEnter(b);
+    await until(`new RegExp("${n} in Main deck").test(${deckText})`, 3000);
+  }
+  check("deck mode: + stops at 4 copies in Standard", await ev(`/4 in Main deck/.test(${deckText}) && ${PLUS}.getAttribute("aria-disabled") === "true"`), await ev(deckText));
+  check("deck mode: the caption says the deck has the most copies it can have", await ev(`/most/i.test(${deckText})`), await ev(deckText));
+  check("deck mode: + at the limit stays in the keyboard order", await ev(`document.activeElement === ${PLUS} && !${PLUS}.disabled`), await ev(FOCUS));
+  await pressEnter(b);
+  await sleep(600);
+  check("deck mode: + at the limit adds nothing", await ev(`/4 in Main deck/.test(${deckText}) && /4 of 60/.test(${barText})`), await ev(deckText));
+  check("deck mode: + at the limit says why", await ev(`/at most 4/.test(document.querySelector("#live").textContent)`), await ev(`document.querySelector("#live").textContent`));
+
+  // − down to 0, then Undo.
+  await ev(`${MINUS}.focus()`);
+  for (let n = 3; n >= 1; n--) {
+    await pressEnter(b);
+    await until(`new RegExp("${n} in Main deck").test(${deckText})`, 3000);
+  }
+  check("deck mode: − takes a copy away", await ev(`/1 in Main deck/.test(${deckText})`), await ev(deckText));
+  check("deck mode: focus stays on − after removing", await ev(`document.activeElement === ${MINUS}`), await ev(FOCUS));
+  await pressEnter(b);
+  check("deck mode: − at 1 removes the card and shows Undo in the caption", await until(`!!${T}.querySelector(".tile-deck button.undo")`, 3000), await ev(deckText));
+  check("deck mode: focus moves to Undo", await until(`document.activeElement === ${T}.querySelector(".tile-deck button.undo")`, 1000), await ev(FOCUS));
+  check("deck mode: the bar count goes back to 0", await until(`/0 of 60/.test(${barText})`, 2000), await ev(barText));
+  await pressEnter(b);
+  check("deck mode: Undo puts the card back", await until(`/1 in Main deck/.test(${deckText})`, 3000), await ev(deckText));
+  check("deck mode: after Undo, focus goes back to the card's controls", await until(`!!${T}.querySelector(".tile-deck")?.contains(document.activeElement) && document.activeElement.tagName === "BUTTON"`, 1000), await ev(FOCUS));
+  check("deck mode: Undo saves the card in the deck again", await until(`${storedCopies("deck-mode-check", JSON.stringify(cardKey))}.then((s) => s === '{"main":1}')`, 3000));
+
+  // Adds to.
+  await ev(setValue("#deck-section", "sideboard", "change"));
+  check("deck mode: Adds to changes the section the cards count", await until(`/0 in Sideboard/.test(${deckText}) && /Also 1 in Main deck/.test(${deckText})`, 2000), await ev(deckText));
+  check("deck mode: + then adds to the sideboard", await ev(`/^Add a copy of .+ to Sideboard$/.test(${PLUS}.getAttribute("aria-label"))`));
+  await ev(setValue("#deck-section", "main", "change"));
+  await until(`/1 in Main deck/.test(${deckText})`, 2000);
+
+  // Card details.
+  await ev(`${T}.querySelector("button[aria-label^='Details for']").click()`);
+  await sleep(300);
+  check("deck mode: card details have the same count and controls", await until(`/1 in Main deck/.test(document.querySelector("dialog[open] .tile-deck")?.textContent ?? "")`, 2000));
+  await ev(`document.querySelector("dialog[open] .tile-deck .deck-plus").click()`);
+  check("deck mode: + in card details adds a copy, and the tile follows", await until(`/2 in Main deck/.test(document.querySelector("dialog[open] .tile-deck")?.textContent ?? "") && /2 in Main deck/.test(${deckText})`, 3000));
+  await b.key("Escape", 27);
+  await sleep(300);
+
+  // Hide cards in the deck.
+  check("deck mode: Hide cards in the deck is off at first", await ev(`document.querySelector("#deck-hide")?.checked === false && !!document.querySelector("label[for=deck-hide]")`));
+  await ev(click("#deck-hide"));
+  check("deck mode: Hide cards in the deck hides the card", await until(`${T}.hidden || getComputedStyle(${T}).display === "none"`, 2000));
+  check("deck mode: a note says how many cards are hidden", await until(`/1 card in the deck is hidden/.test(document.querySelector("#deck-hidden-note")?.textContent ?? "")`, 2000), await ev(`document.querySelector("#deck-hidden-note")?.textContent`));
+  await ev(click("#deck-hide"));
+  check("deck mode: turning it off shows the card again", await until(`!${T}.hidden && getComputedStyle(${T}).display !== "none"`, 2000));
+
+  // Layout.
+  check("deck mode: no sideways scroll", !(await ev("document.documentElement.scrollWidth > window.innerWidth")));
+  check("deck mode: the bar has no sideways scroll", await ev(`${BAR}.scrollWidth <= ${BAR}.clientWidth + 1`));
+  // A fixed bar would cover card images as the page scrolls, so it never floats.
+  check("deck mode: the bar is above the results and doesn't float", await ev(`${BAR}.getBoundingClientRect().bottom <= document.querySelector(".results").getBoundingClientRect().top + 1 && !["fixed", "sticky"].includes(getComputedStyle(${BAR}).position)`));
+
+  // After a reload.
+  await b.send("Page.reload", {});
+  await sleep(500);
+  check("deck mode: the chosen deck stays after a reload", await until(`!!${BAR} && !${BAR}.hidden && /Deck mode check/.test(${barText}) && /2 of 60/.test(${barText})`, 10000), await ev(barText));
+  check("deck mode: the choice isn't in the settings", await ev(`(async () => {
+    const db = await new Promise((r, j) => { const q = indexedDB.open("card-discovery"); q.onsuccess = () => r(q.result); q.onerror = () => j(q.error); });
+    const v = await new Promise((r) => { const q = db.transaction("meta").objectStore("meta").get("settings"); q.onsuccess = () => r(q.result); });
+    db.close();
+    return !JSON.stringify(v ?? null).includes("deck-mode-check");
+  })()`));
+
+  // Stop, then choose the deck from the Deck menu.
+  await ev(`document.querySelector("#deck-stop").focus()`);
+  await pressEnter(b);
+  check("deck mode: Stop ends deck mode", await until(`!${BAR} || ${BAR}.hidden`, 2000) && (await ev(`document.querySelector("#deck-select").value`)) === "");
+  check("deck mode: after Stop, focus moves to the Deck menu", await ev(`document.activeElement?.id === "deck-select"`), await ev(FOCUS));
+  check("deck mode: after Stop, cards have no deck controls", await ev(`!document.querySelector(".tile-deck") || [...document.querySelectorAll(".tile-deck")].every((s) => s.hidden)`));
+  await ev(setValue("#deck-select", "deck-mode-check", "change"));
+  check("deck mode: choosing a deck from the Deck menu starts deck mode", await until(`!!${BAR} && !${BAR}.hidden && /Deck mode check/.test(${barText})`, 2000));
+  check("deck mode: a Standard deck's colors become the color filter", await until(`/At most (white|blue|black|red|green)/.test(${CHIPS})`, 2000), await ev(CHIPS));
+  await ev(click("#deck-stop"));
+  await until(`!${BAR} || ${BAR}.hidden`, 2000);
+}
+
 // Fake GitHub ----------------------------------------------------------------------
 // The checks never reach GitHub. Chrome hands every request to api.github.com
 // to this script through the DevTools Fetch domain, and the script answers
@@ -1324,6 +1508,8 @@ for (const { width, scheme } of CONFIGS) {
     // Reloads the page, so it runs after the checks that need drawn cards.
     await moreFilters(b, check);
     await commanderColors(b, check);
+    // Reloads the page too, and adds a deck of its own.
+    await deckMode(b, width, check);
     check("no horizontal page scroll", !(await b.ev("document.documentElement.scrollWidth > window.innerWidth")));
     check("no console errors", b.errors.length === 0, b.errors.join(" | "));
   } catch (e) {

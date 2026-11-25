@@ -14,6 +14,7 @@ import { createHelpView } from "./ui/help-view.js";
 import { TIPS } from "./docs.js";
 import { announce, h, message, replace, wireTip } from "./ui/dom.js";
 import { savedIndex, savedIn } from "./saved.js";
+import { cleanDeckMode } from "./deck-mode.js";
 
 /**
  * Shared app state. Views read the cached data here and change it only
@@ -53,6 +54,35 @@ async function createApp() {
      * @type {(criteria: import("./query.js").Criteria, note: string, opts?: {mode?: "draw"|"browse", sort?: {order: string, dir: string}}) => void}
      */
     showInDiscover: () => {},
+    /**
+     * Opens Discover in deck mode with this deck. Set in start().
+     * @type {(listId: string) => void}
+     */
+    showDeck: () => {},
+    /**
+     * The deck chosen in Discover, kept on this device only, or null.
+     * @type {import("./deck-mode.js").DeckMode|null}
+     */
+    deckMode: null,
+    /** The chosen deck, or null when deck mode is off. */
+    deckList() {
+      const id = app.deckMode?.listId;
+      return id ? app.lists.find((l) => l.id === id && l.kind === "deck") ?? null : null;
+    },
+    /**
+     * Starts, changes, or ends (null) deck mode, and saves the choice on
+     * this device.
+     * @param {import("./deck-mode.js").DeckMode|null} value
+     */
+    async setDeckMode(value) {
+      app.deckMode = cleanDeckMode(value, app.lists);
+      try {
+        await storage.saveDeckMode(app.deckMode);
+      } catch {
+        // Deck mode works for this visit without it.
+      }
+      app.emit("deck");
+    },
     /** Saved cards by card key. Rebuilt when lists change. */
     saved: new Map(),
     /** The lists that hold a card. @param {import("./cards.js").CardSnapshot} snapshot */
@@ -186,11 +216,19 @@ async function createApp() {
     },
 
     async reload() {
-      const [lists, presets, history, settings] = await Promise.all([
-        storage.getLists(), storage.getPresets(), storage.getHistory(), storage.getSettings(),
+      const [lists, presets, history, settings, deckMode] = await Promise.all([
+        storage.getLists(), storage.getPresets(), storage.getHistory(), storage.getSettings(), storage.getDeckMode(),
       ]);
-      Object.assign(app, { lists, presets, history, settings, saved: savedIndex(lists) });
+      Object.assign(app, { lists, presets, history, settings, saved: savedIndex(lists), deckMode });
+      app.checkDeckMode();
       app.emit("all");
+    },
+
+    /** Ends deck mode when its deck is deleted or becomes a collection. */
+    checkDeckMode() {
+      const next = cleanDeckMode(app.deckMode, app.lists);
+      if (app.deckMode && !next) storage.saveDeckMode(null).catch(() => {});
+      app.deckMode = next;
     },
 
     async saveList(list) {
@@ -199,6 +237,7 @@ async function createApp() {
         const saved = (await storage.getList(list.id)) ?? list;
         app.lists = [...app.lists.filter((l) => l.id !== list.id), saved];
         app.saved = savedIndex(app.lists);
+        app.checkDeckMode();
         app.settings = await storage.getSettings();
       }, "The list was not saved.");
       if (ok) {
@@ -213,6 +252,7 @@ async function createApp() {
         await storage.deleteList(id);
         app.lists = app.lists.filter((l) => l.id !== id);
         app.saved = savedIndex(app.lists);
+        app.checkDeckMode();
         app.settings = await storage.getSettings();
       }, "The list was not deleted.");
       if (ok) {
@@ -377,6 +417,15 @@ async function start() {
     views.discover.load(criteria, note, opts);
   };
 
+  /** Opens Discover in deck mode, from Edit in Discover in Lists. */
+  app.showDeck = (listId) => {
+    if (parseHash().view !== "discover") {
+      history.pushState(null, "", "#discover");
+      route(false);
+    }
+    views.discover.startDeck(listId);
+  };
+
   // Nerd mode.
   const densityBtn = document.getElementById("density-toggle");
   const applyDensity = () => {
@@ -430,6 +479,7 @@ async function start() {
     if (what === "all") views.discover.refresh();
     if (what === "presets") views.discover.refresh();
     if (what === "lists" || what === "all") views.discover.refreshSaved();
+    if (what === "deck") views.discover.refreshDeck();
     if (view === "lists" && what !== "presets" && what !== "sync") views.lists.refresh();
     if (view === "data") views.data.refresh();
   });

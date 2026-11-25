@@ -165,7 +165,8 @@ function buyLink(snapshot) {
  * A card tile: image, name, saved marker, nerd stats, and actions. The tile
  * has `data-card-key` so markers can update when lists change.
  * @param {import("../cards.js").CardSnapshot} snapshot
- * @param {{saved?: {listName: string, quantity: number}[], onDetails?: () => void, onExplore?: () => void, onAdd?: () => void, extra?: Node[], lazy?: boolean, size?: "large"|"normal", index?: number}} [opts]
+ * @param {{saved?: {listName: string, quantity: number}[], deck?: Node, onDetails?: () => void, onExplore?: () => void, onAdd?: () => void, extra?: Node[], lazy?: boolean, size?: "large"|"normal", index?: number}} [opts]
+ *   deck: the deck mode count with − and +, in the caption under the type line.
  */
 export function cardTile(snapshot, opts = {}) {
   const savedEl = h("p", { class: "tile-saved" });
@@ -181,6 +182,7 @@ export function cardTile(snapshot, opts = {}) {
       h("h3", { class: "tile-name", text: snapshot.name }),
       manaCost(snapshot.manaCost)),
     h("p", { class: "tile-type", text: snapshot.typeLine }),
+    opts.deck ?? null,
     savedEl,
     nerdStats(snapshot),
     opts.extra ?? null),

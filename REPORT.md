@@ -764,3 +764,33 @@ Where the docs were silent:
 - Written first and seen failing: `tests/newest-set.test.js`, which failed because `standardSetCandidates`, `standardSetCheck`, `localDay`, `newestSetPreset`, and the client's `newestStandardSet` didn't exist. It uses the real set list fixture, a new real fixture for a random Star Trek card (`random-standard-set.json`), and the real `random-404.json`.
 - Written first and seen failing: the browser checks in `scripts/check-ui.mjs` that the preset is listed with a plain-word name, can't be renamed or deleted, and searches its set in Standard on Arena with plain chips. Two of them failed before the code. The rename and delete check passed then, because the select fell back to **Arena Standard**, so it now also checks that the preset is selected.
 - After the Opus review, written first and seen failing: the unit test that a rejected check query gives no set and is kept. Added with it, and passing at once because the code already did this: the tests that a null answer is kept and that a server error stops the check. To see them able to fail, the code was broken on purpose twice, then restored each time. With every error moving on to the next set, the server error test failed. With the answer no longer kept, the null test failed.
+
+# Deck mode in Discover
+
+[Issue #39](https://github.com/armstrongl/scryfall-app/issues/39). Choose a deck in Discover, or select **Edit in Discover** on a deck in **Lists**. Each card in Draw, Browse, **Recent draws**, the details sheet, and the inspector then shows its count in the deck, with **−** and **+** in the caption. A deck bar shows the count, the number of problems, **Adds to**, **Hide cards in the deck**, **Open deck**, and **Stop**.
+
+## Changes from the plan
+
+`PLAN.md` has no deck mode. It is an addition.
+
+## Decisions
+
+- The plan page had no saved answers, so each part kept its planned form and each question took the recommended option, as asked.
+- The recommended bar, fixed at the bottom of a phone screen, was not built. It covers card images while the page scrolls, which the hard rules forbid, and the browser check "no toast or bar floats over the page" failed on it. The bar sits above the results on every screen, which was the second option on the plan page.
+- + at the copy limit has no tooltip, because tooltips never go on a card tile. The caption says that the deck has the most copies it can have, and the button stays focusable (`aria-disabled`) and announces the limit when selected.
+- **Undo** after removing the last copy shows in the card's caption, where the controls were, like the **Undo** row in **Lists**. A toast at the top of the page would be out of view while scrolling.
+- The limit counts the main deck and sideboard in Standard, and the main deck and commander in Brawl, as the deck checks do. **Maybe** never counts, and + to **Maybe** is always allowed.
+- **Hide cards in the deck** hides cards in the main deck, commander, or sideboard, not **Maybe**. It applies when cards load and when the switch changes, not after each + or −, so a card stays in place while its count changes.
+- A Standard deck's starting colors are the colors of its main deck and sideboard cards, with **At most** those colors. A Brawl deck uses its commander's color identity. With no colors to read, the color filter is cleared.
+- The chosen deck, the **Adds to** section, and the hide switch are kept in a `deckMode` record in the `meta` store, apart from the settings, like the GitHub connection. They never sync and are never in a backup, so the backup format and the list record don't change, and no database upgrade is needed.
+
+## Tests
+
+- Written first and seen failing: `tests/deck-mode.test.js` (counts, the copy limit, + and −, the starting filters, hiding, the bar summary, and the stored choice, with real fixtures) and the deck mode storage test in `tests/storage.test.js`.
+- The browser checks in `deckMode()` in `scripts/check-ui.mjs` were written before the UI and failed at the first check, with no **Edit in Discover** button.
+- Fixed after the first run: the check that focus moves to **Undo** read focus before the app moved it, and now waits. The color check expected a red first card, and now accepts any color.
+
+## Known problems
+
+- A random draw can still draw a card that is in the deck. With hiding on, it is drawn and hidden, so a draw can show fewer cards than asked for.
+- [Issue #26](https://github.com/armstrongl/scryfall-app/issues/26) builds on deck mode and isn't part of this change.

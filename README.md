@@ -116,6 +116,17 @@ To try a different build without losing the one that works, open the list, selec
 
 The import reads the **Commander**, **Deck**, **Sideboard**, and **Companion** headers (with or without a count, such as `Deck (60)`), a blank line before the sideboard when the text has no **Sideboard** header, `4x`, set codes in any case, foil marks such as `*F*`, and a **Name** line under **About**. Text from **Export for Arena** imports back to the same cards.
 
+### Work on a deck in Discover
+
+Deck mode keeps one deck in view while you look for cards.
+
+1. In Discover, choose a deck in the **Deck** menu. Or open a deck in **Lists** and select **Edit in Discover**. The filters change to the deck's format and colors, one time.
+2. Under each card's type line, select **+** to add a copy or **−** to remove one. **Adds to** in the deck bar sets the section: **Main deck**, **Sideboard**, or **Maybe** for Standard, and **Main deck**, **Commander**, or **Maybe** for Brawl.
+3. The deck bar above the cards shows the card count, such as "58 of 60", and the number of problems that the deck checks find.
+4. Select **Stop** to end deck mode.
+
+**+** stops at the copy limit. If **−** removes the last copy, select **Undo** on the card. **Hide cards in the deck** leaves out cards already in the deck. The chosen deck is kept on this device only: it doesn't sync and isn't in backups.
+
 To see a whole list on Scryfall, select **Open on Scryfall**. A long list opens in two or more parts, because Scryfall searches have a length limit.
 
 ### Buy cards
@@ -162,7 +173,7 @@ While sync is on, **Export to GitHub** under **Backup** saves a full backup (wit
 | `src/config.js` | The app name, API settings, and other constants. |
 | `src/scryfall.js` | The Scryfall API client. All API requests go through its queue, which spaces requests at least 500 ms apart. |
 | `src/github.js` | The GitHub API client for sync. It is the only code that sends requests to GitHub. |
-| `src/query.js`, `src/cards.js`, `src/lists.js`, `src/deck-rules.js`, `src/export.js`, `src/draw.js`, `src/hand.js`, `src/synergy.js`, `src/explore.js`, `src/browse.js`, `src/saved.js`, `src/stats.js`, `src/links.js`, `src/buy.js`, `src/glossary.js`, `src/docs.js`, `src/combos.js`, `src/sync.js`, `src/deck-import.js` | App logic with no DOM code. The tests cover these modules. |
+| `src/query.js`, `src/cards.js`, `src/lists.js`, `src/deck-rules.js`, `src/deck-mode.js`, `src/export.js`, `src/draw.js`, `src/hand.js`, `src/synergy.js`, `src/explore.js`, `src/browse.js`, `src/saved.js`, `src/stats.js`, `src/links.js`, `src/buy.js`, `src/glossary.js`, `src/docs.js`, `src/combos.js`, `src/sync.js`, `src/deck-import.js` | App logic with no DOM code. The tests cover these modules. |
 | `src/docs.js` | The help pages shown in the **Help** view, and the text of every tooltip (`TIPS`). |
 | `src/storage/` | Data storage in IndexedDB, with a memory fallback, and the sync cycle (`sync.js`). |
 | `src/ui/` | The views, including the Help view (`help-view.js`), and the DOM helpers. |

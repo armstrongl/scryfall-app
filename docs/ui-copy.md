@@ -53,6 +53,10 @@ This index lists the text the app shows or announces from `index.html`, `src/mai
 | `TIPS.exportArena` | `src/ui/lists-view.js` | Shows the deck as text to copy and import into MTG Arena. |
 | `TIPS.importDeck` | `src/ui/lists-view.js` | Makes a deck from pasted deck text, such as the text from the Export button in MTG Arena or from a deck site. |
 | `TIPS.findCombos` | `src/ui/lists-view.js` | Shows the list as text to paste into Find My Combos on Commander Spellbook. |
+| `TIPS.editInDiscover` | `src/ui/lists-view.js` | Opens Discover in deck mode with this deck, so you can add and remove copies from each card. |
+| `TIPS.deckMode` | `src/ui/deck-bar.js` | Choose a deck to work on. Each card then shows its count in the deck, with − and + to remove or add a copy. |
+| `TIPS.deckAddsTo` | `src/ui/deck-bar.js` | The deck section that + adds to and − removes from. The count on each card is for this section. |
+| `TIPS.deckStop` | `src/ui/deck-bar.js` | Ends deck mode. The deck and your filters stay as they are. |
 | `TIPS.openList` | `src/ui/lists-view.js` | Opens every card in this list on the Scryfall website, in a new tab. |
 | `TIPS.sampleHand` | `src/ui/lists-view.js` | Draws a random opening hand from the main deck, so you can try mulligans and see the odds of a good start. |
 | `TIPS.buyList` | `src/ui/lists-view.js` | Shows the cards to buy, with an estimated total, and opens them in TCGplayer or Card Kingdom with the list filled in. |
@@ -325,6 +329,39 @@ This index lists the text the app shows or announces from `index.html`, `src/mai
 | text | Card data and images come from |
 | text | Scryfall |
 
+## `src/ui/deck-bar.js`
+
+| Kind | Text |
+| --- | --- |
+| text | Standard |
+| field | Deck |
+| text | No deck |
+| text | No deck (make one in Lists) |
+| announce | + adds to {…}. |
+| text | Open deck |
+| text | Stop |
+| field | Adds to |
+| text | Hide cards in the deck |
+| text | · {…} of {…} |
+| text | No problems |
+| announce | Deck mode: {…}. The filters use the deck's format and colors. Select + on a card to add a copy. |
+| announce | Deck mode is off. |
+| text | Undo |
+| text | Removed from {…}. |
+| text | Undo: put {…} back in {…} |
+| text | {…} in {…} |
+| text | Remove a copy of {…} from {…} |
+| text | Add a copy of {…} to {…} |
+| text | Also {…} |
+| text | That's the most a {…} deck can have. |
+| announce | A {…} deck can have at most {…} of {…}. |
+| announce | {…}: {…} in {…}. |
+| announce | {…} has no copies of {…}. |
+| announce | Removed {…} from {…}. Undo is available. |
+| announce | {…}: {…} in {…}. |
+| announce | Put {…} back in {…}. |
+| text | 1 card in the deck is |
+
 ## `src/ui/details.js`
 
 | Kind | Text |
@@ -596,6 +633,7 @@ This index lists the text the app shows or announces from `index.html`, `src/mai
 | text | In MTG Arena, open Decks, then select Import. The app writes a Commander block and a Deck block. The maybe section and the sideboard are not exported. |
 | text | In MTG Arena, open Decks, then select Import. The maybe section is not exported. |
 | text | Close |
+| text | Edit in Discover |
 | text | Find combos |
 | aria-label | Decklist for Commander Spellbook |
 | text | Copy |

@@ -109,9 +109,7 @@ export function createCriteriaForm(onChange, options = {}) {
   colorMode.id = "f-color-mode";
   const colors = checkGroup("Colors", COLORS.map((c) => [c, COLOR_NAMES[c]]), fitAndEmit);
   const colorless = checkbox("Colorless", false, emit);
-  const useIdentity = checkbox("Use color identity (for Commander and Brawl)", false, fitAndEmit);
-  useIdentity.input.id = "f-identity";
-  useIdentity.el.htmlFor = "f-identity";
+  const useIdentity = checkbox("Use color identity (for Commander and Brawl)", false, fitAndEmit, { id: "f-identity" });
   const types = checkGroup("Card types", CARD_TYPES.map((t) => [t, cap(t)]), emit);
   const typeText = h("input", { type: "text", autocomplete: "off", spellcheck: "false", oninput: emit });
   const mvMin = h("input", { type: "number", min: "0", step: "1", inputmode: "numeric", oninput: emit });

@@ -517,6 +517,8 @@ async function commanderColors(b, check) {
   await ev(clickText("#view-discover button", "Apply"));
   await ev(`${box("Red")}.click()`);
   check("Standard: ticking Red finds red cards", await until(`${QUERY} === "f:standard game:arena -is:rebalanced c>=r"`, 3000), await ev(QUERY));
+  check("every checkbox label points at its own box", await ev(`[...document.querySelectorAll("label.check[for]")].every((l) => document.getElementById(l.htmlFor) === l.querySelector("input"))`),
+    await ev(`[...document.querySelectorAll("label.check[for]")].filter((l) => document.getElementById(l.htmlFor) !== l.querySelector("input")).map((l) => l.textContent).join(", ")`));
   check("Standard doesn't tick Use color identity", await ev(`!document.querySelector("#f-identity").checked`));
   await ev(setValue("#view-discover .preset-row select", "builtin-arena-standard", "change"));
   await ev(clickText("#view-discover button", "Apply"));

@@ -262,8 +262,8 @@ export function closeOnHelpLink(dialog, close) {
 
 /** A checkbox with its label to the right. */
 export function checkbox(label, checked, onchange, attrs = {}) {
-  const id = uid("c");
-  const input = h("input", { type: "checkbox", id, checked, onchange, ...attrs });
+  const id = attrs.id ?? uid("c");
+  const input = h("input", { type: "checkbox", checked, onchange, ...attrs, id });
   return { input, el: h("label", { class: "check", for: id }, input, h("span", { text: label })) };
 }
 

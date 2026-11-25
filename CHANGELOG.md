@@ -9,6 +9,11 @@ Sections:
 
 ## 24 November 2026
 
+### Fixed
+
+- A search for lands in Commander now finds lands. Choosing Commander, Brawl, Oathbreaker, or another format built by color identity ticks **Use color identity**, because lands have no color. Before, a search for green lands found only double-faced cards with a green spell on the front. ([#52](https://github.com/armstrongl/scryfall-app/pull/52))
+- Ticking a color with the color mode on **Any** now filters by that color. The mode changes to **At most** with color identity, so green finds every card a green deck can play, or to **At least** without it. Before, the color was left out of the search. ([#52](https://github.com/armstrongl/scryfall-app/pull/52))
+
 ### Added
 
 - **Buy** on every card in **Discover** that exists in paper. It opens the card on TCGplayer in a new tab, and shows the price in nerd mode. ([#51](https://github.com/armstrongl/scryfall-app/pull/51))
@@ -16,6 +21,7 @@ Sections:
 
 ### Project
 
+- Unit tests for the color mode rules and browser checks for Commander colors and for checkbox labels. ([#52](https://github.com/armstrongl/scryfall-app/pull/52))
 - Tests for the new `src/buy.js`, two real fixtures for a paper card's Arena-only printing and a card made only for Arena, and browser checks for the **Buy** link and the **Buy cards** panel. ([#51](https://github.com/armstrongl/scryfall-app/pull/51))
 
 ## 20 November 2026

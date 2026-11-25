@@ -207,21 +207,52 @@ export function createClient(options = {}) {
     });
   }
 
-  /** @type {Promise<{code: string, name: string, released: string}[]>|null} */
+  /** @type {Promise<any>|null} */
   let setsPromise = null;
+  /** @type {Promise<{code: string, name: string, released: string}[]>|null} */
+  let optionsPromise = null;
+  /**
+   * The whole /sets response. Asked for once and kept while the page is
+   * open. After a failure, the next call asks again.
+   */
+  function setsBody() {
+    setsPromise ??= request("/sets").catch((e) => {
+      setsPromise = null;
+      throw e;
+    });
+    return setsPromise;
+  }
+
+  /**
+   * Gets cards by any identifiers, such as {id}, {name}, or {set,
+   * collector_number}, COLLECTION_BATCH_SIZE per request.
+   * @param {object[]} identifiers
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: any[], notFound: any[]}>}
+   */
+  async function cards(identifiers, signal) {
+    const data = [];
+    const notFound = [];
+    for (let i = 0; i < identifiers.length; i += COLLECTION_BATCH_SIZE) {
+      const batch = identifiers.slice(i, i + COLLECTION_BATCH_SIZE);
+      const res = await request("/cards/collection", { method: "POST", body: { identifiers: batch }, signal });
+      data.push(...(res.data ?? []));
+      notFound.push(...(res.not_found ?? []));
+    }
+    return { data, notFound };
+  }
 
   return {
     request,
-    /**
-     * The sets for the Set filter, newest first. Asked for once and kept
-     * while the page is open. After a failure, the next call asks again.
-     */
+    setsBody,
+    cards,
+    /** The sets for the Set filter, newest first. Kept like setsBody(). */
     sets() {
-      setsPromise ??= request("/sets").then(setOptions, (e) => {
-        setsPromise = null;
+      optionsPromise ??= setsBody().then(setOptions, (e) => {
+        optionsPromise = null;
         throw e;
       });
-      return setsPromise;
+      return optionsPromise;
     },
     /** Number of requests waiting to start. */
     get pending() {
@@ -258,16 +289,8 @@ export function createClient(options = {}) {
      * @param {string[]} ids
      * @returns {Promise<{data: any[], notFound: any[]}>}
      */
-    async collection(ids, signal) {
-      const data = [];
-      const notFound = [];
-      for (let i = 0; i < ids.length; i += COLLECTION_BATCH_SIZE) {
-        const identifiers = ids.slice(i, i + COLLECTION_BATCH_SIZE).map((id) => ({ id }));
-        const res = await request("/cards/collection", { method: "POST", body: { identifiers }, signal });
-        data.push(...(res.data ?? []));
-        notFound.push(...(res.not_found ?? []));
-      }
-      return { data, notFound };
+    collection(ids, signal) {
+      return cards(ids.map((id) => ({ id })), signal);
     },
   };
 }

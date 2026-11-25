@@ -881,6 +881,87 @@ async function sampleHand(b, check) {
   check("closing Sample hand returns focus to it", await ev(`document.activeElement?.textContent.trim() === "Sample hand"`), await ev(FOCUS));
 }
 
+/** Lists: Import deck. Paste text, review the lines that didn't match, fix or skip them, and save. */
+async function importDeck(b, check) {
+  const { ev, until } = b;
+  const PANEL = `document.querySelector("#view-lists section[aria-labelledby=import-title]")`;
+  const IN_PANEL = (sel) => `${PANEL}?.querySelector(${JSON.stringify(sel)})`;
+  const clickIn = (text) => `[...${PANEL}.querySelectorAll("button")].find((x) => x.textContent.trim() === ${JSON.stringify(text)}).click()`;
+  await ev(`location.hash = "#lists"`);
+  await until(`!document.querySelector("#view-lists").hidden && !!document.querySelector("#import-deck-btn")`, 3000);
+  check("Lists has an Import deck button", await ev(`document.querySelector("#import-deck-btn")?.textContent.trim() === "Import deck"`));
+  check("a closed Import deck panel isn't named by aria-controls", await ev(`!document.querySelector("#import-deck-btn").hasAttribute("aria-controls")`));
+  await tooltipsIn(b, "#view-lists", "Lists index", check);
+  await ev(click("#import-deck-btn"));
+  await sleep(300);
+  check("Import deck opens a panel", await ev(`!!${PANEL}`));
+  check("focus moves to the deck text box", await ev(`document.activeElement?.id === "import-text"`), await ev(FOCUS));
+  check("the deck text box has a label", await ev(`document.querySelector("label[for=import-text]")?.textContent.trim() === "Deck text"`));
+  check("Import deck links to its help page", await ev(`!!${IN_PANEL("a[href='#help/lists-and-decks']")}`));
+  const PRIMARIES = `[...document.querySelectorAll("#view-lists button.primary")].filter((x) => x.getClientRects().length > 0).length`;
+  check("Lists has one primary button with the Import deck panel open", (await ev(PRIMARIES)) === 1, String(await ev(PRIMARIES)));
+  const text = "About\nName UI import\n\nDeck\n4 Llanowar Elves (FDN) 227\n2 Not A Real Card Name\n1 Karn, Scion of Urza (DAR) 1\n\nSideboard\n2 Opt";
+  await ev(setValue("#import-text", text));
+  await ev(clickIn("Look up cards"));
+  check("the deck text can't change while the lookup runs", await ev(`document.querySelector("#import-text").readOnly === true`));
+  check("Look up cards shows what it found", await until(`/Found 3 of 4 card lines\./.test(${PANEL}.textContent)`, 20000), await ev(`${PANEL}.textContent`));
+  check("the name comes from the deck text", await ev(`document.querySelector("#import-name").value === "UI import"`));
+  check("a line that didn't match shows in a box to fix", await ev(`(() => { const i = ${PANEL}.querySelector(".import-problems input"); return i?.value === "2 Not A Real Card Name" && i.getAttribute("aria-label") === "Line 6"; })()`));
+  check("a line that didn't match has Skip", await ev(`!!${PANEL}.querySelector(".import-problems button[aria-label='Skip line 6']")`));
+  check("the lookup announces what it found", await until(`/Found 3 of 4 card lines/.test(document.getElementById("live")?.textContent ?? "")`, 2000), await ev(`document.getElementById("live")?.textContent`));
+  await ev(clickIn("Save list"));
+  await sleep(200);
+  check("Save list waits until each line is fixed or skipped", await ev(`/Fix or skip/.test(${PANEL}.textContent) && !!${PANEL}`));
+  check("focus moves to the line to fix", await ev(`document.activeElement?.getAttribute("aria-label") === "Line 6"`), await ev(FOCUS));
+  await ev(setValue(".import-problems input", "2 Serra Angel"));
+  await ev(clickIn("Look up again"));
+  check("Look up again finds the fixed line", await until(`/Found 4 of 4 card lines\./.test(${PANEL}.textContent) && !${PANEL}.querySelector(".import-problems")`, 20000), await ev(`${PANEL}.textContent`));
+  check("the Import deck panel has no horizontal scroll", await ev(`${PANEL}.scrollWidth <= ${PANEL}.clientWidth + 1`));
+  check("Lists still has one primary button after the lookup", (await ev(PRIMARIES)) === 1, String(await ev(PRIMARIES)));
+  // A quick double press saves once.
+  await ev(`(() => { const x = [...${PANEL}.querySelectorAll("button")].find((y) => y.textContent.trim() === "Save list"); x.click(); x.click(); })()`);
+  check("Save list opens the new list", await until(`document.querySelector("#lists-title")?.textContent === "UI import"`, 5000), await ev(`document.querySelector("#lists-title")?.textContent`));
+  check("the imported list is a deck with the cards in their sections", await ev(`(() => {
+    const t = document.querySelector("#view-lists").textContent;
+    return /Standard deck/.test(t) && document.querySelector("#sec-main")?.textContent === "Main deck (7)" && document.querySelector("#sec-sideboard")?.textContent === "Sideboard (2)";
+  })()`), await ev(`[...document.querySelectorAll("#view-lists h2")].map((x) => x.textContent).join(" | ")`));
+
+  // Into an existing list, skipping a line that didn't match.
+  await ev(`location.hash = "#lists"`);
+  await until(`!!document.querySelector("#import-deck-btn")`, 3000);
+  check("a double press of Save list made one list", await ev(`[...document.querySelectorAll(".list-index .row-title")].filter((x) => x.textContent === "UI import").length === 1`));
+  await ev(click("#import-deck-btn"));
+  await sleep(300);
+  await ev(`(() => { const s = document.querySelector("#import-target"); s.value = [...s.options].find((o) => o.textContent === "UI import").value; s.dispatchEvent(new Event("change", { bubbles: true })); })()`);
+  check("choosing an existing list hides the name box", await ev(`document.querySelector("#import-name").closest(".field")?.hidden === true`));
+  check("choosing an existing list shows its format", await ev(`document.querySelector("#import-format").value === "standard"`));
+  await ev(setValue("#import-text", "3 Opt\n1 Zzzz Not A Card Name"));
+  await ev(clickIn("Look up cards"));
+  await until(`!!${PANEL}?.querySelector(".import-problems")`, 20000);
+  await ev(setValue("#import-text", "3 Opt\n1 Zzzz Not A Card Name\n"));
+  check("changing the deck text clears the results", await ev(`!${PANEL}.querySelector(".import-problems") && ${PANEL}.querySelector(".import-results").textContent === ""`));
+  await ev(setValue("#import-format", "brawl", "change"));
+  await ev(clickIn("Look up cards"));
+  await until(`!!${PANEL}?.querySelector(".import-problems")`, 20000);
+  await ev(`${PANEL}.querySelector(".import-problems button[aria-label^='Skip line']").click()`);
+  await sleep(200);
+  check("Skip takes the line out", await ev(`!${PANEL}.querySelector(".import-problems") && /Skipped 1 line\./.test(${PANEL}.textContent)`), await ev(`${PANEL}.textContent`));
+  await ev(clickIn("Save list"));
+  check("importing into a list adds to its cards", await until(`document.querySelector("#lists-title")?.textContent === "UI import" && document.querySelector("#sec-main")?.textContent === "Main deck (10)"`, 5000),
+    await ev(`document.querySelector("#sec-main")?.textContent`));
+  check("the chosen format applies to the list", /Brawl deck/.test(await ev(`document.querySelector("#view-lists .tagline")?.textContent ?? ""`)));
+
+  // A new panel starts over: a new list, in Standard. Cancel returns focus to Import deck.
+  await ev(`location.hash = "#lists"`);
+  await until(`!!document.querySelector("#import-deck-btn")`, 3000);
+  await ev(click("#import-deck-btn"));
+  await sleep(300);
+  check("a reopened Import deck panel starts with a new list in Standard", await ev(`document.querySelector("#import-target").value === "" && document.querySelector("#import-format").value === "standard" && document.querySelector("#import-text").value === ""`));
+  await ev(clickIn("Cancel"));
+  await sleep(200);
+  check("Cancel closes the panel and returns focus to Import deck", await ev(`!${PANEL} && document.activeElement?.id === "import-deck-btn"`), await ev(FOCUS));
+}
+
 /** Data: the storage tooltip and the link to its help page. */
 async function data(b, check) {
   const { ev, until } = b;
@@ -1216,6 +1297,7 @@ for (const { width, scheme } of CONFIGS) {
     await exploreFlow(b, check);
     await browse(b, check);
     await lists(b, check);
+    await importDeck(b, check);
     await data(b, check);
     await sync(b, gh, check);
     await dialogTip(b, check);

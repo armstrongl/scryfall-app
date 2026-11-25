@@ -50,6 +50,7 @@ export const TIPS = {
   price: "The highest paper price, in dollars (USD), from Scryfall. Arena and MTGO cards have no paper price, so this works only when Game is Paper or Any.",
   popularity: "How often Commander decks on EDHREC play the card. Staples are in the most decks. Spicy cards are rarely played, with a rank over 10,000.",
   exportArena: "Shows the deck as text to copy and import into MTG Arena.",
+  importDeck: "Makes a deck from pasted deck text, such as the text from the Export button in MTG Arena or from a deck site.",
   findCombos: "Shows the list as text to paste into Find My Combos on Commander Spellbook.",
   openList: "Opens every card in this list on the Scryfall website, in a new tab.",
   sampleHand: "Draws a random opening hand from the main deck, so you can try mulligans and see the odds of a good start.",
@@ -92,6 +93,8 @@ const BRACKET_TAGS = `${SPELLBOOK_SITE}/syntax-guide/#bracket-tags`;
 const SALT = `${SPELLBOOK_SITE}/salt/`;
 const TCGPLAYER = "https://www.tcgplayer.com";
 const HYPERGEOMETRIC = "https://en.wikipedia.org/wiki/Hypergeometric_distribution";
+const MTGGOLDFISH = "https://www.mtggoldfish.com";
+const UNTAPPED = "https://mtga.untapped.gg";
 const FAN_CONTENT_POLICY = "https://company.wizards.com/en/legal/fancontentpolicy";
 const SAFARI_7_DAYS = "https://webkit.org/blog/10218/full-third-party-cookie-blocking-and-more/";
 const HOME_SCREEN = "https://support.apple.com/guide/iphone/bookmark-a-website-iph42ab2f3a7/ios";
@@ -380,7 +383,7 @@ export const DOC_PAGES = [
   {
     id: "lists-and-decks",
     title: "Lists and decks",
-    summary: "Save cards, check decks, draw sample hands, export decks to MTG Arena, and buy cards.",
+    summary: "Save cards, check decks, draw sample hands, import and export decks for MTG Arena, and buy cards.",
     sections: [
       {
         heading: "Save cards to a list",
@@ -446,6 +449,24 @@ export const DOC_PAGES = [
         ],
       },
       {
+        heading: "Import a deck",
+        blocks: [
+          {
+            steps: [
+              `Copy the deck text. In ${link("MTG Arena", ARENA)}, open the deck, then select **Export**. On a deck site such as ${link("MTGGoldfish", MTGGOLDFISH)} or ${link("Untapped.gg", UNTAPPED)}, use its copy or export for Arena.`,
+              "In **Lists**, select **Import deck**, then paste the text into **Deck text**.",
+              "Under **Import into**, choose **A new list** or a list you already have. Then choose the **Format**.",
+              "Select **Look up cards**.",
+              "If some lines didn't match, fix each one and select **Look up again**, or select **Skip**.",
+              "Select **Save list**.",
+            ],
+          },
+          { p: `A line is the number of copies, then the card name, such as 4 ${card("Llanowar Elves")}. It can also have the set code and collector number, such as 4 Llanowar Elves (FDN) 227, and then that printing is saved. 4x, set codes in small letters, and foil marks such as *F* work too.` },
+          { p: "The **Commander**, **Deck**, **Sideboard**, and **Companion** headers put cards in those sections, and a header can have a count, such as Deck (60). A companion goes in the sideboard. When the text has no **Sideboard** header, the cards after a blank line go in the sideboard. A **Name** line under **About** names the new list." },
+          { p: `The app looks up the cards on ${link("Scryfall", SCRYFALL_SITE)}. Each card is saved with its current card data. Cards already in a list don't change. Text from **Export for Arena** imports back to the same cards.` },
+        ],
+      },
+      {
         heading: "Buy cards",
         blocks: [
           { p: `To buy one card in paper, select **Buy** on the card in **Discover**. The card opens on ${link("TCGplayer", TCGPLAYER)} in a new tab. In nerd mode, **Buy** shows the card's price. Some paper cards show a printing that is only on MTG Arena. For those, **Buy** searches TCGplayer for the card by name, with no price. A card made only for MTG Arena has no **Buy** link.` },
@@ -489,7 +510,7 @@ export const DOC_PAGES = [
         blocks: [
           { p: `Your lists, presets, draw history, and settings are stored in this browser, on this device, in its ${link("IndexedDB", INDEXEDDB)} storage. They don't sync between devices or browsers unless you ${help("sync with GitHub", "sync")}. If you clear the browser's site data for the app, they're deleted from this browser.` },
           { p: `A browser can also clear the data to free up space, unless the app's storage is persistent. **Data** shows which kind it has. For details, see ${link("how browsers limit storage", STORAGE_LIMITS)}.` },
-          { p: `The app sends ${link("Scryfall", SCRYFALL_SITE)} your card searches, and the Scryfall IDs of cards when you refresh a list or show rulings. It doesn't send list names, notes, or anything else about you. If you connect GitHub, sync sends your lists, custom presets, and synced settings to your own private repository on ${link("GitHub", GITHUB)}. When you select **Export to GitHub**, the app also sends a full backup there, with your history and every setting. The app sends GitHub nothing else. The app sends ${link("Commander Spellbook", SPELLBOOK_SITE)} nothing: its links put a card name or colors in the address, and you paste a list there yourself.` },
+          { p: `The app sends ${link("Scryfall", SCRYFALL_SITE)} your card searches, the Scryfall IDs of cards when you refresh a list or show rulings, and the card names, set codes, and collector numbers of a deck you import. It doesn't send list names, notes, or anything else about you. If you connect GitHub, sync sends your lists, custom presets, and synced settings to your own private repository on ${link("GitHub", GITHUB)}. When you select **Export to GitHub**, the app also sends a full backup there, with your history and every setting. The app sends GitHub nothing else. The app sends ${link("Commander Spellbook", SPELLBOOK_SITE)} nothing: its links put a card name or colors in the address, and you paste a list there yourself.` },
         ],
       },
       {
@@ -661,6 +682,8 @@ export const DOC_PAGES = [
               [wiki("Library"), "Your deck during a game: the cards you draw from, face down. **Sample hand** draws from the top of it."],
               [link("On the play", RULES), "Taking the first turn of a game. In a two-player game, the player on the play skips the draw on their first turn. The other player is on the draw."],
               [wiki("Sideboard"), "Up to 15 extra cards for a Standard deck, which you can swap in between games of a match."],
+              [wiki("Companion"), "A creature with a deckbuilding condition that starts the game outside the deck, in the sideboard. **Import deck** puts a companion in the sideboard."],
+              [wiki("Collector number"), "The number printed on a card, which tells it apart from other cards in its set. With the set code, it names one printing, such as FDN 227."],
               [wiki("Basic land"), "Plains, Island, Swamp, Mountain, Forest, Wastes, and their snow-covered versions. A deck can have any number of them."],
               [wiki("Singleton"), "A deck with only one copy of each card, except basic lands. Brawl and Commander decks are singleton."],
               [wiki("Synergy"), "Cards that are stronger together than apart. **Explore** finds cards with synergy."],

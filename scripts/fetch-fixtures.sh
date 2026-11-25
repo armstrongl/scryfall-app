@@ -75,3 +75,13 @@ gh_get github-contents-404.json "/repos/octocat/Hello-World/contents/no-such-fil
 gh_get github-401.json "/repos/octocat/Hello-World" "not-a-real-token"
 # Added for backups on GitHub: a folder listing.
 gh_get github-dir.json "/repos/octocat/Spoon-Knife/contents/"
+
+# Added for deck import: printings by set and collector number (including
+# the Arena code DAR, which is not a Scryfall set code), then cards by name.
+post collection-import-printings.json "/cards/collection" \
+  '{"identifiers":[{"set":"thb","collector_number":"9"},{"set":"iko","collector_number":"226"},{"set":"eld","collector_number":"235"},{"set":"iko","collector_number":"262"},{"set":"thb","collector_number":"37"},{"set":"fdn","collector_number":"227"},{"set":"dom","collector_number":"1"},{"set":"dar","collector_number":"1"}]}'
+post collection-import-names.json "/cards/collection" \
+  '{"identifiers":[{"name":"Fire // Ice"},{"name":"Bonecrusher Giant"},{"name":"Delver of Secrets"},{"name":"llanowar elves"},{"name":"Lurrus of the Dream Den"},{"name":"Not A Real Card"},{"name":"Daxos, Blessed by the Sun"},{"name":"Opt"}]}'
+# The full name of a split card is not found by name, so try the faces.
+post collection-import-faces.json "/cards/collection" \
+  '{"identifiers":[{"name":"Fire"},{"name":"Bonecrusher Giant // Stomp"},{"name":"Delver of Secrets // Insectile Aberration"},{"name":"Ice"}]}'

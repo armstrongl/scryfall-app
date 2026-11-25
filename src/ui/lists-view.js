@@ -19,6 +19,7 @@ import { cardMedia, glowClass, manaCost } from "./card-view.js";
 import { openDetails } from "./details.js";
 import { openExplore } from "./explore-panel.js";
 import { openAddPanel } from "./add-panel.js";
+import { createImportPanel } from "./import-panel.js";
 import { TIPS } from "../docs.js";
 import { announce, checkbox, confirmBox, copyText, field, formatDate, h, helpLink, message, plural, replace, withTip } from "./dom.js";
 
@@ -36,6 +37,9 @@ export function createListsView(app) {
   /** The last removed entry of a list, shown as an Undo row where it was. */
   const removedByList = new Map();
   let focusUndo = false;
+  /** The Import deck panel. It is kept while open, so a re-render keeps what was typed. */
+  let importPanel = null;
+  let importOpen = false;
 
   function reminder() {
     return needsBackupReminder(app.settings, Date.now(), BACKUP_REMINDER_DAYS)
@@ -79,15 +83,43 @@ export function createListsView(app) {
     h("h2", { id: "new-list-title", text: "New list" }),
     h("div", { class: "grid-3" }, field("Name", name), field("Kind", kind), formatField),
     err,
-    h("button", { type: "submit", class: "primary", text: "Make list" }));
+    // One primary button per view: the Import deck panel has it while open.
+    h("button", { type: "submit", class: importOpen ? "" : "primary", text: "Make list" }));
 
     const lists = app.lists.slice().sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    const importBtn = h("button", {
+      type: "button",
+      id: "import-deck-btn",
+      text: "Import deck",
+      "aria-expanded": String(importOpen),
+      "aria-controls": importOpen ? "import-panel" : null,
+      onclick: () => {
+        importOpen = !importOpen;
+        render();
+        if (importOpen) importPanel?.focus();
+      },
+    });
+    if (importOpen) {
+      importPanel ??= createImportPanel(app, {
+        onClose: () => {
+          importOpen = false;
+          if (!currentId) {
+            render();
+            document.getElementById("import-deck-btn")?.focus();
+          }
+        },
+      });
+      importPanel.el.id = "import-panel";
+      importPanel.refreshTargets();
+    }
     replace(el,
       h("div", { class: "view-head" },
         h("h1", { id: "lists-title", class: "view-title", tabindex: "-1", text: "Lists" }),
         h("p", { class: "tagline", text: "Collections, decks, and brews in progress." })),
       app.storageOk ? null : message("warn", "Storage is not available in this browser window. Lists are lost when you close the page."),
       reminder(),
+      h("div", { class: "list-actions" }, withTip(importBtn, TIPS.importDeck)),
+      importOpen ? importPanel.el : null,
       lists.length === 0
         ? h("p", { class: "empty", text: "You have no lists yet. Make one here, or add a card from Discover." })
         : h("ul", { class: "list-index" }, lists.map((l) =>
@@ -722,11 +754,14 @@ export function createListsView(app) {
   function describe(node) {
     // The More menu closes on re-render, so its buttons go back to More.
     if (node.closest("#list-more")) return { rowId: null, id: "list-more-btn", controlIndex: -1 };
+    // The Import deck panel is kept across re-renders, so its control comes back as is.
+    if (node.closest("#import-panel")) return { node };
     const row = node.closest("li");
     const rowId = row?.dataset.entryId ?? null;
     return { rowId, id: node.id || null, controlIndex: focusable(row ?? el).indexOf(node) };
   }
-  function restore({ rowId, id, controlIndex }) {
+  function restore({ node, rowId, id, controlIndex }) {
+    if (node?.isConnected) return node.focus();
     const byId = id ? document.getElementById(id) : null;
     if (byId && !byId.disabled && byId.getClientRects().length > 0) return byId.focus();
     const scope = rowId ? el.querySelector(`li[data-entry-id="${CSS.escape(rowId)}"]`) : el;

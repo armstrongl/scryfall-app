@@ -1,6 +1,6 @@
 # Agent instructions
 
-These instructions are for every coding agent that works in this repository: Claude Code, OpenAI Codex, GitHub Copilot, and agents in [Superset](https://superset.sh) workspaces. Read `README.md` for what the app does and how the code is laid out. `PLAN.md` is the full v1 specification, and `REPORT.md` records where the build differs from it and lists known problems.
+These instructions are for every coding agent that works in this repository: Claude Code, OpenAI Codex, GitHub Copilot, and agents in [Paradev](https://paradev.com) (formerly Superset) workspaces. Read `README.md` for what the app does and how the code is laid out. `PLAN.md` is the full v1 specification, and `REPORT.md` records where the build differs from it and lists known problems.
 
 Cascade is a personal app first. Direct requests in the session outrank research and guesses about other players.
 

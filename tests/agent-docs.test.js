@@ -103,6 +103,17 @@ test("every relative link in the agent docs points to a file that exists", () =>
   assert.deepEqual(broken, []);
 });
 
+test("the agent docs call the workspace tool Paradev, not only Superset", () => {
+  const docs = ["AGENTS.md", "CLAUDE.md", ...FILES.filter((f) => /^\.claude\/rules\/.*\.md$|^\.agents\/skills\/.*\/SKILL\.md$/.test(f))];
+  const stale = [];
+  for (const doc of docs) {
+    const text = read(doc);
+    if (/\bsuperset\s+(ws|workspaces)\b/i.test(text)) stale.push(`${doc}: runs the old superset command`);
+    if (/\bSuperset\b/.test(text) && !/\bParadev\b/.test(text)) stale.push(`${doc}: says Superset without Paradev`);
+  }
+  assert.deepEqual(stale, []);
+});
+
 test("the shared skills exist for Codex and Claude Code", () => {
   for (const skill of SKILLS) {
     const file = `.agents/skills/${skill}/SKILL.md`;

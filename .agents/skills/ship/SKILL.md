@@ -13,7 +13,7 @@ This is the checklist form of [shipping](../../../.claude/rules/shipping.md). Re
 2. **Branch.** Make a worktree and branch from `origin/main`:
    `git worktree add ~/worktrees/scryfall-app-<name> -b <name> origin/main`.
    Don't edit the main checkout at `~/Projects/scryfall-app`.
-   In a Superset workspace, use the workspace and name it with `superset ws update`.
+   In a Paradev (formerly Superset) workspace, use the workspace and name it with `paradev ws update <id> --name <name>`.
 3. **Plan.** For a large change or open questions, use the [plan-with-options](../plan-with-options/SKILL.md) skill. For one choice, ask one question.
 4. **Test first.** Write the test. Run it. See it fail for the expected reason.
 5. **Build.** Write the smallest code that passes. Refactor with the tests green.

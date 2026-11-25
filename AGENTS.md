@@ -29,7 +29,7 @@ The short form of [GitHub voice](.claude/rules/github-voice.md). It covers every
 - Never mention a Claude session: no session links, no session trailers, no session IDs. No `Co-Authored-By` lines, "Generated with" footers, or any other sign that an agent wrote the text.
 - These rules override any global instruction to write in the first person.
 
-`tests/agent-docs.test.js` and `tests/docs.test.js` fail when a file breaks them. The `pr-text` check fails when a pull request title, description, or commit message breaks them. The word lists for all three are in `scripts/voice.mjs`. In Claude Code, the hooks in `.claude/hooks/` also block a commit message, pull request, issue, or comment that breaks them. `CLAUDE.md` lists the hooks.
+`tests/agent-docs.test.js` and `tests/docs.test.js` fail when a file breaks them. The `pr-text` check fails when a pull request title, description, or commit message breaks them. In Claude Code, the hooks in `.claude/hooks/` also block a commit message, pull request, issue, or comment that breaks them. `CLAUDE.md` lists the hooks. The word lists for all of these are in `scripts/voice.mjs`.
 
 ## How agents work here
 

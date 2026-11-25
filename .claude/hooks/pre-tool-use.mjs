@@ -13,12 +13,12 @@
 // It fails safe: input it can't read, or any error, gives no decision, so
 // the normal permission flow applies. It never allows a tool call.
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { isAbsolute, relative, resolve } from "node:path";
-import { pathToFileURL } from "node:url";
-import { parseShell } from "./shell.mjs";
-import { expandCatHeredocs, voiceProblems } from "./voice.mjs";
+import { fileURLToPath } from "node:url";
+import { voiceProblems } from "../../scripts/voice.mjs";
+import { expandCatHeredocs, parseShell } from "./shell.mjs";
 
 const REPO = "armstrongl/scryfall-app";
 const RULE = ".claude/rules/github-voice.md";
@@ -29,9 +29,23 @@ const isOurRepo = (name) => new RegExp(`(^|[/:])${REPO}(\\.git)?/?$`, "i").test(
 
 const expandHome = (path) => (path === "~" || path.startsWith("~/") ? homedir() + path.slice(1) : path);
 
+/** The text a command reads on stdin: a heredoc, a file, or the output of cat, echo, or printf piped in. */
+function stdinText(cmd, dir) {
+  if (cmd.stdin != null) return cmd.stdin;
+  if (cmd.stdinFile) return readText(cmd.stdinFile, dir, {});
+  const from = cmd.pipedFrom && program(cmd.pipedFrom.words).words;
+  if (!from) return "";
+  if (from[0] === "cat") {
+    const files = from.slice(1).filter((a) => !a.startsWith("-"));
+    return files.length ? files.map((f) => readText(f, dir, {})).join("\n") : stdinText(cmd.pipedFrom, dir);
+  }
+  if (from[0] === "echo" || from[0] === "printf") return from.slice(1).filter((a) => !/^-[a-zA-Z]$/.test(a)).join(" ");
+  return "";
+}
+
 /** The text of a file named in a command, or "" when it can't be read. */
 function readText(path, dir, cmd) {
-  if (path === "-") return cmd.stdin ?? (cmd.stdinFile ? readText(cmd.stdinFile, dir, { stdin: "" }) : "");
+  if (path === "-") return stdinText(cmd, dir);
   const file = resolve(dir, expandHome(path));
   try {
     if (!existsSync(file) || statSync(file).size > MAX_FILE) return "";
@@ -50,14 +64,33 @@ function remoteOf(dir) {
   }
 }
 
-/** Skips VAR=value words and wrappers such as env, and returns the rest. */
+const WRAPPERS = new Set(["env", "command", "exec", "nohup", "time", "sudo", "builtin", "nice"]);
+const KEYWORDS = new Set(["if", "then", "elif", "else", "do", "while", "until", "!", "{", "}", "fi", "done"]);
+
+/**
+ * The program and its arguments, after keywords such as "then", VAR=value
+ * words, and wrappers such as env and their options. Also returns the
+ * variables set before the program.
+ */
 function program(words) {
-  const wrappers = new Set(["env", "command", "exec", "nohup", "time", "sudo", "builtin"]);
+  const env = {};
   let i = 0;
-  while (i < words.length && (/^[A-Za-z_][A-Za-z0-9_]*=/.test(words[i]) || wrappers.has(words[i]))) i++;
+  while (i < words.length) {
+    const w = words[i];
+    const assign = w.match(/^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/s);
+    if (assign) { env[assign[1]] = assign[2]; i++; continue; }
+    if (KEYWORDS.has(w)) { i++; continue; }
+    if (WRAPPERS.has(w)) {
+      i++;
+      // Options of env and the like, such as -u NAME or -i.
+      while (i < words.length && words[i].startsWith("-") && words[i] !== "--") i += ["-u", "-C", "-S", "-n", "-g", "-p"].includes(words[i]) ? 2 : 1;
+      continue;
+    }
+    break;
+  }
   const rest = words.slice(i);
   if (rest[0]) rest[0] = rest[0].split("/").pop();
-  return rest;
+  return { words: rest, env };
 }
 
 /**
@@ -104,11 +137,11 @@ function isForcePush(args) {
 }
 
 const GH_TEXT_SUBS = {
-  pr: new Set(["create", "edit", "comment", "review", "merge"]),
-  issue: new Set(["create", "edit", "comment"]),
+  pr: new Set(["create", "edit", "comment", "review", "merge", "close", "reopen"]),
+  issue: new Set(["create", "edit", "comment", "close", "reopen"]),
   release: new Set(["create", "edit"]),
 };
-const GH_TEXT_FLAGS = new Set(["-t", "--title", "--subject", "-b", "--body", "-n", "--notes"]);
+const GH_TEXT_FLAGS = new Set(["-t", "--title", "--subject", "-b", "--body", "-n", "--notes", "-c", "--comment"]);
 const GH_FILE_FLAGS = new Set(["-F", "--body-file", "--notes-file"]);
 const TEXT_KEYS = new Set(["title", "body", "message", "subject", "notes", "commit_title", "commit_message"]);
 
@@ -152,7 +185,8 @@ function ghTexts(args, dir, cmd) {
   }
   if (group === "api") {
     const endpoint = args.slice(1).find((a) => !a.startsWith("-") && /\//.test(a)) ?? "";
-    const m = endpoint.match(/repos\/([^/]+\/[^/?]+)/);
+    // gh fills in {owner}/{repo} from the current repository.
+    const m = endpoint.match(/repos\/([^/{]+\/[^/?{]+)/);
     for (let j = 1; j < args.length; j++) {
       const a = args[j];
       if (["-f", "--raw-field", "-F", "--field"].includes(a)) {
@@ -176,12 +210,22 @@ function ghTexts(args, dir, cmd) {
  * @param {string} command
  * @param {string} cwd
  */
-export function checkBash(command, cwd) {
+export function checkBash(command, cwd, depth = 0) {
   const problems = [];
   let force = false;
   let dir = cwd;
   for (const cmd of parseShell(command)) {
-    const w = program(cmd.words);
+    const { words: w, env } = program(cmd.words);
+    // A script run with bash -c, sh -c, or zsh -c is checked as a command.
+    if (["bash", "sh", "zsh"].includes(w[0]) && depth < 3) {
+      const c = w.indexOf("-c");
+      if (c > 0 && w[c + 1]) {
+        const inner = checkBash(w[c + 1], dir, depth + 1);
+        if (inner?.decision === "deny") return inner;
+        if (inner?.decision === "ask") force = true;
+      }
+      continue;
+    }
     if (w[0] === "cd" && w[1]) { dir = resolve(dir, expandHome(w[1])); continue; }
     if (w[0] === "git") {
       let i = 1;
@@ -197,17 +241,17 @@ export function checkBash(command, cwd) {
         const texts = gitMessages(args, gitDir, cmd);
         if (texts.length) {
           const remote = remoteOf(gitDir);
-          const ownRepo = !remote || isOurRepo(remote);
-          for (const t of texts) problems.push(...voiceProblems(expandCatHeredocs(t), { ownRepo }));
+          const person = !remote || isOurRepo(remote);
+          for (const t of texts) problems.push(...voiceProblems(expandCatHeredocs(t), { person }));
         }
       }
     }
     if (w[0] === "gh") {
       const { texts, repo } = ghTexts(w.slice(1), dir, cmd);
       if (texts.length) {
-        const target = repo ?? remoteOf(dir);
-        const ownRepo = !target || isOurRepo(target);
-        for (const t of texts) problems.push(...voiceProblems(expandCatHeredocs(t), { ownRepo }));
+        const target = repo ?? env.GH_REPO ?? remoteOf(dir);
+        const person = !target || isOurRepo(target);
+        for (const t of texts) problems.push(...voiceProblems(expandCatHeredocs(t), { person }));
       }
     }
   }
@@ -219,8 +263,8 @@ export function checkBash(command, cwd) {
 /** The decision for a GitHub MCP tool call, or null. */
 export function checkGitHubTool(input) {
   const texts = jsonTexts(input);
-  const ownRepo = !(input.owner && input.repo) || isOurRepo(`${input.owner}/${input.repo}`);
-  const problems = texts.flatMap((t) => voiceProblems(t, { ownRepo }));
+  const person = !(input.owner && input.repo) || isOurRepo(`${input.owner}/${input.repo}`);
+  const problems = texts.flatMap((t) => voiceProblems(t, { person }));
   return problems.length ? deny(problems) : null;
 }
 
@@ -257,7 +301,12 @@ export function decide(input) {
   return null;
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+/** True when this file is the script Node.js was started with, even through a symlink. */
+function isMain() {
+  try { return realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url)); } catch { return false; }
+}
+
+if (isMain()) {
   try {
     const result = decide(JSON.parse(readFileSync(0, "utf8")));
     if (result) {

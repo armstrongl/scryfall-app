@@ -8,23 +8,25 @@
 // error gives no output.
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { readFileSync, statSync, writeFileSync } from "node:fs";
+import { readFileSync, realpathSync, statSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 
 const git = (dir, args) => execFileSync("git", ["-C", dir, ...args], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], timeout: 5000, maxBuffer: 64 * 1024 * 1024 });
 
 /** A fingerprint of the changes that aren't committed, or null for none. */
 export function changesFingerprint(dir) {
-  const status = git(dir, ["status", "--porcelain=v1", "-z", "--untracked-files=all"]);
+  // Paths in the status are relative to the top of the worktree.
+  const top = git(dir, ["rev-parse", "--show-toplevel"]).trim();
+  const status = git(top, ["status", "--porcelain=v1", "-z", "--untracked-files=all"]);
   if (!status) return null;
   const hash = createHash("sha256").update(status);
-  try { hash.update(git(dir, ["diff", "HEAD"])); } catch { /* no commit yet */ }
+  try { hash.update(git(top, ["diff", "HEAD"])); } catch { /* no commit yet */ }
   // Untracked files have no diff, so their size and time stand in for it.
   for (const entry of status.split("\0")) {
     if (!entry.startsWith("?? ")) continue;
     try {
-      const s = statSync(resolve(dir, entry.slice(3)));
+      const s = statSync(resolve(top, entry.slice(3)));
       hash.update(`${entry}:${s.size}:${s.mtimeMs}`);
     } catch { /* gone */ }
   }
@@ -45,7 +47,12 @@ export function reminder(input) {
   return "Files changed since the last commit. If npm test hasn't run since the last edit, run it now. Then go through \"Before you finish\" in AGENTS.md. If the tests already passed, stop.";
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+/** True when this file is the script Node.js was started with, even through a symlink. */
+function isMain() {
+  try { return realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url)); } catch { return false; }
+}
+
+if (isMain()) {
   try {
     const text = reminder(JSON.parse(readFileSync(0, "utf8")));
     if (text) process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: "Stop", additionalContext: text } }) + "\n");

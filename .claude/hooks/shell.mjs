@@ -2,14 +2,16 @@
 // tool. It splits a command line into simple commands and their words, with
 // quotes removed, and keeps the text of heredocs and here-strings. It is
 // enough to find the message of a commit or the body of a pull request. It
-// doesn't run anything or expand variables. Command substitutions such as
-// $(cat <<'EOF' ... EOF) stay in a word as their raw text.
+// doesn't run anything or expand variables. A command substitution such as
+// $(cat <<'EOF' ... EOF) stays in its word as raw text, and the commands
+// inside it are returned too.
 
 /**
  * @typedef {object} SimpleCommand
  * @property {string[]} words The words, with quotes removed.
  * @property {string|null} stdin Text from a heredoc or here-string.
  * @property {string|null} stdinFile A file read with "<".
+ * @property {SimpleCommand|null} pipedFrom The command whose output is piped in.
  */
 
 /**
@@ -18,15 +20,21 @@
  * @returns {SimpleCommand[]}
  */
 export function parseShell(src) {
-  const p = { src, i: 0 };
-  return parseList(p, false);
+  const p = { src, i: 0, nested: [] };
+  const commands = parseList(p, false);
+  return [...commands, ...p.nested];
+}
+
+/** Replaces each $(cat <<'EOF' ... EOF) in a shell value with the text it prints. */
+export function expandCatHeredocs(value) {
+  return value.replace(/\$\(\s*cat\s*<<-?\s*(['"]?)(\w+)\1[ \t]*\n([\s\S]*?)\n[ \t]*\2[ \t]*\n?\s*\)/g, (_, _q, _d, body) => body);
 }
 
 function parseList(p, inSub) {
   const { src } = p;
   const commands = [];
   const pending = [];
-  let cmd = { words: [], stdin: null, stdinFile: null };
+  let cmd = { words: [], stdin: null, stdinFile: null, pipedFrom: null };
   let word = null;
   let expect = null;
   let hereStrip = false;
@@ -41,10 +49,11 @@ function parseList(p, inSub) {
     else if (role !== "out") cmd.words.push(word);
     word = null;
   };
-  const endCmd = () => {
+  const endCmd = (pipe = false) => {
     endWord();
+    const prev = cmd;
     if (cmd.words.length) commands.push(cmd);
-    cmd = { words: [], stdin: null, stdinFile: null };
+    cmd = { words: [], stdin: null, stdinFile: null, pipedFrom: pipe && prev.words.length ? prev : null };
   };
   const readHeredocs = () => {
     for (const h of pending.splice(0)) {
@@ -69,7 +78,8 @@ function parseList(p, inSub) {
       while (p.i < src.length && src[p.i] !== "\n") p.i++;
       continue;
     }
-    if (c === ";" || c === "&" || c === "|") { endCmd(); p.i++; continue; }
+    if (c === "|" && src[p.i + 1] !== "|") { endCmd(true); p.i += src[p.i + 1] === "&" ? 2 : 1; continue; }
+    if (c === ";" || c === "&" || c === "|") { endCmd(); p.i += src[p.i + 1] === c ? 2 : 1; continue; }
     if (c === "(" && word === null) { endCmd(); p.i++; commands.push(...parseList(p, true)); continue; }
     if (c === ")") { endCmd(); p.i++; continue; }
     if (c === "<") {
@@ -80,7 +90,7 @@ function parseList(p, inSub) {
         hereStrip = src[p.i] === "-";
         if (hereStrip) p.i++;
         expect = "heredoc";
-      } else if (src[p.i + 1] === "(") { p.i += 2; parseList(p, true); }
+      } else if (src[p.i + 1] === "(") { p.i += 2; p.nested.push(...parseList(p, true)); }
       else { expect = "in"; p.i++; }
       continue;
     }
@@ -146,7 +156,7 @@ function readDouble(p) {
 function readSubst(p) {
   const start = p.i;
   p.i += 2;
-  parseList(p, true);
+  p.nested.push(...parseList(p, true));
   return p.src.slice(start, p.i);
 }
 

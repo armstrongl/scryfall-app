@@ -6,6 +6,7 @@ import {
 } from "../src/query.js";
 import { PARTNER_QUERIES, rewardsQuery } from "../src/synergy.js";
 import { VERIFIED_TAGS } from "../src/explore.js";
+import { BUILT_IN_PRESETS } from "../src/presets.js";
 
 const API = "https://api.scryfall.com";
 const HEADERS = { Accept: "application/json;q=0.9,*/*;q=0.8", "User-Agent": "CardDiscoveryDev/0.1" };
@@ -124,6 +125,19 @@ for (const set of candidates) {
 console.log(`${anyLegal ? "ok  " : "BAD "} A candidate set is legal in Standard on Arena`);
 const ltr = await search(standardSetCheck("ltr"));
 console.log(`${ltr.status === 404 ? "ok  " : "BAD "} The Lord of the Rings finds no new Standard cards: ${ltr.status} ${ltr.body.total_cards ?? ltr.body.code}`);
+
+console.log("\n## Built-in presets (each one in src/presets.js finds cards, with no warnings)");
+for (const p of BUILT_IN_PRESETS) {
+  const q = buildQuery(p.criteria).query;
+  const { status, body } = await search(q);
+  const ok = status === 200 && body.total_cards > 0 && !body.warnings?.length;
+  console.log(`${ok ? "ok  " : "BAD "} ${p.name.padEnd(32)} ${q.padEnd(56)} ${status} ${body.total_cards ?? body.code}`);
+}
+// The non-basic lands presets leave out basic lands, snow ones and Wastes too.
+for (const name of ["Forest", "Snow-Covered Island", "Wastes"]) {
+  const r = await search(`!"${name}" ${buildQuery(BUILT_IN_PRESETS.find((p) => p.id === "builtin-commander-lands").criteria).query}`);
+  console.log(`${r.status === 404 ? "ok  " : "BAD "} Non-basic lands leave out ${name}: ${r.status} ${r.body.total_cards ?? r.body.code}`);
+}
 
 console.log("\n## Synergy queries (each partner query in src/synergy.js, in Standard on Arena)");
 const synergy = { ...PARTNER_QUERIES, "rewards (Elf)": rewardsQuery("Elf"), "exclude a card": 't:elf -!"Llanowar Elves"' };

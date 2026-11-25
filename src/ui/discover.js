@@ -7,7 +7,8 @@ import { MAX_DRAW, MIN_DRAW, POOL_DEBOUNCE_MS, SMALL_POOL_SIZE } from "../config
 import { cardKey, makeSnapshot } from "../cards.js";
 import { drawBatch, planCount, recentKeys, sampleFromPool } from "../draw.js";
 import { SORT_DIRECTIONS, SORT_OPTIONS, browseParams, emptyBrowse, mergePage, normalizeSort } from "../browse.js";
-import { buildQuery, defaultCriteria, emptyCriteria, filterChips, isEmptyCriteria, localDay, newestSetPreset, normalizeCriteria, scryfallSearchUrl } from "../query.js";
+import { buildQuery, emptyCriteria, filterChips, isEmptyCriteria, localDay, newestSetPreset, normalizeCriteria, scryfallSearchUrl } from "../query.js";
+import { builtInPresets, matchingPreset } from "../presets.js";
 import { errorMessage } from "../scryfall.js";
 import { openAddPanel } from "./add-panel.js";
 import { openExplore } from "./explore-panel.js";
@@ -18,30 +19,6 @@ import { createDeckMode } from "./deck-bar.js";
 import { startingCriteria } from "../deck-mode.js";
 import { TIPS } from "../docs.js";
 import { announce, confirmBox, field, formatDate, formatNumber, h, message, plural, replace, withTip } from "./dom.js";
-
-export const BUILT_IN_PRESET = Object.freeze({
-  id: "builtin-arena-standard",
-  name: "Arena Standard",
-  builtIn: true,
-  criteria: defaultCriteria(),
-  createdAt: "2026-01-01T00:00:00.000Z",
-  updatedAt: "2026-01-01T00:00:00.000Z",
-});
-
-/**
- * Arena's 100-card Brawl, with colors read as color identity. On 2026-11-05
- * the API listed no rebalanced card as legal in Brawl (is:rebalanced
- * f:brawl found nothing), so leaving them out changes nothing.
- */
-export const BRAWL_PRESET = Object.freeze({
-  id: "builtin-arena-brawl",
-  name: "Arena Brawl",
-  builtIn: true,
-  criteria: { ...defaultCriteria(), format: "brawl", useIdentity: true },
-  createdAt: "2026-01-01T00:00:00.000Z",
-  updatedAt: "2026-01-01T00:00:00.000Z",
-});
-const BUILT_INS = [BUILT_IN_PRESET, BRAWL_PRESET];
 
 /** @param {import("../main.js").App} app */
 export function createDiscoverView(app) {
@@ -102,9 +79,12 @@ export function createDiscoverView(app) {
   }
 
   // Presets ----------------------------------------------------------------------
-  const presetSelect = h("select", { onchange: () => syncPresetButtons() });
+  // Choosing a preset applies it at once. The list always names the preset
+  // that matches the filters, or says Custom filters when none does.
+  const presetSelect = h("select", { onchange: applyPreset });
   const presetSlot = h("div", { class: "preset-slot" });
-  const applyBtn = h("button", { type: "button", text: "Apply", onclick: applyPreset });
+  /** The preset chosen or saved last, so a twin of a built-in preset stays named. */
+  let chosenId = null;
   const saveBtn = h("button", { type: "button", text: "Save as preset", onclick: () => showNameForm("save") });
   const renameBtn = h("button", { type: "button", class: "ghost", text: "Rename", onclick: () => showNameForm("rename") });
   const deleteBtn = h("button", { type: "button", class: "ghost", text: "Delete", onclick: confirmDelete });
@@ -130,30 +110,46 @@ export function createDiscoverView(app) {
       .finally(() => { newestLoading = false; });
   }
   function allPresets() {
-    return [...BUILT_INS, ...(newestPreset ? [newestPreset] : []), ...app.presets.slice().sort((a, b) => a.name.localeCompare(b.name))];
+    return [...builtInPresets(newestPreset), ...app.presets.slice().sort((a, b) => a.name.localeCompare(b.name))];
   }
+  /** @returns {import("../export.js").Preset|null} Null for Custom filters. */
   function selectedPreset() {
-    return allPresets().find((p) => p.id === presetSelect.value) ?? BUILT_IN_PRESET;
+    return allPresets().find((p) => p.id === presetSelect.value) ?? null;
   }
-  function renderPresets(selectId = presetSelect.value) {
-    replace(presetSelect, allPresets().map((p) => h("option", { value: p.id, text: p.builtIn ? `${p.name} (built in)` : p.name })));
-    presetSelect.value = allPresets().some((p) => p.id === selectId) ? selectId : BUILT_IN_PRESET.id;
+  /** The preset that matches the filters: the one chosen last if it still matches. */
+  function currentPreset() {
+    const presets = allPresets();
+    const criteria = form.get();
+    const chosen = presets.find((p) => p.id === chosenId);
+    if (chosen && matchingPreset(criteria, [chosen])) return chosen;
+    return matchingPreset(criteria, presets);
+  }
+  function renderPresets() {
+    const match = currentPreset();
+    replace(presetSelect, [
+      match ? null : h("option", { value: "", text: "Custom filters" }),
+      ...allPresets().map((p) => h("option", { value: p.id, text: p.builtIn ? `${p.name} (built in)` : p.name })),
+    ]);
+    presetSelect.value = match?.id ?? "";
     syncPresetButtons();
   }
   function syncPresetButtons() {
-    const builtIn = selectedPreset().builtIn;
-    // The built-in preset can't be renamed or deleted, so hide those buttons.
-    renameBtn.hidden = builtIn;
-    deleteBtn.hidden = builtIn;
+    // Built-in presets and Custom filters can't be renamed or deleted.
+    const fixed = selectedPreset()?.builtIn ?? true;
+    renameBtn.hidden = fixed;
+    deleteBtn.hidden = fixed;
   }
   function applyPreset() {
     const p = selectedPreset();
+    if (!p) return;
+    chosenId = p.id;
     form.set(p.criteria);
     onCriteria(form.get());
     announce(`Applied the preset ${p.name}.`);
   }
   function showNameForm(formMode) {
     const p = selectedPreset();
+    if (formMode === "rename" && !p) return;
     const input = h("input", { type: "text", required: true, autocomplete: "off", value: formMode === "rename" ? p.name : "" });
     const err = h("div");
     const f = h("form", {
@@ -171,7 +167,8 @@ export function createDiscoverView(app) {
           : { id: crypto.randomUUID(), name, builtIn: false, criteria: form.get(), createdAt: now, updatedAt: now };
         if (await app.savePreset(preset)) {
           presetSlot.replaceChildren();
-          renderPresets(preset.id);
+          chosenId = preset.id;
+          renderPresets();
           announce(formMode === "rename" ? `Renamed the preset to ${name}.` : `Saved the preset ${name}.`);
           presetSelect.focus();
         }
@@ -187,14 +184,14 @@ export function createDiscoverView(app) {
   }
   function confirmDelete() {
     const p = selectedPreset();
-    if (p.builtIn) return;
+    if (!p || p.builtIn) return;
     replace(presetSlot, confirmBox({
       message: `Delete the preset ${p.name}? You can't undo this.`,
       confirmLabel: "Delete preset",
       onConfirm: async () => {
         if (await app.deletePreset(p.id)) {
           presetSlot.replaceChildren();
-          renderPresets(BUILT_IN_PRESET.id);
+          renderPresets();
           announce(`Deleted the preset ${p.name}.`);
           presetSelect.focus();
         }
@@ -227,6 +224,7 @@ export function createDiscoverView(app) {
   function onCriteria(criteria) {
     cleared = null;
     current = buildQuery(criteria);
+    renderPresets();
     renderPreview();
     app.saveSettings({ lastCriteria: criteria }, { quiet: true });
     schedulePool();
@@ -704,8 +702,8 @@ export function createDiscoverView(app) {
       h("div", { class: "deck-row" }, deck.menu),
       h("div", { class: "search-top" },
         h("div", { class: "preset-row" },
-          field("Preset", presetSelect),
-          h("div", { class: "row wrap" }, withTip(applyBtn, TIPS.applyPreset), withTip(saveBtn, TIPS.savePreset), renameBtn, deleteBtn)),
+          field("Preset", presetSelect, undefined, TIPS.preset),
+          h("div", { class: "row wrap" }, withTip(saveBtn, TIPS.savePreset), renameBtn, deleteBtn)),
         filtersToggle),
       presetSlot,
       h("div", { class: "chips-row" }, chipList, clearAllWrap, undoClearBtn),
@@ -735,7 +733,7 @@ export function createDiscoverView(app) {
 
   form.set(normalizeCriteria(app.settings.lastCriteria));
   current = buildQuery(form.get());
-  renderPresets(BUILT_IN_PRESET.id);
+  renderPresets();
   renderPreview();
   renderHistory();
   setSort(sort, { quiet: true });

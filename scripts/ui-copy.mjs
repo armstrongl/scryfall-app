@@ -254,6 +254,7 @@ export function buildIndex(root) {
     "| Page title, header, footer, and the Fan Content notice | `index.html`, `src/config.js` (`APP_NAME`, `FAN_CONTENT_NOTICE`) |",
     "| Error messages from Scryfall requests | `errorMessage()` in `src/scryfall.js` |",
     "| Filter chips and search hints | `filterChips()` and `buildQuery()` in `src/query.js` |",
+    "| Built-in preset names and their chip labels | `BUILT_IN_PRESETS` in `src/presets.js`, and `newestSetPreset()` in `src/query.js` |",
     "| Explore suggestions and reasons | `src/explore.js`, `src/synergy.js`, and `src/combos.js` |",
     "| Deck check messages | `src/deck-rules.js` |",
     "| Keyword explanations | `src/glossary.js` |",

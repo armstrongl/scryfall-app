@@ -28,7 +28,7 @@ export const NERD_MODE_TIP =
  */
 export const TIPS = {
   nerdMode: NERD_MODE_TIP,
-  applyPreset: "Replaces the current filters with the filters in this preset.",
+  preset: "Choosing a preset replaces the filters with its filters. Custom filters means the filters don't match a preset.",
   savePreset: "Saves the current filters as a preset, so you can apply them again later.",
   clearFilters: "Removes every filter, including Scryfall search, so any card matches. Undo clear all puts them back.",
   drawMode: "Shows random cards that match your filters. A new draw prefers cards you haven't drawn recently.",
@@ -149,7 +149,7 @@ export const DOC_PAGES = [
           {
             steps: [
               "Open **Discover**.",
-              "Keep the **Arena Standard** preset, or choose another one and select **Apply**.",
+              "Keep the **Arena Standard** preset, or choose another one.",
               "Select **Draw**.",
               "On a card, select **Details** to read everything about it, or **Add** to save it to a list.",
             ],
@@ -173,11 +173,13 @@ export const DOC_PAGES = [
       {
         heading: "Choose what to search",
         blocks: [
-          { p: `A preset is a saved set of filters. The built-in presets are **Arena Standard**, for cards legal in ${format("Standard", "standard")} on MTG Arena, and **Arena Brawl**, for cards legal in ${format("Brawl", "brawl")} on MTG Arena, with colors read as ${wiki("color identity", "Color identity")}.` },
+          { p: "A preset is a saved set of filters. When you choose one, it replaces the filters at once. The **Preset** list names the preset that matches the filters. After you change a filter, it says **Custom filters**." },
+          { p: `The built-in presets for MTG Arena are **Arena Standard**, for cards legal in ${format("Standard", "standard")} on MTG Arena, and **Arena Brawl**, for cards legal in ${format("Brawl", "brawl")} on MTG Arena, with colors read as ${wiki("color identity", "Color identity")}. Each one also has a **non-basic lands** preset, for lands that aren't ${wiki("basic lands", "Basic land")}. The non-basic lands presets include double-faced cards with a land on the back, such as ${card("Agadeem's Awakening")}, because they can fill a land slot.` },
+          { p: `The built-in presets for ${format("Commander", "commander")} read colors as color identity and work for paper cards: **Commander** finds every card legal in Commander. **Commander: under $2 a card** finds cards with a paper price of $2 or less. **Commander: staples** finds about the top 1,000 cards by how many Commander decks play them on ${link("EDHREC", EDHREC)}. **Commander: commanders** finds cards that can be your commander. **Commander: non-basic lands** finds lands that aren't basic lands. **Commander: colorless cards** finds cards with no colors in their color identity, other than lands, so they fit in any deck.` },
           { p: `The built-in **Newest Standard set** preset finds the cards in the newest set that is legal in Standard on MTG Arena. Its name shows the set. The app gets the set from ${link("Scryfall", SCRYFALL_SITE)} when it opens, so the preset shows up a moment after the page loads. A set counts from its release date, so a set that isn't out yet is never chosen. MTG Arena often gets a new set a few days before that date. If Scryfall can't be reached, the preset isn't listed until you come back to **Discover** with a connection.` },
           {
             steps: [
-              "Choose a preset, then select **Apply**.",
+              "Choose a preset.",
               `To narrow the search, select **Filters**. You can filter by ${wiki("format", "Format")}, game, colors, ${wiki("card types", "Card type")}, ${wiki("type line", "Type line")} text, ${wiki("mana value", "Mana value")}, ${wiki("rarity", "Rarity")}, and Scryfall search syntax. More filters are in four groups that open and close: **Card**, **Creature**, **Printing**, and **Popularity**.`,
               "To keep your filters for later, select **Save as preset** and enter a name.",
             ],

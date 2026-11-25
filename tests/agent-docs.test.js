@@ -108,8 +108,9 @@ test("the agent docs call the workspace tool Paradev, not only Superset", () => 
   const stale = [];
   for (const doc of docs) {
     const text = read(doc);
-    if (/\bsuperset\s+(ws|workspaces)\b/i.test(text)) stale.push(`${doc}: runs the old superset command`);
-    if (/\bSuperset\b/.test(text) && !/\bParadev\b/.test(text)) stale.push(`${doc}: says Superset without Paradev`);
+    // The only uses left of the old name: "(formerly Superset)" after Paradev, and the SUPERSET_ variables the CLI sets.
+    const left = text.replace(/\(formerly Superset\)/g, "").replace(/\bSUPERSET_[A-Z_]+/g, "");
+    for (const m of left.matchAll(/.{0,30}superset.{0,30}/gi)) stale.push(`${doc}: ${m[0].trim()}`);
   }
   assert.deepEqual(stale, []);
 });

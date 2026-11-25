@@ -17,7 +17,7 @@ This is the checklist form of [shipping](../../../.claude/rules/shipping.md). Re
 3. **Plan.** For a large change or open questions, use the [plan-with-options](../plan-with-options/SKILL.md) skill. For one choice, ask one question.
 4. **Test first.** Write the test. Run it. See it fail for the expected reason.
 5. **Build.** Write the smallest code that passes. Refactor with the tests green.
-6. **Check.** `npm test` and `node scripts/check-ui.mjs` both pass.
+6. **Check.** `npm test` and `node scripts/check-ui.mjs` both pass. When other agents work at the same time, run the browser tests through the lock: `scripts/scryfall-lock.sh node scripts/check-ui.mjs`.
 7. **Docs.** Go through "Keep the docs in step" in `AGENTS.md`. Update each place the change affects.
 8. **Review.** Ask an Opus subagent for a review. Give it the diff and `AGENTS.md`, not your conclusions. Fix what it finds, or record why not.
 9. **Rebase.** `git fetch origin && git rebase origin/main`. Run the tests again if anything came in.

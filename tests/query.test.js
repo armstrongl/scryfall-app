@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildQuery, defaultCriteria, emptyCriteria, normalizeCriteria, scryfallSearchUrl } from "../src/query.js";
+import { buildQuery, defaultCriteria, emptyCriteria, isEmptyCriteria, normalizeCriteria, scryfallSearchUrl } from "../src/query.js";
 import { FORMAT_KEYS } from "../src/config.js";
 import { fixture } from "./helpers.js";
 
@@ -185,4 +185,16 @@ test("filter chips: a labeled search shows its label in full, not the query", as
   assert.deepEqual(chips[0].clear, { rawQuery: "", rawLabel: "" });
   // A label without a query isn't a filter.
   assert.deepEqual(filterChips({ ...emptyCriteria(), rawLabel: label }), []);
+});
+
+test("isEmptyCriteria: true only when no filter is on, for Clear all filters", () => {
+  assert.equal(isEmptyCriteria(emptyCriteria()), true);
+  assert.equal(isEmptyCriteria(defaultCriteria()), false);
+  // A setting with no chip of its own still counts, so Clear all filters can untick it.
+  assert.equal(isEmptyCriteria({ ...emptyCriteria(), useIdentity: true }), false);
+  assert.equal(isEmptyCriteria({ ...emptyCriteria(), colorMode: "atMost" }), false);
+  assert.equal(isEmptyCriteria({ ...emptyCriteria(), rawQuery: "t:goblin" }), false);
+  assert.equal(isEmptyCriteria({ ...emptyCriteria(), sets: [{ code: "fdn", name: "Foundations" }] }), false);
+  // Blank text is no filter.
+  assert.equal(isEmptyCriteria({ ...emptyCriteria(), typeText: "   " }), true);
 });

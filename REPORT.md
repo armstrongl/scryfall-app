@@ -75,7 +75,7 @@ Not checked: a real phone, Safari, a screen reader, and the reduced-motion setti
 5. **A second 429 also pauses the queue.** The plan says to reject the request after a second 429. The queue does that and also pauses for another 30 seconds, so the requests behind it don't run into the block. This is the more conservative choice.
 6. **Free text is quoted for more than spaces.** The type line and keyword fields add quotes when the text has a space or one of `( ) : < > = !`. Rules text is always quoted, as in the table. Reason: these characters have meaning in Scryfall syntax.
 7. **Two more hints in the query builder**: "Choose at least one color" when the color mode is not Any but no color is selected, and "Choose a color mode" when colors are selected with mode Any. Also a hint when the minimum mana value is more than the maximum.
-8. **Empty query.** When all criteria are off, the app does not request a pool size (`/cards/search` needs a query) and shows "Add a criterion to see how many cards match." A draw with an empty query calls `/cards/random` with no `q`.
+8. **Empty query.** When all criteria are off, the app does not request a pool size (`/cards/search` needs a query) and shows "Add a filter to see how many cards match." A draw with an empty query calls `/cards/random` with no `q`.
 9. **Criteria collapse on phones.** The criteria panel is a disclosure that starts closed below 1000 px, so the Draw button is near the top of the page. The query preview always shows the full query.
 10. **No sticky header.** The sticky header and panel are gone, so that nothing can cover a card image while the page scrolls.
 11. **Readable format names.** `competitivebrawl` and `tlr` show only the key, because their names could not be confirmed.
@@ -796,3 +796,32 @@ Where the docs were silent:
 
 - A random draw can still draw a card that is in the deck. With hiding on, it is drawn and hidden, so a draw can show fewer cards than asked for.
 - [Issue #26](https://github.com/armstrongl/scryfall-app/issues/26) builds on deck mode and isn't part of this change.
+
+# Clear all filters (25 November 2026)
+
+**Clear all filters** in Discover removes every filter at once, including the **Scryfall search** field.
+
+## What changed
+
+- **Clear all filters** sits after the filter chips. It shows only when a filter or setting is on, including settings with no chip of their own, such as **Use color identity** alone.
+- After a clear, **Undo clear all** takes its place and gets focus. It puts back every filter, and the color mode the app picked still follows **Use color identity**. It stays until the filters change again.
+- **Show cards** in Browse with no filters says "Add a filter to see cards." and sends no request, because Scryfall's search needs a query.
+
+## Changes from the plan
+
+`PLAN.md` has no clear-all control. It is an addition.
+
+## Decisions
+
+- Clear all goes to no filters at all ("No filters: any card"), not back to **Arena Standard**. The request asked to reset all filters, and the **Arena Standard** preset is one **Apply** away.
+- **Undo clear all** is inline, like **Remove** and **Undo** in **Lists**, not in the toast at the top of the page. The toast is far from focus, closes after 12 seconds, and is replaced by any other message.
+- A clear also removes the note about a search from Explore, because that search is gone.
+
+## Tests
+
+- Written first and seen failing: the `isEmptyCriteria()` unit test in `tests/query.test.js`, and the browser checks in `clearFilters()` in `scripts/check-ui.mjs`, which failed with no **Clear all filters** button.
+- An Opus review found that Undo lost the color mode the app picked, that Undo in the toast was hard to reach, and that the button hid when only **Use color identity** was on. The browser checks for inline Undo and focus were written before the fix and failed. The checks for the color mode after Undo and for Browse with no filters were proved able to fail by breaking the code on purpose.
+
+## Known problems
+
+- The text in the **Set** search box stays after a clear. It is not a filter, only the search over the set list.

@@ -7,7 +7,7 @@ import { MAX_DRAW, MIN_DRAW, POOL_DEBOUNCE_MS, SMALL_POOL_SIZE } from "../config
 import { cardKey, makeSnapshot } from "../cards.js";
 import { drawBatch, planCount, recentKeys, sampleFromPool } from "../draw.js";
 import { SORT_DIRECTIONS, SORT_OPTIONS, browseParams, emptyBrowse, mergePage, normalizeSort } from "../browse.js";
-import { buildQuery, defaultCriteria, filterChips, localDay, newestSetPreset, normalizeCriteria, scryfallSearchUrl } from "../query.js";
+import { buildQuery, defaultCriteria, emptyCriteria, filterChips, isEmptyCriteria, localDay, newestSetPreset, normalizeCriteria, scryfallSearchUrl } from "../query.js";
 import { errorMessage } from "../scryfall.js";
 import { openAddPanel } from "./add-panel.js";
 import { openExplore } from "./explore-panel.js";
@@ -225,6 +225,7 @@ export function createDiscoverView(app) {
   const openLink = h("a", { id: "open-scryfall", class: "button ghost", target: "_blank", rel: "noopener", text: "Open on Scryfall" });
 
   function onCriteria(criteria) {
+    cleared = null;
     current = buildQuery(criteria);
     renderPreview();
     app.saveSettings({ lastCriteria: criteria }, { quiet: true });
@@ -234,8 +235,37 @@ export function createDiscoverView(app) {
     }
   }
 
+  // One button removes every filter, including the Scryfall search. Undo
+  // takes its place until the filters change again, as Remove does in Lists.
+  /** What Clear all filters removed, while Undo can still put it back. */
+  let cleared = null;
+  const clearAllBtn = h("button", { type: "button", id: "clear-filters", class: "ghost", text: "Clear all filters", onclick: clearAll });
+  const clearAllWrap = withTip(clearAllBtn, TIPS.clearFilters);
+  const undoClearBtn = h("button", { type: "button", id: "undo-clear", class: "ghost", text: "Undo clear all", hidden: true, onclick: undoClear });
+  function clearAll() {
+    const before = form.snapshot();
+    form.set(emptyCriteria());
+    onCriteria(form.get());
+    cleared = before;
+    // A note about a search from Explore no longer fits.
+    drawNotes.replaceChildren();
+    renderChips();
+    undoClearBtn.focus();
+    announce("Cleared all filters. Select Undo clear all to put them back.");
+  }
+  function undoClear() {
+    if (!cleared) return;
+    form.restore(cleared);
+    onCriteria(form.get());
+    clearAllBtn.focus();
+    announce("Put the filters back.");
+  }
+
   function renderChips() {
     const chips = filterChips(form.get());
+    clearAllBtn.hidden = isEmptyCriteria(form.get());
+    clearAllWrap.hidden = clearAllBtn.hidden;
+    undoClearBtn.hidden = !cleared;
     if (chips.length === 0) {
       replace(chipList, h("li", { class: "chip chip-empty", text: "No filters: any card" }));
       return;
@@ -533,6 +563,12 @@ export function createDiscoverView(app) {
       replace(drawNotes, message("error", current.error));
       return;
     }
+    // Scryfall's search needs a query, so an empty one isn't sent.
+    if (!current.query) {
+      replace(browseStatus, "Add a filter to see cards.");
+      announce(browseStatus.textContent);
+      return;
+    }
     browseController?.abort();
     const controller = new AbortController();
     browseController = controller;
@@ -672,7 +708,7 @@ export function createDiscoverView(app) {
           h("div", { class: "row wrap" }, withTip(applyBtn, TIPS.applyPreset), withTip(saveBtn, TIPS.savePreset), renameBtn, deleteBtn)),
         filtersToggle),
       presetSlot,
-      chipList,
+      h("div", { class: "chips-row" }, chipList, clearAllWrap, undoClearBtn),
       filtersPanel,
       previewNotes,
       h("div", { class: "pool-line" }, poolLine, withTip(openLink, TIPS.openSearch)),

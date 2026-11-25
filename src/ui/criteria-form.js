@@ -392,5 +392,18 @@ export function createCriteriaForm(onChange, options = {}) {
     field("Scryfall search", rawQuery, "Optional. Any Scryfall search syntax, such as t:goblin or o:\"draw a card\". It shows as a Custom search filter."),
     h("p", { class: "hint" }, helpLink("find-cards", "Learn more about filters")));
 
-  return { el, set, get: () => criteria, showHints };
+  /**
+   * The criteria and whether the app chose the color mode, so Undo can put
+   * both back.
+   */
+  function snapshot() {
+    return { criteria, autoMode };
+  }
+  /** @param {{criteria: import("../query.js").Criteria, autoMode: boolean}} s */
+  function restore(s) {
+    set(s.criteria);
+    autoMode = s.autoMode;
+  }
+
+  return { el, set, get: () => criteria, snapshot, restore, showHints };
 }

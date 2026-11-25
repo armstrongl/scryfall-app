@@ -8,7 +8,7 @@
 // and the Help view never parses HTML.
 
 import {
-  APP_NAME, BACKUP_REMINDER_DAYS, DELETION_KEEP_DAYS, HISTORY_LIMIT, MAX_DRAW, MIN_DRAW, SCRYFALL_SITE, SMALL_POOL_SIZE,
+  APP_NAME, BACKUP_REMINDER_DAYS, DELETION_KEEP_DAYS, HAND_SIZE, HISTORY_LIMIT, MAX_DRAW, MIN_DRAW, SCRYFALL_SITE, SMALL_POOL_SIZE,
   GITHUB_BACKUP_DIR, SPELLBOOK_SITE, SYNC_FILE_NAME,
 } from "./config.js";
 import { FIND_MY_COMBOS_URL } from "./combos.js";
@@ -52,6 +52,7 @@ export const TIPS = {
   exportArena: "Shows the deck as text to copy and import into MTG Arena.",
   findCombos: "Shows the list as text to paste into Find My Combos on Commander Spellbook.",
   openList: "Opens every card in this list on the Scryfall website, in a new tab.",
+  sampleHand: "Draws a random opening hand from the main deck, so you can try mulligans and see the odds of a good start.",
   buyList: "Shows the cards to buy, with an estimated total, and opens them in TCGplayer or Card Kingdom with the list filled in.",
   duplicateList: "Makes a new list with the same cards, kind, and format. Changes to the copy don't change this list.",
   refresh: "Gets current legality, prices, and images from Scryfall. Quantities, sections, and notes stay the same.",
@@ -90,6 +91,7 @@ const MTG_WIKI = "https://mtg.fandom.com/wiki/Main_Page";
 const BRACKET_TAGS = `${SPELLBOOK_SITE}/syntax-guide/#bracket-tags`;
 const SALT = `${SPELLBOOK_SITE}/salt/`;
 const TCGPLAYER = "https://www.tcgplayer.com";
+const HYPERGEOMETRIC = "https://en.wikipedia.org/wiki/Hypergeometric_distribution";
 const FAN_CONTENT_POLICY = "https://company.wizards.com/en/legal/fancontentpolicy";
 const SAFARI_7_DAYS = "https://webkit.org/blog/10218/full-third-party-cookie-blocking-and-more/";
 const HOME_SCREEN = "https://support.apple.com/guide/iphone/bookmark-a-website-iph42ab2f3a7/ios";
@@ -378,7 +380,7 @@ export const DOC_PAGES = [
   {
     id: "lists-and-decks",
     title: "Lists and decks",
-    summary: "Save cards, check decks, export them to MTG Arena, and buy them.",
+    summary: "Save cards, check decks, draw sample hands, export decks to MTG Arena, and buy cards.",
     sections: [
       {
         heading: "Save cards to a list",
@@ -408,6 +410,25 @@ export const DOC_PAGES = [
           },
           { p: "Legality comes from the card data saved with the list. To get current data, select **More**, then **Refresh card data**." },
           { p: `**Deck stats** shows the ${wiki("mana curve", "Mana curve")}, the colored mana symbols, and the card types.` },
+        ],
+      },
+      {
+        heading: "Draw a sample hand",
+        blocks: [
+          { p: "A sample hand shows how a deck might start a game. Nothing is saved, and the deck doesn't change." },
+          {
+            steps: [
+              "Open the deck in **Lists**, then select **Sample hand**.",
+              `The app shuffles the main deck and draws ${HAND_SIZE} cards. The commander, the sideboard, and **Maybe** stay out.`,
+              "To draw for the next turns, select **Draw a card**. Each card comes from the top of the library.",
+              "To start again from a new shuffle, select **New hand**.",
+            ],
+          },
+          { p: `**Mulligan** follows the ${wiki("London mulligan", "Mulligan")}, from ${link("rule 103.5", RULES)} of the Comprehensive Rules. The app shuffles your hand back and draws ${HAND_SIZE} new cards. Then you put one card on the bottom of the library for each mulligan so far: select **Put on bottom** under each card to put back. **Draw a card** waits until you're done. You can't take a mulligan after you draw a card.` },
+          { p: `In ${format("Brawl", "brawl")} and Standard Brawl, the first mulligan is free: you put no card on the bottom for it. Rule 103.5c says so for every Brawl game.` },
+          { p: `**Odds of a good start** gives three chances for a ${HAND_SIZE}-card hand with no mulligan: 2 to 4 lands in the opening hand, a land to play on each of your first four turns, and a card with mana value 2 by turn 2. They come from the ${link("hypergeometric distribution", HYPERGEOMETRIC)}, the math of drawing cards without putting them back. On the play, you take the first turn and skip its draw. On the draw, you see one more card by each turn.` },
+          { p: "Lands count by the front face, as in **Deck stats**. A modal double-faced card with a spell on the front counts as a spell, even though you can play its back as a land." },
+          { p: `In best-of-one games, ${link("MTG Arena", ARENA)} uses its own way to pick an opening hand. Wizards of the Coast hasn't published how it works, so **Sample hand** doesn't copy it. Its hands and odds come from a plain shuffle, as in best-of-three games and paper Magic.` },
         ],
       },
       {
@@ -636,6 +657,9 @@ export const DOC_PAGES = [
         blocks: [
           {
             terms: [
+              [wiki("Mulligan"), `Shuffling your opening hand back and drawing a new one. With the London mulligan, you draw ${HAND_SIZE} cards each time, then put one card on the bottom of your library for each mulligan. **Sample hand** has **Mulligan**.`],
+              [wiki("Library"), "Your deck during a game: the cards you draw from, face down. **Sample hand** draws from the top of it."],
+              [link("On the play", RULES), "Taking the first turn of a game. In a two-player game, the player on the play skips the draw on their first turn. The other player is on the draw."],
               [wiki("Sideboard"), "Up to 15 extra cards for a Standard deck, which you can swap in between games of a match."],
               [wiki("Basic land"), "Plains, Island, Swamp, Mountain, Forest, Wastes, and their snow-covered versions. A deck can have any number of them."],
               [wiki("Singleton"), "A deck with only one copy of each card, except basic lands. Brawl and Commander decks are singleton."],

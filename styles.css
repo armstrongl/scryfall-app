@@ -640,6 +640,14 @@ dialog.sheet {
 .list-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; }
 .list-pips { display: inline-flex; gap: 2px; }
 
+/* Sample hand. Two cards a row on a phone, more on wider screens. */
+.hand { list-style: none; padding: 0; margin: 0.75rem 0; display: grid; gap: 0.75rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (min-width: 640px) { .hand { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); } }
+.hand > li { display: flex; flex-direction: column; gap: 0.375rem; min-width: 0; }
+.hand .to-bottom { width: 100%; }
+.hand-name { margin: 0; font-size: 0.8125rem; font-weight: 600; overflow-wrap: anywhere; }
+.hand-name + .hint { margin: 0; }
+.hand-odds { margin: 0 0 0.5rem; padding-left: 1.25rem; }
 .list-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.5rem 0 0.75rem; }
 .buy-body { display: grid; gap: 0.5rem; margin-bottom: 0.75rem; min-width: 0; }
 .buy-body > p { margin: 0; }

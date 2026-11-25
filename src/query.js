@@ -76,6 +76,19 @@ export function emptyCriteria() {
   return { ...defaultCriteria(), format: null, game: null, excludeRebalanced: false };
 }
 
+/**
+ * True when no filter or setting is on: the criteria match emptyCriteria(),
+ * with blank text counted as empty. Clear all filters shows only when this
+ * is false.
+ * @param {any} input
+ */
+export function isEmptyCriteria(input) {
+  const c = normalizeCriteria(input);
+  const e = normalizeCriteria(emptyCriteria());
+  const same = (a, b) => (typeof a === "string" && typeof b === "string" ? a.trim() === b.trim() : JSON.stringify(a) === JSON.stringify(b));
+  return Object.keys(e).every((k) => same(c[k], e[k]));
+}
+
 const GAMES = ["arena", "mtgo", "paper"];
 
 /**

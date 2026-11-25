@@ -543,6 +543,70 @@ async function commanderColors(b, check) {
 }
 
 /**
+ * Clear all filters: one button removes every filter and the Scryfall
+ * search. Undo shows in its place and puts them back, with the color mode
+ * the app picked.
+ */
+async function clearFilters(b, check) {
+  const { ev, until } = b;
+  await ev(`location.hash = "#discover"`);
+  await until(`!document.querySelector("#view-discover").hidden`, 3000);
+  if (await ev(`document.querySelector("#filters-toggle").getAttribute("aria-expanded") !== "true"`)) await ev(click("#filters-toggle"));
+  await ev(setValue("#view-discover .preset-row select", "builtin-arena-brawl", "change"));
+  await ev(clickText("#view-discover button", "Apply"));
+  const box = (label) => `[...document.querySelectorAll("#filters-panel label.check")].find((l) => l.textContent.trim() === ${JSON.stringify(label)}).querySelector("input")`;
+  await ev(`${box("Blue")}.click()`);
+  await ev(setValue("#filters-panel textarea", "t:wizard"));
+  await ev(setValue("#f-pow-min", "2"));
+  const before = await ev(QUERY);
+  check("clear all: the search has filters to clear", /f:brawl/.test(before ?? "") && /id<=u/.test(before ?? "") && /t:wizard/.test(before ?? "") && /pow>=2/.test(before ?? ""), before);
+
+  check("Clear all filters shows when filters are on", await ev(`!!document.querySelector("#clear-filters") && !document.querySelector("#clear-filters").hidden`));
+  check("Clear all filters sits with the filter chips", await ev(`!!document.querySelector("#clear-filters")?.closest(".chips-row")`));
+  check("Clear all filters has a tooltip", await ev(`!!document.getElementById(document.querySelector("#clear-filters")?.getAttribute("aria-describedby") ?? "")?.textContent`));
+  await ev(click("#clear-filters"));
+  check("clear all removes every chip", await until(`${CHIPS} === "No filters: any card"`, 3000), await ev(CHIPS));
+  check("clear all empties the search", await ev(`!${QUERY}`), await ev(QUERY));
+  check("clear all resets the form", await ev(`document.querySelector("#f-format").value === "" && !document.querySelector("#f-identity").checked
+    && document.querySelector("#filters-panel textarea").value === "" && document.querySelector("#f-pow-min").value === ""
+    && document.querySelector("#f-color-mode").value === "any" && ![...document.querySelectorAll("#filters-panel input[type=checkbox]")].some((i) => i.checked)`));
+  check("the filter groups no longer say any are on", await ev(`[...document.querySelectorAll("#filters-panel details.filter-group summary")].every((s) => !/\\d on/.test(s.textContent))`));
+  check("Clear all filters hides when no filters are on", await ev(`document.querySelector("#clear-filters").hidden`));
+  check("Undo clear all shows in its place", await ev(`!!document.querySelector("#undo-clear")?.closest(".chips-row") && !document.querySelector("#undo-clear").hidden`));
+  check("focus moves to Undo clear all", await ev(`document.activeElement === document.querySelector("#undo-clear")`), await ev(FOCUS));
+  check("nothing scrolls sideways after clear all", !(await ev("document.documentElement.scrollWidth > window.innerWidth")));
+
+  await ev(click("#undo-clear"));
+  check("Undo puts every filter back", await until(`${QUERY} === ${JSON.stringify(before)}`, 3000), await ev(QUERY));
+  check("Undo hides itself and shows Clear all filters", await ev(`document.querySelector("#undo-clear").hidden && !document.querySelector("#clear-filters").hidden`));
+  check("Undo puts focus on Clear all filters", await ev(`document.activeElement === document.querySelector("#clear-filters")`), await ev(FOCUS));
+  // The app picked At most for Blue, so it still follows Use color identity.
+  await ev(`document.querySelector("#f-identity").click()`);
+  check("after Undo, the color mode the app picked still follows identity", await until(`${QUERY}.includes("c>=u")`, 3000), await ev(QUERY));
+
+  // Any other change to the filters drops Undo.
+  await ev(click("#clear-filters"));
+  await ev(`${box("Red")}.click()`);
+  check("a new filter hides Undo clear all", await until(`document.querySelector("#undo-clear").hidden`, 3000));
+
+  // A setting with no chip can still be cleared.
+  await ev(click("#clear-filters"));
+  await ev(`document.querySelector("#f-identity").click()`);
+  check("Clear all filters shows for Use color identity alone", await until(`!document.querySelector("#clear-filters").hidden`, 3000), await ev(CHIPS));
+  await ev(click("#clear-filters"));
+
+  // Browse with no filters doesn't send an empty search.
+  await ev(click("#mode-browse"));
+  await ev(clickText("#view-discover button", "Show cards"));
+  check("Browse with no filters asks for one", await until(`/Add a filter/.test(document.querySelector(".browse-status").textContent)`, 3000), await ev(`document.querySelector(".browse-status").textContent`));
+  await ev(click("#mode-draw"));
+
+  // Leave the default search for the checks after this one.
+  await ev(setValue("#view-discover .preset-row select", "builtin-arena-standard", "change"));
+  await ev(clickText("#view-discover button", "Apply"));
+}
+
+/**
  * Redraws prefer cards that weren't drawn recently for the same search. A
  * small pool (175 cards or fewer) is drawn from one search page, so a redraw
  * with enough new cards repeats none, and it sends no random-card requests.
@@ -1534,6 +1598,7 @@ for (const { width, scheme } of CONFIGS) {
     // Reloads the page, so it runs after the checks that need drawn cards.
     await moreFilters(b, check);
     await commanderColors(b, check);
+    await clearFilters(b, check);
     // Reloads the page too, and adds a deck of its own.
     await deckMode(b, width, check);
     check("no horizontal page scroll", !(await b.ev("document.documentElement.scrollWidth > window.innerWidth")));

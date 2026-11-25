@@ -31,6 +31,7 @@ This index lists the text the app shows or announces from `index.html`, `src/mai
 | `TIPS.nerdMode` | `src/main.js` | Nerd mode shows more details on every card: mana value, power and toughness, set and rarity, release date, price, EDHREC rank, and legality in Standard and Brawl. Cards get smaller, so more fit on the screen. |
 | `TIPS.applyPreset` | `src/ui/discover.js` | Replaces the current filters with the filters in this preset. |
 | `TIPS.savePreset` | `src/ui/discover.js` | Saves the current filters as a preset, so you can apply them again later. |
+| `TIPS.clearFilters` | `src/ui/discover.js` | Removes every filter, including Scryfall search, so any card matches. Undo clear all puts them back. |
 | `TIPS.drawMode` | `src/ui/discover.js` | Shows random cards that match your filters. A new draw prefers cards you haven't drawn recently. |
 | `TIPS.browseMode` | `src/ui/discover.js` | Lists every card that matches your filters, in the order you choose. |
 | `TIPS.openSearch` | `src/ui/discover.js` | Opens this search on the Scryfall website, in a new tab. |
@@ -440,6 +441,10 @@ This index lists the text the app shows or announces from `index.html`, `src/mai
 | aria-label | Active filters |
 | text | Open on Scryfall |
 | text | The filters changed. Select Show cards to update the list. |
+| text | Clear all filters |
+| text | Undo clear all |
+| announce | Cleared all filters. Select Undo clear all to put them back. |
+| announce | Put the filters back. |
 | text | No filters: any card |
 | aria-label | Remove filter: {…} |
 | announce | Removed the filter {…}. |
@@ -475,6 +480,7 @@ This index lists the text the app shows or announces from `index.html`, `src/mai
 | text | Show cards |
 | field | Sort by |
 | field | Order |
+| text | Add a filter to see cards. |
 | text | Loading cards… |
 | text | Loading page {…}… |
 | text | Showing {…} of {…} cards, sorted by {…}. |

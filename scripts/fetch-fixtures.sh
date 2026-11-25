@@ -53,6 +53,9 @@ get card-digital-only.json "/cards/named?exact=Absorb%20Energy&set=ymid"
 
 # Added for the Set filter: the full list of sets.
 get sets.json "/sets"
+# Added for the Newest Standard set preset: a new card from Star Trek that is
+# legal in Standard on Arena. random-404.json is the answer for a set with none.
+get random-standard-set.json "/cards/random?q=e%3Atrk%20f%3Astandard%20game%3Aarena%20not%3Areprint"
 
 # Added for GitHub sync: real responses from the GitHub REST API, from a
 # public repository and with no token (and one with a token that is not

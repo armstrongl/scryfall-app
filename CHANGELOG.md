@@ -7,6 +7,12 @@ Sections:
 - **Added**, **Changed**, **Fixed**, and **Removed** cover what someone using the app sees.
 - **Project** covers changes for people and agents who work on the code: tests, scripts, and agent instructions.
 
+## 25 November 2026
+
+### Project
+
+- The agent instructions name Paradev, the new name for Superset, and give the `paradev ws update` command to name a workspace. A test fails when an agent instruction uses the old name. ([#53](https://github.com/armstrongl/scryfall-app/pull/53))
+
 ## 24 November 2026
 
 ### Fixed

@@ -3,7 +3,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
-import { APP_NAME, MAX_DRAW, MIN_DRAW } from "../src/config.js";
+import { APP_NAME, HAND_SIZE, MAX_DRAW, MIN_DRAW } from "../src/config.js";
 import { DOC_PAGES, NERD_MODE_TIP, TIPS, docPage, inlineParts, pageLinks, pageText } from "../src/docs.js";
 import { COPY_SOURCES } from "../scripts/ui-copy.mjs";
 import { THIRD_PERSON, hasThirdPerson } from "../scripts/voice.mjs";
@@ -50,6 +50,18 @@ test("the help uses the real draw limits and the app name", () => {
   const text = allText();
   assert.match(text, new RegExp(`${MIN_DRAW} to ${MAX_DRAW} random cards`));
   assert.ok(text.includes(APP_NAME));
+});
+
+test("the help explains sample hands, their odds, and what they leave out", () => {
+  const text = pageText(docPage("lists-and-decks"));
+  assert.match(text, /\bSample hand\b/);
+  assert.match(text, new RegExp(`${HAND_SIZE} cards`));
+  assert.match(text, /London mulligan/);
+  assert.match(text, /Put on bottom/);
+  assert.match(text, /first mulligan is free/i);
+  assert.match(text, /hypergeometric/i);
+  assert.match(text, /on the play/i);
+  assert.match(text, /best-of-one/i, "says that Arena's best-of-one hand shuffler isn't modeled");
 });
 
 test("the help explains that redraws prefer cards you haven't seen", () => {
@@ -194,6 +206,8 @@ const EXPECTED_LINKS = [
   ["combos", "Commander Game Changers list", "https://magic.wizards.com/en/formats/commander#gamechangers"],
   ["lists-and-decks", "Combos", "#help/combos"],
   ["lists-and-decks", "mana curve", "https://mtg.fandom.com/wiki/Mana_curve"],
+  ["lists-and-decks", "London mulligan", "https://mtg.fandom.com/wiki/Mulligan"],
+  ["lists-and-decks", "rule 103.5", "https://magic.wizards.com/en/rules"],
   ["your-data", "Add to Home Screen", "https://support.apple.com/"],
   ["your-data", "Fan Content Policy", "https://company.wizards.com/en/legal/fancontentpolicy"],
   ["glossary", "Combos", "#help/combos"],
@@ -215,7 +229,7 @@ test("the glossary defines the terms the app uses, each with a link", () => {
   const page = docPage("glossary");
   const terms = page.sections.flatMap((s) => s.blocks.flatMap((b) => ("terms" in b ? b.terms : [])));
   const names = terms.map(([t]) => t.replace(/\[([^\]]+)\]\([^)]+\)/g, "$1"));
-  for (const t of ["Mana value", "Color identity", "Rebalanced card", "Keyword ability", "Rules text", "Game changer", "Commander brackets", "Sideboard", "Basic land", "Mana curve", "EDHREC rank", "Double-faced card"]) {
+  for (const t of ["Mana value", "Color identity", "Rebalanced card", "Keyword ability", "Rules text", "Game changer", "Commander brackets", "Sideboard", "Basic land", "Mana curve", "EDHREC rank", "Double-faced card", "Mulligan", "On the play", "Library"]) {
     assert.ok(names.includes(t), t);
   }
   for (const [t, d] of terms) assert.ok(/\]\(https:\/\//.test(t + d), `${t} has a link`);

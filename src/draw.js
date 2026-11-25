@@ -88,8 +88,12 @@ export async function drawBatch({ client, query, count, keyOf, recent = new Set(
   return { cards, attempts, stoppedEarly: cards.length < count, repeats };
 }
 
-/** Fisher–Yates shuffle of a copy. */
-function shuffled(list, random) {
+/**
+ * Fisher–Yates shuffle of a copy.
+ * @param {any[]} list
+ * @param {() => number} random Returns a number from 0 up to 1.
+ */
+export function shuffled(list, random) {
   const a = list.slice();
   for (let i = a.length - 1; i > 0; i--) {
     const j = Math.floor(random() * (i + 1));

@@ -34,6 +34,9 @@ export const DRAW_ATTEMPT_FACTOR = 3;
  */
 export const SMALL_POOL_SIZE = 175;
 
+/** The number of cards in an opening hand, and in each new hand after a mulligan. */
+export const HAND_SIZE = 7;
+
 export const HISTORY_LIMIT = 100;
 
 /** POST /cards/collection accepts at most this many identifiers. */

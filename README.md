@@ -102,8 +102,9 @@ To try a different build without losing the one that works, open the list, selec
 
    Legality comes from the card data saved with the list. To get current data, select **More**, then **Refresh card data**.
 4. Check **Deck stats** for the mana curve, the colored mana symbols, and the card types.
-5. Select **Export for Arena**, then select **Copy**. For a Brawl deck, the text has a Commander block and a Deck block.
-6. In MTG Arena, open **Decks**, then select **Import**.
+5. To see how the deck might start a game, select **Sample hand**. It shuffles the main deck and draws 7 cards. **Draw a card** draws for the next turns, and **Mulligan** follows the London mulligan: draw 7 new cards, then select **Put on bottom** under one card for each mulligan. In Brawl, the first mulligan is free. The panel also shows the odds of 2 to 4 lands in the opening hand, of a land to play each turn up to turn 4, and of a card with mana value 2 by turn 2. MTG Arena picks best-of-one opening hands in its own way, which Wizards of the Coast hasn't published, so the sample hand doesn't copy it.
+6. Select **Export for Arena**, then select **Copy**. For a Brawl deck, the text has a Commander block and a Deck block.
+7. In MTG Arena, open **Decks**, then select **Import**.
 
 To see a whole list on Scryfall, select **Open on Scryfall**. A long list opens in two or more parts, because Scryfall searches have a length limit.
 
@@ -151,7 +152,7 @@ While sync is on, **Export to GitHub** under **Backup** saves a full backup (wit
 | `src/config.js` | The app name, API settings, and other constants. |
 | `src/scryfall.js` | The Scryfall API client. All API requests go through its queue, which spaces requests at least 500 ms apart. |
 | `src/github.js` | The GitHub API client for sync. It is the only code that sends requests to GitHub. |
-| `src/query.js`, `src/cards.js`, `src/lists.js`, `src/deck-rules.js`, `src/export.js`, `src/draw.js`, `src/synergy.js`, `src/explore.js`, `src/browse.js`, `src/saved.js`, `src/stats.js`, `src/links.js`, `src/buy.js`, `src/glossary.js`, `src/docs.js`, `src/combos.js`, `src/sync.js` | App logic with no DOM code. The tests cover these modules. |
+| `src/query.js`, `src/cards.js`, `src/lists.js`, `src/deck-rules.js`, `src/export.js`, `src/draw.js`, `src/hand.js`, `src/synergy.js`, `src/explore.js`, `src/browse.js`, `src/saved.js`, `src/stats.js`, `src/links.js`, `src/buy.js`, `src/glossary.js`, `src/docs.js`, `src/combos.js`, `src/sync.js` | App logic with no DOM code. The tests cover these modules. |
 | `src/docs.js` | The help pages shown in the **Help** view, and the text of every tooltip (`TIPS`). |
 | `src/storage/` | Data storage in IndexedDB, with a memory fallback, and the sync cycle (`sync.js`). |
 | `src/ui/` | The views, including the Help view (`help-view.js`), and the DOM helpers. |

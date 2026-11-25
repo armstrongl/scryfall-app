@@ -853,3 +853,40 @@ Five new rules files in `.claude/rules/`, each with `paths` front matter, so Cla
 ## Known problems
 
 - The rules files name functions and constants in the code, and no test checks that those names still exist. A rename can leave a rule pointing at a name that is gone. Read the matching rules file when you rename something it names.
+
+# More presets, and presets that apply when chosen (25 November 2026)
+
+Discover gets seven more built-in presets, and a preset now applies as soon as it is chosen.
+
+## What changed
+
+- **A fix.** Choosing a preset in the **Preset** list did nothing until **Apply** was also selected, so a preset seemed not to work. The list also kept the name of the last preset chosen after the filters changed or the page reloaded, so it could name a preset that wasn't in use. Now choosing a preset applies it, and **Apply** is gone. The list names the preset that matches the filters. When none matches, it says **Custom filters**. The three earlier presets gave the right search once applied: each one was checked in the browser and against the live API.
+- **New presets**, in `BUILT_IN_PRESETS` in `src/presets.js`, a new pure module: **Arena Standard: non-basic lands**, **Arena Brawl: non-basic lands**, **Commander**, **Commander: under $2 a card**, **Commander: staples**, **Commander: commanders**, **Commander: non-basic lands**, and **Commander: colorless cards**.
+
+## Changes from the plan
+
+`PLAN.md` section 4.2 names one built-in preset and an apply step. Discover now has eleven built-in presets, and choosing one applies it. Applying still sets every control and the search, as the plan asks.
+
+## Decisions
+
+- **Apply on choose.** A list that does nothing when used looked broken. The app is used on a Mac, an iPhone, and an iPad, where the arrow keys on a closed list open it instead of changing the choice, so a preset isn't applied by accident while moving through the page. To get back a preset's filters after a change, choose it again: the list says **Custom filters** by then, so the choice is a change.
+- **Which name the list shows.** The preset chosen or saved last wins while its filters still match. Otherwise the first preset in list order whose filters match. So a saved preset with the same filters as a built-in one keeps its name after it is saved, until the page reloads. The chosen preset isn't stored, so after a reload the built-in preset, which comes first, is named.
+- **Commander presets name no game.** Commander is played in paper and on MTGO, and Scryfall's paper price works without a game. Rebalanced cards aren't legal in Commander, so these presets don't add **No rebalanced cards**.
+- **Non-basic lands** are lands without the basic supertype (`t:land -t:basic`). The type filter has no "not", so the second part is a Scryfall search term with the plain chip **Not basic lands**, the same way Explore names its searches. The live API check confirms that Forest, Snow-Covered Island, and Wastes are left out, and Command Tower is kept.
+- **Non-basic lands include double-faced cards with a land on the back**, such as [Agadeem's Awakening](https://scryfall.com/search?q=%21%22Agadeem%27s%20Awakening%22), because `t:land` matches either face. They can fill a land slot, so they stay. The help page says so.
+- **Matching compares the filters, not the search.** A change that leaves the search the same, such as ticking **Use color identity** with no colors, shows **Custom filters**, because the filters differ.
+- **Colorless cards** means a colorless color identity (`id=c`), so the cards fit in any Commander deck, and leaves out lands, which have their own preset. Its chips are **Color identity colorless** and **Not lands**.
+- **Under $2 a card** uses the existing paper price filter (`usd<=2`). Cards with no paper price on Scryfall don't match.
+- **Staples** uses the existing popularity filter (`edhrec<1000`), so ranks 1 to 999. The help page says "about the top 1,000".
+- On 25 November 2026, the live API found 328 to 32,643 cards for each built-in preset, with no warnings. `scripts/check-api.mjs` runs each one again.
+
+## Tests
+
+- Written first and seen failing: `tests/presets.test.js`, which failed because `src/presets.js` didn't exist. It checks each preset's search, that its chips use plain words, the list order with the Newest Standard set preset, and `matchingPreset()`.
+- Written first: the browser checks in `scripts/check-ui.mjs` (`presets()`) that there is no **Apply** button, that choosing each built-in preset applies it at once and finds cards, that a changed filter shows **Custom filters**, that choosing the preset again restores it, and that the list names the matching preset after a reload. Run against the code before the fix, the checks failed: 47 of 320 at 1280 px. The first run on the new code also failed on a mistake in the check itself: its count pattern expected a digit right before "match". The pattern was fixed.
+- Changed: the docs test that Get started mentions the **Apply** step now checks that no help page asks for it. With the old wording put back on purpose, it failed, and the test that the help names every built-in preset failed with one name changed.
+- Added after the code, from the Opus review: the browser checks that a saved twin of a built-in preset is chosen with its own name and can be renamed and deleted, that after a delete the list names the matching built-in preset, and that the Newest Standard set preset stays chosen. To see them able to fail, the line that keeps the saved preset chosen was removed, then restored.
+
+## Known problems
+
+- On Windows and Linux, and in Firefox, the arrow keys on a closed list change the choice, so each press applies a preset and opens the filter groups it uses. Those groups stay open after moving on. Safari and Chrome on a Mac, iPhone, and iPad open the list instead.

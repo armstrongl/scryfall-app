@@ -6,6 +6,7 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { APP_NAME, HAND_SIZE, MAX_DRAW, MIN_DRAW } from "../src/config.js";
 import { DOC_PAGES, NERD_MODE_TIP, TIPS, docPage, inlineParts, pageLinks, pageText } from "../src/docs.js";
 import { COPY_SOURCES } from "../scripts/ui-copy.mjs";
+import { BUILT_IN_PRESETS } from "../src/presets.js";
 import { THIRD_PERSON, hasThirdPerson } from "../scripts/voice.mjs";
 
 const allText = () => DOC_PAGES.map(pageText).join("\n");
@@ -282,9 +283,24 @@ test("the help lists every link in a card's details", () => {
   for (const name of ["Scryfall", "EDHREC", "Gatherer", "Commander Spellbook"]) assert.ok(text.includes(name), name);
 });
 
-test("Get started mentions Explore, combos, and the Apply step", () => {
+test("Get started mentions Explore and combos", () => {
   const text = pageText(docPage("get-started"));
-  for (const word of ["Explore", "combos", "Find combos", "Apply"]) assert.ok(text.includes(word), word);
+  for (const word of ["Explore", "combos", "Find combos"]) assert.ok(text.includes(word), word);
+});
+
+test("the help says a preset applies when chosen, with no Apply step", () => {
+  for (const id of ["get-started", "find-cards"]) assert.doesNotMatch(pageText(docPage(id)), /select Apply/, id);
+  const text = pageText(docPage("find-cards"));
+  assert.match(text, /replaces the filters at once/);
+  assert.match(text, /Custom filters/);
+});
+
+test("the help names every built-in preset", () => {
+  const text = pageText(docPage("find-cards"));
+  for (const p of BUILT_IN_PRESETS) {
+    const name = p.name.replace(/^Arena (Standard|Brawl): /, "");
+    assert.ok(text.includes(name), p.name);
+  }
 });
 
 test("the backup reminder matches the rule in export.js", () => {

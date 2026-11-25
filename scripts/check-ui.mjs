@@ -247,7 +247,7 @@ async function discoverTips(b, check) {
   check("Enter closes a ? tooltip that focus opened", !(await ev(tipOpen("#filters-panel .info-tip"))));
   await ev(`document.activeElement.blur()`);
   // A button's tooltip closes when the button is used, so new cards never appear under it.
-  await ev(`document.querySelector("#view-discover .preset-row button:nth-child(2) button, #view-discover .preset-row .tip-wrap:nth-child(2) button").id = "save-preset-test"`);
+  await ev(`[...document.querySelectorAll("#view-discover .preset-row button")].find((x) => x.textContent.trim() === "Save as preset").id = "save-preset-test"`);
   await hover(b, "#save-preset-test");
   await b.until(tipOpen("#save-preset-test"), 1000);
   await ev(click("#save-preset-test"));
@@ -321,7 +321,6 @@ async function discover(b, check) {
   check("Open on Scryfall opens the current search", await ev(`(() => { const a = document.querySelector("#open-scryfall"); return !!a && a.textContent.trim() === "Open on Scryfall" && a.href.startsWith("https://scryfall.com/search?q=") && a.target === "_blank"; })()`));
   check("Draw allows up to 30 cards", (await ev(`document.querySelector("#draw-count").max`)) === "30");
   await ev(setValue("#view-discover .preset-row select", "builtin-arena-brawl", "change"));
-  await ev(clickText("#view-discover button", "Apply"));
   check("the Arena Brawl preset uses Brawl and color identity", /f:brawl/.test(await ev(QUERY))
     && await ev(`[...document.querySelectorAll(".chips .chip")].some((c) => /^Brawl/.test(c.textContent))`));
   // The newest Standard set comes from Scryfall's set list, so it shows up
@@ -335,7 +334,6 @@ async function discover(b, check) {
   const setName = (await ev(`${NEWEST}?.textContent`) ?? "").replace(/^Newest Standard set: /, "").replace(/ \(built in\)$/, "");
   await ev(setValue("#view-discover .preset-row select", "builtin-newest-standard", "change"));
   check("the Newest Standard set preset can't be renamed or deleted", await ev(`document.querySelector("#view-discover .preset-row select").value === "builtin-newest-standard"`) && await ev(`[...document.querySelectorAll("#view-discover .preset-row button")].filter((x) => /^(Rename|Delete)$/.test(x.textContent)).every((x) => x.hidden)`));
-  await ev(clickText("#view-discover button", "Apply"));
   check("the Newest Standard set preset searches the set in Standard on Arena, with plain chips",
     /^f:standard game:arena -is:rebalanced e:[a-z0-9]+$/.test(await ev(QUERY))
     && await ev(`(() => {
@@ -343,7 +341,6 @@ async function discover(b, check) {
       return chips.includes(${JSON.stringify(`Set: ${setName}`)}) && chips.some((c) => /Standard/.test(c)) && !chips.some((c) => /\\b(e|f|game|is):/.test(c));
     })()`), `${await ev(QUERY)} | ${await ev(CHIPS)}`);
   await ev(setValue("#view-discover .preset-row select", "builtin-arena-standard", "change"));
-  await ev(clickText("#view-discover button", "Apply"));
   await ev(setValue("#view-discover textarea", "t:goblin t:creature"));
   check("a Scryfall search reaches the query", await until(`${QUERY}.includes("(t:goblin t:creature)")`, 3000));
   check("a typed search shows as a Custom search chip with a remove button", await ev(`[...document.querySelectorAll(".chips .chip button")].some((x) => /Custom search/.test(x.getAttribute("aria-label")))`), await ev(CHIPS));
@@ -397,7 +394,6 @@ async function moreFilters(b, check) {
   const open = await ev(`document.querySelector("#filters-toggle").getAttribute("aria-expanded") === "true"`);
   if (!open) await ev(click("#filters-toggle"));
   await ev(setValue("#view-discover .preset-row select", "builtin-arena-standard", "change"));
-  await ev(clickText("#view-discover button", "Apply"));
   const groups = `[...document.querySelectorAll("#filters-panel details.filter-group")]`;
   check("the filters have Card, Creature, Printing, and Popularity groups, closed at first",
     await ev(`${groups}.map((d) => d.dataset.group).join("|") === "card|creature|printing|popularity" && ${groups}.every((d) => !d.open)`),
@@ -486,7 +482,6 @@ async function moreFilters(b, check) {
 
   // A plain preset clears them.
   await ev(setValue("#view-discover .preset-row select", "builtin-arena-standard", "change"));
-  await ev(clickText("#view-discover button", "Apply"));
   check("applying a preset clears the new filters", await until(`${QUERY} === "f:standard game:arena -is:rebalanced"`, 3000), await ev(QUERY));
   check("groups with no filters on say so", await ev(`${groups}.every((d) => !/\\d on/.test(d.querySelector("summary").textContent))`));
 }
@@ -502,7 +497,6 @@ async function commanderColors(b, check) {
   await until(`!document.querySelector("#view-discover").hidden`, 3000);
   if (await ev(`document.querySelector("#filters-toggle").getAttribute("aria-expanded") !== "true"`)) await ev(click("#filters-toggle"));
   await ev(setValue("#view-discover .preset-row select", "builtin-arena-standard", "change"));
-  await ev(clickText("#view-discover button", "Apply"));
   const box = (label) => `[...document.querySelectorAll("#filters-panel label.check")].find((l) => l.textContent.trim() === ${JSON.stringify(label)}).querySelector("input")`;
 
   await ev(`window.__heard = []; new MutationObserver(() => { const t = document.querySelector("#live").textContent; if (t) window.__heard.push(t); }).observe(document.querySelector("#live"), { childList: true, characterData: true, subtree: true })`);
@@ -532,14 +526,93 @@ async function commanderColors(b, check) {
 
   // Other formats read colors as card color.
   await ev(setValue("#view-discover .preset-row select", "builtin-arena-standard", "change"));
-  await ev(clickText("#view-discover button", "Apply"));
   await ev(`${box("Red")}.click()`);
   check("Standard: ticking Red finds red cards", await until(`${QUERY} === "f:standard game:arena -is:rebalanced c>=r"`, 3000), await ev(QUERY));
   check("every checkbox label points at its own box", await ev(`[...document.querySelectorAll("label.check[for]")].every((l) => document.getElementById(l.htmlFor) === l.querySelector("input"))`),
     await ev(`[...document.querySelectorAll("label.check[for]")].filter((l) => document.getElementById(l.htmlFor) !== l.querySelector("input")).map((l) => l.textContent).join(", ")`));
   check("Standard doesn't tick Use color identity", await ev(`!document.querySelector("#f-identity").checked`));
   await ev(setValue("#view-discover .preset-row select", "builtin-arena-standard", "change"));
-  await ev(clickText("#view-discover button", "Apply"));
+}
+
+/**
+ * Built-in presets. Choosing one applies it at once, and the list always
+ * names the preset that matches the filters, or says Custom filters.
+ */
+async function presets(b, check) {
+  const { ev, until } = b;
+  const SELECT = "#view-discover .preset-row select";
+  const selected = `(() => { const s = document.querySelector(${JSON.stringify(SELECT)}); return s.value + "|" + s.selectedOptions[0]?.textContent; })()`;
+  await ev(`location.hash = "#discover"`);
+  await until(`!document.querySelector("#view-discover").hidden`, 3000);
+  check("there is no Apply button for presets", await ev(`![...document.querySelectorAll("#view-discover .preset-row button")].some((x) => x.textContent.trim() === "Apply")`));
+  check("the Preset field has a ? button", await ev(`!!document.querySelector("#view-discover .preset-row .info-tip, #view-discover .preset-row button[aria-label^='About']")`));
+  const expected = {
+    "builtin-arena-standard": "f:standard game:arena -is:rebalanced",
+    "builtin-arena-standard-lands": "f:standard game:arena -is:rebalanced t:land (-t:basic)",
+    "builtin-arena-brawl": "f:brawl game:arena -is:rebalanced",
+    "builtin-arena-brawl-lands": "f:brawl game:arena -is:rebalanced t:land (-t:basic)",
+    "builtin-commander": "f:commander",
+    "builtin-commander-budget": "f:commander usd<=2",
+    "builtin-commander-staples": "f:commander edhrec<1000",
+    "builtin-commanders": "f:commander is:commander",
+    "builtin-commander-lands": "f:commander t:land (-t:basic)",
+    "builtin-commander-colorless": "f:commander id=c (-t:land)",
+  };
+  const POOL = `document.querySelector(".pool").textContent`;
+  let lastPool = "";
+  for (const [id, q] of Object.entries(expected)) {
+    const name = await ev(`document.querySelector('${SELECT} option[value="${id}"]')?.textContent ?? ""`);
+    await ev(setValue(SELECT, id, "change"));
+    check(`choosing the preset ${name || id} applies it at once`, await until(`${QUERY} === ${JSON.stringify(q)}`, 3000), await ev(QUERY));
+    // Each preset finds a different number of cards, so a new count means this preset's count.
+    check(`the preset ${name || id} finds cards`, await until(`/^[1-9][\\d,]* cards? match/.test(${POOL}) && ${POOL} !== ${JSON.stringify(lastPool)}`, 20000), await ev(POOL));
+    lastPool = await ev(POOL);
+    check(`the preset ${name || id} stays chosen`, (await ev(selected)).startsWith(`${id}|`), await ev(selected));
+  }
+  check("the preset chips use plain words", await ev(`![...document.querySelectorAll(".chips .chip > span")].some((c) => /\\b[a-z]+[:<>=]/.test(c.textContent))`), await ev(CHIPS));
+  check("choosing a preset is announced", await until(`/Applied the preset/.test(document.querySelector("#live").textContent)`, 3000));
+
+  // A changed filter no longer matches a preset.
+  await ev(setValue(SELECT, "builtin-commander", "change"));
+  await until(`${QUERY} === "f:commander"`, 3000);
+  await ev(`[...document.querySelectorAll(".chips .chip button")].find((x) => x.getAttribute("aria-label") === "Remove filter: Commander").click()`);
+  check("after a filter changes, the list says Custom filters", await until(`${selected}.endsWith("|Custom filters")`, 3000), await ev(selected));
+  check("Rename and Delete are hidden for Custom filters", await ev(`[...document.querySelectorAll("#view-discover .preset-row button")].filter((x) => /^(Rename|Delete)$/.test(x.textContent)).every((x) => x.hidden)`));
+  // Choosing the same preset again brings its filters back.
+  await ev(setValue(SELECT, "builtin-commander", "change"));
+  check("choosing the preset again restores its filters", await until(`${QUERY} === "f:commander"`, 3000), await ev(QUERY));
+  check("Custom filters leaves the list once a preset matches", await ev(`![...document.querySelectorAll("${SELECT} option")].some((o) => o.textContent === "Custom filters")`));
+
+  // The Newest Standard set preset arrives late, and is named once it does.
+  if (await ev(`!!document.querySelector('${SELECT} option[value="builtin-newest-standard"]')`)) {
+    await ev(setValue(SELECT, "builtin-newest-standard", "change"));
+    check("choosing the Newest Standard set preset applies it and stays chosen", await until(`/ e:[a-z0-9]+$/.test(${QUERY})`, 3000) && (await ev(selected)).startsWith("builtin-newest-standard|"), await ev(selected));
+  }
+
+  // A saved preset is chosen, can be renamed and deleted, and keeps its own
+  // name even when a built-in preset has the same filters.
+  await ev(setValue(SELECT, "builtin-commander", "change"));
+  await until(`${QUERY} === "f:commander"`, 3000);
+  await ev(clickText("#view-discover .preset-row button", "Save as preset"));
+  await ev(`document.querySelector("#view-discover .preset-slot input").value = "Twin of Commander"`);
+  await ev(`document.querySelector("#view-discover .preset-slot button[type=submit]").click()`);
+  check("a saved twin of a built-in preset is chosen with its own name", await until(`${selected}.endsWith("|Twin of Commander")`, 3000), await ev(selected));
+  check("a saved preset can be renamed and deleted", await ev(`[...document.querySelectorAll("#view-discover .preset-row button")].filter((x) => /^(Rename|Delete)$/.test(x.textContent)).every((x) => !x.hidden)`));
+  await ev(clickText("#view-discover .preset-row button", "Delete"));
+  await ev(clickText("#view-discover .preset-slot button", "Delete preset"));
+  check("after a delete, the list names the built-in preset with the same filters", await until(`${selected}.startsWith("builtin-commander|")`, 3000), await ev(selected));
+  check("the deleted preset is gone from the list", await ev(`![...document.querySelectorAll("${SELECT} option")].some((o) => o.textContent === "Twin of Commander")`));
+
+  // After a reload, the list names the preset that matches the saved filters.
+  await ev(setValue(SELECT, "builtin-commander-budget", "change"));
+  await until(`${QUERY} === "f:commander usd<=2"`, 3000);
+  await sleep(1000);
+  await b.send("Page.reload", {});
+  await sleep(500);
+  await until(`!!document.querySelector(${JSON.stringify(SELECT)})`);
+  check("after a reload, the list names the matching preset", await until(`${selected}.startsWith("builtin-commander-budget|")`, 5000), await ev(selected));
+  await ev(setValue(SELECT, "builtin-arena-standard", "change"));
+  await until(`${QUERY} === "f:standard game:arena -is:rebalanced"`, 3000);
 }
 
 /**
@@ -553,7 +626,6 @@ async function clearFilters(b, check) {
   await until(`!document.querySelector("#view-discover").hidden`, 3000);
   if (await ev(`document.querySelector("#filters-toggle").getAttribute("aria-expanded") !== "true"`)) await ev(click("#filters-toggle"));
   await ev(setValue("#view-discover .preset-row select", "builtin-arena-brawl", "change"));
-  await ev(clickText("#view-discover button", "Apply"));
   const box = (label) => `[...document.querySelectorAll("#filters-panel label.check")].find((l) => l.textContent.trim() === ${JSON.stringify(label)}).querySelector("input")`;
   await ev(`${box("Blue")}.click()`);
   await ev(setValue("#filters-panel textarea", "t:wizard"));
@@ -603,7 +675,6 @@ async function clearFilters(b, check) {
 
   // Leave the default search for the checks after this one.
   await ev(setValue("#view-discover .preset-row select", "builtin-arena-standard", "change"));
-  await ev(clickText("#view-discover button", "Apply"));
 }
 
 /**
@@ -1601,6 +1672,7 @@ for (const { width, scheme } of CONFIGS) {
     await clearFilters(b, check);
     // Reloads the page too, and adds a deck of its own.
     await deckMode(b, width, check);
+    await presets(b, check);
     check("no horizontal page scroll", !(await b.ev("document.documentElement.scrollWidth > window.innerWidth")));
     check("no console errors", b.errors.length === 0, b.errors.join(" | "));
   } catch (e) {

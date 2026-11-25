@@ -19,6 +19,7 @@ This index lists the text the app shows or announces from `index.html`, `src/mai
 | Page title, header, footer, and the Fan Content notice | `index.html`, `src/config.js` (`APP_NAME`, `FAN_CONTENT_NOTICE`) |
 | Error messages from Scryfall requests | `errorMessage()` in `src/scryfall.js` |
 | Filter chips and search hints | `filterChips()` and `buildQuery()` in `src/query.js` |
+| Built-in preset names and their chip labels | `BUILT_IN_PRESETS` in `src/presets.js`, and `newestSetPreset()` in `src/query.js` |
 | Explore suggestions and reasons | `src/explore.js`, `src/synergy.js`, and `src/combos.js` |
 | Deck check messages | `src/deck-rules.js` |
 | Keyword explanations | `src/glossary.js` |
@@ -29,7 +30,7 @@ This index lists the text the app shows or announces from `index.html`, `src/mai
 | Key | Used in | Text |
 | --- | --- | --- |
 | `TIPS.nerdMode` | `src/main.js` | Nerd mode shows more details on every card: mana value, power and toughness, set and rarity, release date, price, EDHREC rank, and legality in Standard and Brawl. Cards get smaller, so more fit on the screen. |
-| `TIPS.applyPreset` | `src/ui/discover.js` | Replaces the current filters with the filters in this preset. |
+| `TIPS.preset` | `src/ui/discover.js` | Choosing a preset replaces the filters with its filters. Custom filters means the filters don't match a preset. |
 | `TIPS.savePreset` | `src/ui/discover.js` | Saves the current filters as a preset, so you can apply them again later. |
 | `TIPS.clearFilters` | `src/ui/discover.js` | Removes every filter, including Scryfall search, so any card matches. Undo clear all puts them back. |
 | `TIPS.drawMode` | `src/ui/discover.js` | Shows random cards that match your filters. A new draw prefers cards you haven't drawn recently. |
@@ -74,7 +75,7 @@ This index lists the text the app shows or announces from `index.html`, `src/mai
 | Page | Address | Summary | Links |
 | --- | --- | --- | --- |
 | Get started | `#help/get-started` | What Cascade does and where things are. | 6 |
-| Find cards | `#help/find-cards` | Presets, filters, random draws, and Browse all. | 35 |
+| Find cards | `#help/find-cards` | Presets, filters, random draws, and Browse all. | 39 |
 | Card details | `#help/card-details` | Rules text, keywords, rulings, legality, and prices. | 19 |
 | Explore | `#help/explore` | Synergies, similar cards, counters, and combos for any card. | 7 |
 | Combos | `#help/combos` | Find card combos on Commander Spellbook, and learn what bracket tags mean. | 16 |
@@ -420,10 +421,10 @@ This index lists the text the app shows or announces from `index.html`, `src/mai
 
 | Kind | Text |
 | --- | --- |
-| text | Apply |
 | text | Save as preset |
 | text | Rename |
 | text | Delete |
+| text | Custom filters |
 | text | {…} (built in) |
 | announce | Applied the preset {…}. |
 | message | Enter a name for the preset. |

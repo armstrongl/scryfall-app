@@ -49,6 +49,7 @@ Cascade's look is a blend of GitHub's [Primer](https://primer.style) and Vercel'
 - The basic filters are always shown. The rest are in groups that open and close (Card, Creature, Printing, and Popularity), chosen on 20 November 2026. A group starts closed, says how many of its filters are on, and opens when a preset turns one on.
 - Commander-type formats tick **Use color identity**, and a color ticked with the mode on **Any** picks **At most** with identity or **At least** without it, chosen on 24 November 2026. Lands have no color, so without identity a search for green lands finds almost no lands, mostly double-faced cards.
 - **Clear all filters** sits after the filter chips and removes every filter, down to "No filters: any card", added on 25 November 2026. **Undo clear all** takes its place and gets focus until the filters change again.
+- Choosing a preset applies it at once, with no **Apply** button. The **Preset** list names the preset that matches the filters, or says **Custom filters**. Chosen on 25 November 2026, after presets seemed not to work.
 - Spicy means rarely played, by EDHREC rank. Ticking several creature abilities finds cards with all of them.
 - A real meta filter waits for a data source: [issue #37](https://github.com/armstrongl/scryfall-app/issues/37).
 

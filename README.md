@@ -178,13 +178,13 @@ While sync is on, **Export to GitHub** under **Backup** saves a full backup (wit
 | `src/storage/` | Data storage in IndexedDB, with a memory fallback, and the sync cycle (`sync.js`). |
 | `src/ui/` | The views, including the Help view (`help-view.js`), and the DOM helpers. |
 | `tests/` | Unit tests, and saved Scryfall and GitHub responses (`tests/fixtures/`). |
-| `scripts/` | Development tools: fixture download, live API checks, browser tests, icon drawing, the interface copy index (`ui-copy.mjs`), the help link check (`check-links.mjs`), the pull request changelog check (`check-changelog.mjs`), and the pull request text check (`check-pr-text.mjs`), with the voice word lists it shares with the tests (`voice.mjs`). |
+| `scripts/` | Development tools: fixture download, live API checks, browser tests, icon drawing, the interface copy index (`ui-copy.mjs`), the help link check (`check-links.mjs`), the pull request changelog check (`check-changelog.mjs`), the pull request text check (`check-pr-text.mjs`), with the voice word lists it shares with the tests (`voice.mjs`), and the lock that lets one agent at a time send Scryfall requests (`scryfall-lock.sh`). |
 | `AGENTS.md`, `CLAUDE.md` | Instructions for coding agents. `AGENTS.md` is read by every agent. `CLAUDE.md` imports it and adds notes for Claude Code. |
 | `.claude/rules/` | The detailed rules for agents: GitHub voice, shipping, design, the Scryfall API, storage, help docs, and GitHub sync. |
 | `.claude/settings.json` | Shared Claude Code settings: no attribution in commits or pull requests, a prompt before any force push, and the hooks. |
 | `.claude/hooks/` | Claude Code hooks. They block commit messages and GitHub text that break the voice rules, ask before a force push in any form, keep Scryfall API calls in `src/scryfall.js`, and remind the agent to run the tests. `CLAUDE.md` describes them. |
 | `.githooks/commit-msg` | A git hook that removes Claude session links from commit messages. `AGENTS.md` has the command to install it. |
-| `.agents/skills/` | Shared agent skills for Codex and Claude Code: **ship** and **plan-with-options**. `.claude/skills` links here. |
+| `.agents/skills/` | Shared agent skills for Codex and Claude Code: **ship**, **plan-with-options**, and **issue-sweep**. `.claude/skills` links here. |
 | `PLAN.md`, `REPORT.md` | The v1 plan, and the report on what was built, followed by the design overhaul, the feedback round, the combos work, the docs audit, the agent instructions, the help links and tooltips, and GitHub sync. |
 | `CHANGELOG.md` | The notable changes, newest first, with a link to each pull request. |
 | `.github/workflows/check.yml` | The checks GitHub runs on every pull request: `npm test`, a changelog entry linked to the pull request (`scripts/check-changelog.mjs`), and the voice of the title, the description, and each commit message (`scripts/check-pr-text.mjs`). A `no-changelog` label skips the changelog check. Agents merge only when all three pass. [Issue #35](https://github.com/armstrongl/scryfall-app/issues/35) makes them required on GitHub. |
@@ -200,7 +200,7 @@ npm test
 
 You can also run `node --test` directly.
 
-The tests use real Scryfall responses saved in `tests/fixtures/`. To fetch them again, run `scripts/fetch-fixtures.sh`. To repeat the live API checks from section 9 of `PLAN.md`, and to check that every Scryfall Tagger tag that Explore uses still exists, run `node scripts/check-api.mjs`. Both scripts send the headers that Scryfall requires and wait at least 500 ms between requests.
+The tests use real Scryfall responses saved in `tests/fixtures/`. To fetch them again, run `scripts/fetch-fixtures.sh`. To repeat the live API checks from section 9 of `PLAN.md`, and to check that every Scryfall Tagger tag that Explore uses still exists, run `node scripts/check-api.mjs`. Both scripts send the headers that Scryfall requires and wait at least 500 ms between requests. When several agents work at once, run them, and the browser tests, through `scripts/scryfall-lock.sh` (for example `scripts/scryfall-lock.sh node scripts/check-api.mjs`), so that only one sends Scryfall requests at a time.
 
 To check that every link in the help pages still works, run `node scripts/check-links.mjs`. It sends one request at a time to each site, at least 500 ms apart.
 

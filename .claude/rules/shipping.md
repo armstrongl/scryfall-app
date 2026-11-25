@@ -13,7 +13,7 @@ This is the routine for every change, from start to finish. The [ship skill](../
 
 1. Write the test first and watch it fail for the expected reason. `AGENTS.md` says where each kind of test goes.
 2. Write the smallest code that passes, then refactor with the tests green.
-3. Run `npm test` and `node scripts/check-ui.mjs`. Both must pass.
+3. Run `npm test` and `node scripts/check-ui.mjs`. Both must pass. When other agents work at the same time, run the browser tests through the lock, so that only one run sends Scryfall requests: `scripts/scryfall-lock.sh node scripts/check-ui.mjs`.
 4. Check every place in "Keep the docs in step" in `AGENTS.md`.
 
 ## Review

@@ -45,7 +45,7 @@ const RULES = {
   "help-docs.md": ["src/docs.js", "README.md", "REPORT.md"],
   "github-sync.md": ["src/github.js", "src/sync.js", "src/storage/sync.js"],
 };
-const SKILLS = ["ship", "plan-with-options"];
+const SKILLS = ["ship", "plan-with-options", "issue-sweep"];
 
 /** The frontmatter of a Markdown file as { keys, paths }, or null. */
 function frontmatter(text) {

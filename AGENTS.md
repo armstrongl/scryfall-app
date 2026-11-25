@@ -18,7 +18,7 @@ The detail lives in `.claude/rules/`. Claude Code loads these files on its own. 
 | [Help docs](.claude/rules/help-docs.md) | You touch `src/docs.js`, `README.md`, or `REPORT.md`. |
 | [GitHub sync](.claude/rules/github-sync.md) | You touch `src/github.js`, `src/sync.js`, or `src/storage/sync.js`. |
 
-Shared skills are in `.agents/skills/`: [ship](.agents/skills/ship/SKILL.md) (the full routine for a change) and [plan-with-options](.agents/skills/plan-with-options/SKILL.md) (a plan page with inputs). Codex reads them there, and Claude Code reads them through the `.claude/skills` link.
+Shared skills are in `.agents/skills/`: [ship](.agents/skills/ship/SKILL.md) (the full routine for a change), [plan-with-options](.agents/skills/plan-with-options/SKILL.md) (a plan page with inputs), and [issue-sweep](.agents/skills/issue-sweep/SKILL.md) (open issues worked by parallel agents, one per issue). Codex reads them there, and Claude Code reads them through the `.claude/skills` link.
 
 ## Voice
 
@@ -55,6 +55,7 @@ Agents lead this project. Direction and feedback come in the session, not approv
 - Run the browser tests: `node scripts/check-ui.mjs`. It needs Chrome (set `CHROME_PATH` if it's not in the usual place) and network access, because the app sends real Scryfall requests through its queue. It starts its own static server and a fresh browser profile, so you don't need the `http.server` command above. It runs at 390 px and 1280 px, in light and dark mode, and takes a few minutes. To run one width, set `ONLY=390` or `ONLY=1280`, and optionally `SCHEME=dark`.
 - Repeat the live API checks: `node scripts/check-api.mjs`.
 - Fetch the test fixtures again: `scripts/fetch-fixtures.sh`.
+- When several agents work at once, run each command that sends Scryfall requests through the lock, so that only one runs at a time: `scripts/scryfall-lock.sh node scripts/check-ui.mjs`.
 - Install the git hook that removes session links from commit messages, if the clone doesn't have one: `test -e "$(git rev-parse --git-path hooks/commit-msg)" || cp .githooks/commit-msg "$(git rev-parse --git-path hooks/commit-msg)"`.
 - Rebuild the interface copy index, `docs/ui-copy.md`: `node scripts/ui-copy.mjs`. `npm test` fails when it's out of date.
 - Check every link in the help pages against the live web: `node scripts/check-links.mjs`.

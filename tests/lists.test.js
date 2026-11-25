@@ -150,3 +150,50 @@ test("restore puts a removed entry back in its place", async () => {
   // Restoring twice doesn't make a copy.
   assert.equal(restoreEntry(back, removed, 1, clock).entries.length, 3);
 });
+
+test("duplicate makes a new list with the same cards, kind, and format", async () => {
+  const { duplicateList } = await import("../src/lists.js");
+  const clock = fakeClock();
+  let list = createList("Elves", "deck", clock, "brawl");
+  list = addCard(list, snap("card-legendary"), { section: "commander" }, clock);
+  list = addCard(list, snap("card-normal"), { quantity: 1, note: "Test this one" }, clock);
+  list = addCard(list, snap("card-flyer"), { section: "maybe" }, clock);
+  const before = structuredClone(list);
+  const copy = duplicateList(list, clock);
+
+  assert.notEqual(copy.id, list.id);
+  assert.equal(copy.name, "Elves (copy)");
+  assert.equal(copy.kind, "deck");
+  assert.equal(copy.format, "brawl");
+  assert.ok(copy.createdAt > list.updatedAt);
+  assert.equal(copy.updatedAt, copy.createdAt);
+
+  // New entry IDs, the same snapshots, quantities, sections, notes, and dates added.
+  assert.equal(copy.entries.length, list.entries.length);
+  const ids = new Set(list.entries.map((e) => e.id));
+  assert.ok(copy.entries.every((e) => !ids.has(e.id)));
+  assert.equal(new Set(copy.entries.map((e) => e.id)).size, copy.entries.length);
+  const strip = ({ id, ...rest }) => rest;
+  assert.deepEqual(copy.entries.map(strip), list.entries.map(strip));
+
+  // The first list is the same after changes to the copy.
+  assert.deepEqual(list, before);
+  const changed = removeEntry(updateEntry(copy, copy.entries[1].id, { quantity: 3 }, clock), copy.entries[2].id, clock);
+  assert.equal(changed.entries.length, 2);
+  assert.deepEqual(list, before);
+  // The copy shares no objects with the first list.
+  copy.entries[0].card.name = "Changed";
+  copy.entries[0].card.colorIdentity.push("U");
+  assert.deepEqual(list, before);
+});
+
+test("duplicate copies an empty collection", async () => {
+  const { duplicateList } = await import("../src/lists.js");
+  const clock = fakeClock();
+  const list = createList("Wants", "collection", clock);
+  const copy = duplicateList(list, clock);
+  assert.equal(copy.name, "Wants (copy)");
+  assert.equal(copy.kind, "collection");
+  assert.equal(copy.format, "standard");
+  assert.deepEqual(copy.entries, []);
+});

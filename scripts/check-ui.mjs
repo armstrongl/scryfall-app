@@ -767,6 +767,26 @@ async function lists(b, check) {
   check("focus moves to Undo", await until(`document.activeElement?.textContent.trim() === "Undo"`, 1000));
   await ev(clickText("#view-lists .removed button", "Undo"));
   check("Undo puts the card back", await until(`document.querySelectorAll(".entry").length === ${before}`, 3000));
+  // Duplicate: the copy opens, and a change to the copy leaves the first list the same.
+  const firstHash = await ev(`location.hash`);
+  await ev(clickText("#view-lists button", "More"));
+  // Two quick presses must make one copy.
+  await ev(`(() => { const d = [...document.querySelectorAll("#list-more button")].find((x) => x.textContent.trim() === "Duplicate"); d.click(); d.click(); })()`);
+  check("Duplicate opens the copy", await until(`location.hash !== ${JSON.stringify(firstHash)} && document.querySelector("#lists-title")?.textContent === "UI check (copy)"`, 3000),
+    await ev(`location.hash + " " + document.querySelector("#lists-title")?.textContent`));
+  check("Duplicate announces the copy", await until(`document.getElementById("live")?.textContent === "Made a copy of UI check, named UI check (copy)."`, 2000), await ev(`document.getElementById("live")?.textContent`));
+  check("focus moves to the copy's heading", await ev(`document.activeElement?.id === "lists-title"`), await ev(FOCUS));
+  check("the copy has the same cards, kind, and format", await ev(`document.querySelectorAll(".entry").length === ${before} && document.querySelector("#view-lists .tagline .badge")?.textContent === "Brawl deck"`),
+    await ev(`document.querySelectorAll(".entry").length + " " + document.querySelector("#view-lists .tagline .badge")?.textContent`));
+  await ev(`document.querySelector(".entry button[aria-label^='Remove']").click()`);
+  check("a card removed from the copy leaves the copy", await until(`document.querySelectorAll(".entry").length === ${before - 1}`, 3000));
+  await ev(`location.hash = "#lists"`);
+  check("two quick presses of Duplicate make one copy", await until(`document.querySelectorAll(".list-index a").length > 0`, 3000)
+    && await ev(`[...document.querySelectorAll(".list-index .row-title")].filter((x) => x.textContent === "UI check (copy)").length === 1`),
+    await ev(`[...document.querySelectorAll(".list-index .row-title")].map((x) => x.textContent).join(", ")`));
+  await ev(`location.hash = ${JSON.stringify(firstHash)}`);
+  check("the first list keeps all its cards", await until(`document.querySelector("#lists-title")?.textContent === "UI check" && document.querySelectorAll(".entry").length === ${before}`, 3000),
+    await ev(`document.querySelector("#lists-title")?.textContent + " " + document.querySelectorAll(".entry").length`));
   await ev(`document.querySelector(".entry button[aria-label^='Remove']").click()`);
   await until(`!!document.querySelector("#view-lists .removed")`, 2000);
   await ev(`[...document.querySelectorAll("#view-lists .removed button")].find((x) => x.textContent.trim() === "Dismiss").click()`);

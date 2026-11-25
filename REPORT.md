@@ -586,3 +586,32 @@ The word lists are in `scripts/voice.mjs`. `tests/agent-docs.test.js`, `tests/do
 - The check can't stop a merge on its own. [Issue #35](https://github.com/armstrongl/scryfall-app/issues/35) has the steps to make the checks required.
 - The first-person check flags "US", as in "US dollars", because it ignores case. The voice tests do the same.
 - The check reads the text at the time of the run. A comment, a review, or an edit made after the merge isn't checked.
+
+# Duplicate a list (25 November 2026)
+
+[Issue #46](https://github.com/armstrongl/scryfall-app/issues/46) asked for **Duplicate** on every list, so that a different build can be tried without losing the one that works. Requested on 21 November 2026.
+
+## What changed
+
+- `duplicateList()` in `src/lists.js` makes the copy. It has a new ID, new entry IDs, and the same card snapshots, quantities, sections, notes, kind, and format. Its name is the first list's name with " (copy)". It fetches no card data.
+- **Duplicate** is in the list's **More** menu, between **Rename** and **Refresh card data**. The copy opens, focus goes to its heading, and the app announces it.
+- GitHub sync needs no change. The copy has its own ID, so sync treats it as a new list, and a later delete of the first list doesn't remove the copy.
+
+## Decisions
+
+Where the docs were silent:
+
+- A second duplicate of the same list gets the same name, such as "Elves (copy)" twice. Lists are told apart by ID, and **Rename** changes the name.
+- Each entry keeps the date it was added to the first list. The copy's own created and changed dates are the time of the copy.
+- The copy keeps every other field of the list, so a field added later is copied too.
+- **Duplicate** turns off while the copy saves, so a quick second press doesn't make a second copy.
+- The IndexedDB schema and the backup format didn't change.
+
+## Tests
+
+- Written first and seen failing: two unit tests in `tests/lists.test.js` and one sync test in `tests/sync.test.js`, which failed because `duplicateList` didn't exist, and a browser check in `scripts/check-ui.mjs`, which failed because the **More** menu had no **Duplicate** button. The browser check duplicates a list, sees the copy open with the same cards, removes a card from the copy, and sees that the first list still has all its cards.
+- An Opus review found that a quick double press made two copies. A browser check for it was written first and seen failing, then the fix went in. The same review asked for the help page to say what the tooltip says, and for a unit test that changes a snapshot in the copy and sees the first list stay the same.
+
+## Known problems
+
+None known.

@@ -53,6 +53,7 @@ export const TIPS = {
   findCombos: "Shows the list as text to paste into Find My Combos on Commander Spellbook.",
   openList: "Opens every card in this list on the Scryfall website, in a new tab.",
   buyList: "Shows the cards to buy, with an estimated total, and opens them in TCGplayer or Card Kingdom with the list filled in.",
+  duplicateList: "Makes a new list with the same cards, kind, and format. Changes to the copy don't change this list.",
   refresh: "Gets current legality, prices, and images from Scryfall. Quantities, sections, and notes stay the same.",
   listKind: "A deck gets deck checks and stats for its format. A collection is a plain list of cards.",
   section: "Maybe holds cards you're considering, and the Arena export leaves it out. Commander holds a Brawl deck's commander.",
@@ -393,6 +394,7 @@ export const DOC_PAGES = [
           { p: "**Maybe** holds cards you're considering. The Arena export leaves it out." },
           { p: "A list is a **Collection** or a **Deck**. A deck has a format: **Standard**, **Standard Brawl**, or **Brawl**. You can change the kind and the format at any time, and the cards stay." },
           { p: "If you remove a card from a list, select **Undo** to put it back." },
+          { p: "To try a different build without losing the one that works, select **More**, then **Duplicate**. The copy has the same cards, kind, and format, and its name ends in (copy). Changes to the copy don't change the first list. It uses the card data saved with the list, so it sends no requests to Scryfall. With GitHub sync on, the copy syncs as a new list." },
         ],
       },
       {

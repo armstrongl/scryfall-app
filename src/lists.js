@@ -76,6 +76,27 @@ export function renameList(list, name, clock = defaultClock) {
   return touch(list, { name: cleanName(name) }, clock);
 }
 
+/**
+ * A copy of a list, to try a different build without losing the first one.
+ * The copy gets a new ID, new entry IDs, and the same card snapshots, so no
+ * card data is fetched. Its name is the first list's name with "(copy)".
+ * @param {CardList} list
+ * @param {Clock} [clock]
+ * @returns {CardList}
+ */
+export function duplicateList(list, clock = defaultClock) {
+  const now = clock.now();
+  const copy = structuredClone(list);
+  return {
+    ...copy,
+    id: clock.makeId(),
+    name: `${list.name} (copy)`,
+    entries: copy.entries.map((e) => ({ ...e, id: clock.makeId() })),
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
 /** Changes the kind. All entries stay. */
 export function setKind(list, kind, clock = defaultClock) {
   if (kind !== "collection" && kind !== "deck") throw new Error(`Unknown kind: ${kind}`);

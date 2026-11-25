@@ -20,6 +20,7 @@ Sections:
 
 ### Project
 
+- Five new rules files for agents, each loaded with the files it covers: decks and formats, card data, UI behavior, browser tests, and agent tooling. The shipping rule has a new section on work beside other agents, with the one statement of when to use `scripts/scryfall-lock.sh`. A test checks that each rule is listed in `AGENTS.md` with the right paths. ([#67](https://github.com/armstrongl/scryfall-app/pull/67))
 - The pure `isEmptyCriteria()` in `src/query.js` with unit tests, and browser checks in `clearFilters()` for clearing, Undo, focus, the color mode after Undo, and Browse with no filters. ([#66](https://github.com/armstrongl/scryfall-app/pull/66))
 - The **issue-sweep** skill in `.agents/skills/`: how to work through the open issues with one agent per issue, each in its own worktree, and how to keep the agents in step and check each result on GitHub. `scripts/scryfall-lock.sh` lets only one process at a time on a computer send Scryfall requests, so that parallel browser tests don't double the request rate. It has its own tests. ([#65](https://github.com/armstrongl/scryfall-app/pull/65))
 - The new pure module `src/deck-import.js`, with unit tests that use a real Arena export and three new real `/cards/collection` fixtures, the client methods `cards()` and `setsBody()`, and browser checks that import a deck, fix and skip lines, and import into an existing list. ([#64](https://github.com/armstrongl/scryfall-app/pull/64))

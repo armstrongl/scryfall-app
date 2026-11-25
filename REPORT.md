@@ -615,3 +615,47 @@ Where the docs were silent:
 ## Known problems
 
 None known.
+
+# Sample hands (25 November 2026)
+
+Issue [#24](https://github.com/armstrongl/scryfall-app/issues/24) asked for sample opening hands from a deck, with the odds of a good start.
+
+- A deck has **Sample hand**, beside **Export for Arena**. Its panel shuffles the main deck and draws 7 cards (`HAND_SIZE` in `src/config.js`). **Draw a card** draws the top card of the library. **Mulligan** follows the London mulligan in [rule 103.5](https://magic.wizards.com/en/rules): shuffle the hand back, draw 7, then put one card on the bottom for each mulligan with **Put on bottom**, under the card. **New hand** starts again.
+- **Odds of a good start** shows the chance of 2 to 4 lands in the opening hand, of a land to play each turn up to turn 4, and of a card with mana value 2 by turn 2, on the play and on the draw.
+- The logic is in the pure module `src/hand.js`. The random function is passed in, so tests are repeatable. Nothing is saved, and the panel sends no Scryfall requests.
+
+## Changes from the plan
+
+`PLAN.md` has no sample hands. This is new work.
+
+## Decisions
+
+Where the docs and the issue were silent:
+
+- The library is the **Main deck** section only. The commander starts in the command zone, and the sideboard and **Maybe** are not part of the deck in a game.
+- In Brawl and Standard Brawl, the first mulligan is free, from rule 103.5c: "In a multiplayer game and in any Brawl game, the first mulligan a player takes doesn't count toward the number of cards that player will put on the bottom of their library or the number of mulligans that player may take."
+- Mulligans stop when the hand would be zero cards, as rule 103.5 says. A mulligan is not allowed after a draw. A new mulligan is allowed before all the owed cards are on the bottom, as on MTG Arena, where the player sees the hand before choosing.
+- **Draw a card** waits until the owed cards are on the bottom. After the last one, focus moves to **Draw a card**. After **Draw a card**, **Mulligan**, or **New hand**, focus stays on the button, or moves to **New hand** when the button turns off, such as when the library is empty.
+- **Sample hand** is on every deck. When the main deck has no cards, the panel says so, because a disabled button can't show its tooltip.
+- Each action draws the hand again, so a double-faced card turned with **Show other face** shows its front again.
+- Lands count by the front face of the type line, as in **Deck stats** (`primaryType()` in `src/stats.js`). A modal double-faced card with a spell on the front counts as a spell. A card with mana value 2 means a spell, not a land, with `manaValue` 2.
+- "A land drop each turn up to turn 4" means at least t lands among the cards seen by turn t, for every t from 1 to 4. On the play, turn t has seen 6 + t cards; on the draw, 7 + t (rule 103.8a: the first player skips the first draw). The chance is exact: `landDropOdds()` follows the number of lands one card at a time, because each turn depends on the turns before it.
+- The odds are for a 7-card hand with no mulligan. With fewer than 7 cards in the main deck, the panel asks for more cards instead of showing odds.
+- Percentages are rounded to whole numbers.
+- The hand shows normal-size card images, two a row on a phone. Nothing is put over an image: the card name, **Drawn**, and **Put on bottom** are below it.
+- `shuffled()` in `src/draw.js` is now exported and shared, so both draws use the same Fisher–Yates shuffle.
+
+### Best-of-one hands on MTG Arena
+
+The issue said to find Wizards' own description of the best-of-one opening-hand shuffler before adding a toggle. A search on 25 November 2026 found no current page from Wizards of the Coast that describes it. The only Wizards wording found is quoted on other sites from a 2020 post on the old MTG Arena forums, which now redirect to the MTG Arena home page: best-of-one formats "use a modified opening-hand algorithm which pulls multiple potential opening hands and chooses one". It doesn't say how many hands, or how one is chosen. Other sites describe two or three hands and a choice by land ratio, but those are not Wizards' description. So there is no toggle. The **Lists and decks** help page says that the sample hand doesn't copy the best-of-one shuffler. Issue [#54](https://github.com/armstrongl/scryfall-app/issues/54) tracks the toggle until Wizards publishes a description.
+
+## Tests
+
+- Written first and seen failing: `tests/hand.test.js`, which failed because `src/hand.js` didn't exist. Its expected odds were computed outside the app with Python's exact fractions: `math.comb` for the hypergeometric values, and a sum over every land and spell pattern of the first 10 or 11 cards for the land drops, a different method from the app's. The hands use real fixtures and a seeded random function.
+- Written first and seen failing: the help tests in `tests/docs.test.js` for the **Sample hand** section, its links, and the Glossary terms **Mulligan** and **On the play**.
+- Added after the code, after an Opus review: unit tests that a mulligan shuffles (a new hand, one random number for each swap), that a card put on the bottom can come back, and that a deck smaller than a hand owes no more cards than it has. They were proved able to fail by making `mulligan()` skip the shuffle and the cap, then the code was restored. A browser check that focus moves to **New hand** when the library runs out was proved able to fail by taking the focus fallback out.
+- Written first and seen failing: the `sampleHand` browser checks in `scripts/check-ui.mjs` (draw, mulligan, **Put on bottom**, the odds, focus, whole card images, and no sideways scroll), and the check for the free first mulligan in Brawl. They failed on the old app because **Sample hand** didn't exist.
+
+## Known problems
+
+- The odds don't include mulligans, cards that draw or search for lands, or the best-of-one shuffler on MTG Arena.

@@ -5,7 +5,7 @@
 
 import { DECK_FORMAT_NAMES, SECTION_NAMES } from "../config.js";
 import { cardKey } from "../cards.js";
-import { addCopy, addSections, canAddCopy, copyRule, deckCounts, deckSummary, isInDeck, removeCopy } from "../deck-mode.js";
+import { addCopy, addSections, canAddCopy, copyRule, deckCounts, deckSummary, hiddenKeys, removeCopy } from "../deck-mode.js";
 import { restoreEntry } from "../lists.js";
 import { TIPS } from "../docs.js";
 import { announce, field, h, plural, replace, withTip } from "./dom.js";
@@ -18,8 +18,14 @@ import { announce, field, h, plural, replace, withTip } from "./dom.js";
 export function createDeckMode(app, hooks) {
   /** Every card's controls that may be on the page. */
   const steppers = new Set();
-  /** The entry removed by the last −, shown as Undo in that card's controls. */
+  /**
+   * The entry removed by the last −, shown as Undo in that card's controls.
+   * `updatedAt` is the deck's date after the removal: any other change to
+   * the deck clears Undo, so it never restores into a changed deck.
+   */
   let undo = null;
+  /** True while deck mode is on, to notice when it stops on its own. */
+  let active = !!app.deckList();
   /** Edits run one at a time, so a quick second press reads the saved deck. */
   let queue = Promise.resolve();
   const run = (fn) => { queue = queue.then(fn, fn); return queue; };
@@ -185,9 +191,10 @@ export function createDeckMode(app, hooks) {
       announce(`${sectionName(section)} has no copies of ${snapshot.name}.`);
       return;
     }
-    undo = r.removed ? { key: cardKey(snapshot), listId: list.id, ...r.removed } : null;
+    undo = r.removed ? { key: cardKey(snapshot), listId: list.id, updatedAt: null, ...r.removed } : null;
     if (await app.saveList(r.list)) {
-      if (r.removed) {
+      if (r.removed && undo) {
+        undo.updatedAt = app.deckList()?.updatedAt ?? null;
         announce(`Removed ${snapshot.name} from ${sectionName(section)}. Undo is available.`);
         item.undoBtn.focus();
       } else {
@@ -207,6 +214,12 @@ export function createDeckMode(app, hooks) {
       refresh();
       return;
     }
+    if (!canAddCopy(list, u.entry.card, u.entry.section)) {
+      refresh();
+      item.minus.focus();
+      announce(`Can't put ${u.entry.card.name} back: the deck already has the most copies it can have.`);
+      return;
+    }
     if (await app.saveList(restoreEntry(list, u.entry, u.index))) {
       announce(`Put ${u.entry.card.name} back in ${sectionName(u.entry.section)}.`);
       item.minus.focus();
@@ -214,18 +227,26 @@ export function createDeckMode(app, hooks) {
   }
 
   function refresh() {
+    const list = app.deckList();
+    // Undo goes away when the deck changed in some other way.
+    if (undo && undo.updatedAt && (!list || list.id !== undo.listId || list.updatedAt !== undo.updatedAt)) undo = null;
     for (const item of steppers) {
       if (!item.el.isConnected) steppers.delete(item);
       else item.update();
     }
     renderMenu();
     renderBar();
+    // Deck mode stopped on its own: the deck was deleted or became a collection.
+    if (active && !list) {
+      undo = null;
+      hooks.onStop();
+    }
+    active = !!list;
   }
 
-  /** True when a card with this key is in the deck and hiding is on. */
-  function hides(key) {
-    const list = app.deckList();
-    return !!list && !!app.deckMode?.hide && isInDeck(list, { oracleId: key, name: key });
+  /** The card keys to hide right now. */
+  function hidden() {
+    return hiddenKeys(app.deckList(), !!app.deckMode?.hide);
   }
 
   /**
@@ -240,5 +261,5 @@ export function createDeckMode(app, hooks) {
   renderMenu();
   renderBar();
 
-  return { menu, bar, hiddenNote, stepper, refresh, hides, showHidden, start };
+  return { menu, bar, hiddenNote, stepper, refresh, hidden, showHidden, start };
 }

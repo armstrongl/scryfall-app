@@ -1,10 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  addCopy, addSections, cleanDeckMode, copyRule, deckCounts, deckSummary, hiddenInDeck, isInDeck, removeCopy, startingCriteria,
+  addCopy, addSections, canAddCopy, cleanDeckMode, copyRule, deckCounts, deckSummary, hiddenKeys, isInDeck, removeCopy, startingCriteria,
 } from "../src/deck-mode.js";
 import { addCard, createList, setKind } from "../src/lists.js";
 import { buildQuery, defaultCriteria } from "../src/query.js";
+import { cardKey } from "../src/cards.js";
 import { fakeClock, snap } from "./helpers.js";
 
 function deck(items, format = "standard") {
@@ -171,12 +172,14 @@ test("cards in the main deck, commander, or sideboard are in the deck; Maybe isn
   assert.equal(isInDeck(deck([[krenko, 1, "commander"]], "brawl"), krenko), true);
 });
 
-test("hiddenInDeck picks the cards to hide, only when hiding is on", () => {
-  const list = deck([[elves, 1], [teferi, 1, "maybe"]]);
-  const cards = [elves, angel, teferi, elvesOther];
-  assert.deepEqual(hiddenInDeck(list, cards, true).map((c) => c.scryfallId), [elves.scryfallId, elvesOther.scryfallId]);
-  assert.deepEqual(hiddenInDeck(list, cards, false), []);
-  assert.deepEqual(hiddenInDeck(null, cards, true), []);
+test("hiddenKeys gives the card keys to hide, only when hiding is on", () => {
+  const list = deck([[elves, 1], [angel, 1, "sideboard"], [teferi, 1, "maybe"]]);
+  const keys = hiddenKeys(list, true);
+  assert.ok(keys.has(cardKey(elvesOther)), "every printing of a card in the deck");
+  assert.ok(keys.has(cardKey(angel)));
+  assert.ok(!keys.has(cardKey(teferi)), "Maybe stays shown");
+  assert.equal(hiddenKeys(list, false).size, 0);
+  assert.equal(hiddenKeys(null, true).size, 0);
 });
 
 // Summary --------------------------------------------------------------------------
@@ -214,4 +217,10 @@ test("cleanDeckMode drops a deck that is gone or is a collection", () => {
   assert.equal(cleanDeckMode({ listId: "d1", section: "main", hide: false }, [setKind(list, "collection")]), null);
   assert.equal(cleanDeckMode(null, [list]), null);
   assert.equal(cleanDeckMode("d1", [list]), null);
+});
+
+test("canAddCopy checks the limit for Undo too: a card added back another way can't be restored past it", () => {
+  const list = deck([[krenko, 1]], "brawl");
+  assert.equal(canAddCopy(list, krenko, "main"), false);
+  assert.equal(canAddCopy(list, krenko, "maybe"), true);
 });

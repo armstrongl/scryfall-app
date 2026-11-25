@@ -72,18 +72,16 @@ export function createDiscoverView(app) {
   });
 
   /**
-   * Hides the shown cards that are in the deck, when that's on. It runs
-   * when cards load and when the switch changes, not after each + or −, so
-   * a card stays in place while you change its count.
+   * Hides cards that are in the deck, when that's on. With no tiles given,
+   * it checks every card: when deck mode starts or stops and when the
+   * switch changes. New cards from a draw or Load more pass only
+   * themselves, so a card you just added stays in place.
+   * @param {Iterable<HTMLElement>} [tiles]
    */
-  function applyHide() {
-    let n = 0;
-    for (const t of results.querySelectorAll(".tile[data-card-key]")) {
-      const hide = deck.hides(t.dataset.cardKey);
-      t.hidden = hide;
-      if (hide) n += 1;
-    }
-    deck.showHidden(n);
+  function applyHide(tiles) {
+    const keys = deck.hidden();
+    for (const t of tiles ?? results.querySelectorAll(".tile[data-card-key]")) t.hidden = keys.has(t.dataset.cardKey);
+    deck.showHidden(results.querySelectorAll(".tile[data-card-key][hidden]").length);
   }
 
   // Card actions -----------------------------------------------------------------
@@ -427,8 +425,9 @@ export function createDiscoverView(app) {
       if (query.includes("game:arena") && Array.isArray(card.games) && !card.games.includes("arena")) {
         extra.push(h("p", { class: "msg msg-warn", text: "Scryfall does not list this printing on Arena." }));
       }
-      results.append(tile(snapshot, extra, found.length));
-      applyHide();
+      const t = tile(snapshot, extra, found.length);
+      results.append(t);
+      applyHide([t]);
       found.push(snapshot);
       app.addHistory({ id: crypto.randomUUID(), card: snapshot, query, drawnAt: snapshot.fetchedAt });
     };
@@ -558,8 +557,9 @@ export function createDiscoverView(app) {
       const start = browse.cards.length;
       browse = mergePage(browse, list);
       const now = new Date().toISOString();
-      browse.cards.slice(start).forEach((card, i) => results.append(tile(makeSnapshot(card, now), [], fresh ? i : 99)));
-      applyHide();
+      const added = browse.cards.slice(start).map((card, i) => tile(makeSnapshot(card, now), [], fresh ? i : 99));
+      results.append(...added);
+      applyHide(added);
       const name = SORT_OPTIONS.find((o) => o.value === browse.sort.order)?.label ?? browse.sort.order;
       const label = name[0].toLowerCase() + name.slice(1);
       replace(browseStatus, `Showing ${formatNumber(browse.cards.length)} of ${formatNumber(browse.total ?? browse.cards.length)} cards, sorted by ${label}.`);

@@ -136,14 +136,15 @@ export function isInDeck(list, card) {
 }
 
 /**
- * The cards to hide: those already in the deck, when hiding is on.
+ * The card keys to hide: every card already in the deck (not Maybe), when
+ * hiding is on. Card tiles carry the same key in `data-card-key`.
  * @param {CardList|null} list
- * @param {CardSnapshot[]} cards
  * @param {boolean} hide
+ * @returns {Set<string>}
  */
-export function hiddenInDeck(list, cards, hide) {
-  if (!list || !hide) return [];
-  return cards.filter((c) => isInDeck(list, c));
+export function hiddenKeys(list, hide) {
+  if (!list || !hide) return new Set();
+  return new Set(list.entries.filter((e) => e.section !== "maybe").map((e) => cardKey(e.card)));
 }
 
 /**

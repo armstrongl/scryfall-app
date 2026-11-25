@@ -359,6 +359,7 @@ This index lists the text the app shows or announces from `index.html`, `src/mai
 | announce | {…} has no copies of {…}. |
 | announce | Removed {…} from {…}. Undo is available. |
 | announce | {…}: {…} in {…}. |
+| announce | Can't put {…} back: the deck already has the most copies it can have. |
 | announce | Put {…} back in {…}. |
 | text | 1 card in the deck is |
 

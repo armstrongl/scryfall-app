@@ -1223,8 +1223,34 @@ async function deckMode(b, width, check) {
   await ev(setValue("#deck-select", "deck-mode-check", "change"));
   check("deck mode: choosing a deck from the Deck menu starts deck mode", await until(`!!${BAR} && !${BAR}.hidden && /Deck mode check/.test(${barText})`, 2000));
   check("deck mode: a Standard deck's colors become the color filter", await until(`/At most (white|blue|black|red|green)/.test(${CHIPS})`, 2000), await ev(CHIPS));
-  await ev(click("#deck-stop"));
-  await until(`!${BAR} || ${BAR}.hidden`, 2000);
+
+  // Cards again, with hiding on. The card has 2 copies, so it hides.
+  await ev(clickText("#view-discover button", "Show cards"));
+  await until(`!!${T}`, 30000);
+  if (width >= 1200) {
+    await ev(`${PLUS}.focus()`);
+    check("deck mode: the inspector has the same count and controls", await until(`/2 in Main deck/.test(document.querySelector("#inspector .tile-deck")?.textContent ?? "")`, 3000));
+    await ev(`document.activeElement.blur()`);
+  }
+  await ev(click("#deck-hide"));
+  await until(`${T}.hidden`, 2000);
+
+  // The deck changes in Lists: a Brawl format, then a collection.
+  await ev(`location.hash = "#lists/deck-mode-check"`);
+  await until(`!!document.querySelector("#format-select")`, 3000);
+  await ev(setValue("#format-select", "brawl", "change"));
+  await sleep(500);
+  await ev(`location.hash = "#discover"`);
+  check("deck mode: a Brawl deck adds to the main deck, commander, or Maybe", await until(`[...document.querySelectorAll("#deck-section option")].map((o) => o.value).join(",") === "main,commander,maybe"`, 2000));
+  check("deck mode: + stops at 1 copy in Brawl", await ev(`${PLUS}?.getAttribute("aria-disabled") === "true"`));
+  await ev(`location.hash = "#lists/deck-mode-check"`);
+  await until(`!!document.querySelector("#kind-select")`, 3000);
+  await ev(setValue("#kind-select", "collection", "change"));
+  await sleep(500);
+  await ev(`location.hash = "#discover"`);
+  await until(`!document.querySelector("#view-discover").hidden`, 3000);
+  check("deck mode: it stops when its deck becomes a collection", await until(`!${BAR} || ${BAR}.hidden`, 2000));
+  check("deck mode: when it stops on its own, hidden cards show again", await ev(`!!${T} && !${T}.hidden && document.querySelector("#deck-hidden-note").hidden`));
 }
 
 // Fake GitHub ----------------------------------------------------------------------

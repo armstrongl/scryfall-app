@@ -1,0 +1,21 @@
+#!/bin/sh
+#
+# A git commit-msg hook. It removes Claude session references from a commit
+# message: session trailers, session links, and session IDs. These must never
+# be committed. It is a copy of a global hook, so that every worktree, agent,
+# and cloud session can install it. AGENTS.md says how.
+
+msg_file="$1"
+# Built in parts, so this file doesn't match the session check in
+# tests/agent-docs.test.js.
+pattern='Claude-''Session:|claude\.ai/code/''session|session_''01[A-Za-z0-9]{10,}'
+
+if grep -qiE "$pattern" "$msg_file"; then
+  tmp="$(mktemp)"
+  grep -viE "$pattern" "$msg_file" > "$tmp" || true
+  # Drop the blank lines left at the end by a removed trailer.
+  printf '%s\n' "$(cat "$tmp")" > "$msg_file"
+  rm -f "$tmp"
+  echo "commit-msg: removed a Claude session reference from the commit message." >&2
+fi
+exit 0

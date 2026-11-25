@@ -170,7 +170,9 @@ While sync is on, **Export to GitHub** under **Backup** saves a full backup (wit
 | `scripts/` | Development tools: fixture download, live API checks, browser tests, icon drawing, the interface copy index (`ui-copy.mjs`), the help link check (`check-links.mjs`), the pull request changelog check (`check-changelog.mjs`), and the pull request text check (`check-pr-text.mjs`), with the voice word lists it shares with the tests (`voice.mjs`). |
 | `AGENTS.md`, `CLAUDE.md` | Instructions for coding agents. `AGENTS.md` is read by every agent. `CLAUDE.md` imports it and adds notes for Claude Code. |
 | `.claude/rules/` | The detailed rules for agents: GitHub voice, shipping, design, the Scryfall API, storage, help docs, and GitHub sync. |
-| `.claude/settings.json` | Shared Claude Code settings: no attribution in commits or pull requests, and a prompt before any force push. |
+| `.claude/settings.json` | Shared Claude Code settings: no attribution in commits or pull requests, a prompt before any force push, and the hooks. |
+| `.claude/hooks/` | Claude Code hooks. They block commit messages and GitHub text that break the voice rules, ask before a force push in any form, keep Scryfall API calls in `src/scryfall.js`, and remind the agent to run the tests. `CLAUDE.md` describes them. |
+| `.githooks/commit-msg` | A git hook that removes Claude session links from commit messages. `AGENTS.md` has the command to install it. |
 | `.agents/skills/` | Shared agent skills for Codex and Claude Code: **ship** and **plan-with-options**. `.claude/skills` links here. |
 | `PLAN.md`, `REPORT.md` | The v1 plan, and the report on what was built, followed by the design overhaul, the feedback round, the combos work, the docs audit, the agent instructions, the help links and tooltips, and GitHub sync. |
 | `CHANGELOG.md` | The notable changes, newest first, with a link to each pull request. |

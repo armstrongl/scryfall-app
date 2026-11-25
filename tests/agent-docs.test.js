@@ -137,7 +137,28 @@ test("the committed Claude settings turn off attribution and ask before a force 
   for (const rule of ["Bash(git push --force*)", "Bash(git push -f*)", "Bash(git push * --force*)", "Bash(git push * -f*)"]) {
     assert.ok(settings.permissions.ask.includes(rule), rule);
   }
-  assert.equal(settings.hooks, undefined, "hooks wait for issue work, not this file");
+});
+
+test("the committed Claude settings register the hooks, and each script exists", () => {
+  const { hooks } = JSON.parse(read(".claude/settings.json"));
+  const scripts = (event) => (hooks[event] || []).flatMap((group) => group.hooks.map((hk) => ({ matcher: group.matcher, ...hk })));
+  const pre = scripts("PreToolUse");
+  for (const tool of ["Bash", "Edit", "Write", "mcp__github__create_pull_request", "mcp__plugin_github_github__add_issue_comment"]) {
+    const re = (m) => (/^[\w\s,|-]*$/.test(m) ? new RegExp(`^(?:${m.split(/[|,]/).map((s) => s.trim()).join("|")})$`) : new RegExp(m));
+    assert.ok(pre.some((hk) => re(hk.matcher).test(tool) && hk.command.includes(".claude/hooks/pre-tool-use.mjs")), `PreToolUse covers ${tool}`);
+  }
+  assert.ok(scripts("Stop").some((hk) => hk.command.includes(".claude/hooks/stop.mjs")), "Stop hook");
+  for (const hk of [...pre, ...scripts("Stop")]) {
+    assert.equal(hk.type, "command");
+    assert.ok(hk.timeout > 0 && hk.timeout <= 30, "a short timeout");
+    const path = hk.command.match(/\.claude\/hooks\/[\w.-]+/)[0];
+    assert.ok(exists(path), path);
+  }
+  // A hook can deny or ask, but never allow: it must not loosen the
+  // permission rules above.
+  for (const f of FILES.filter((f) => f.startsWith(".claude/hooks/"))) {
+    assert.doesNotMatch(read(f), /["']allow["']/, `${f} never allows a tool call`);
+  }
 });
 
 const TEXT = /\.(md|js|mjs|json|html|css|sh|svg|webmanifest|txt|yml|yaml)$/;
@@ -220,7 +241,7 @@ test("git keeps the shared .claude files, even with a global ignore for .claude"
     try { git(["-c", `core.excludesFile=${excludes}`, "check-ignore", "-q", "--no-index", f]); return true; } catch { return false; }
   };
   try {
-    const shared = [".claude/settings.json", ".claude/skills", ...Object.keys(RULES).map((n) => `.claude/rules/${n}`)];
+    const shared = [".claude/settings.json", ".claude/skills", ".claude/hooks/pre-tool-use.mjs", ...Object.keys(RULES).map((n) => `.claude/rules/${n}`)];
     assert.deepEqual(shared.filter(isIgnored), [], "shared files are kept");
     const personal = [".claude/settings.local.json", ".claude/log/notes.md"];
     assert.deepEqual(personal.filter((f) => !isIgnored(f)), [], "personal files stay ignored");

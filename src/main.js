@@ -407,6 +407,7 @@ async function start() {
     }
     if (view === "lists") views.lists.show(id);
     if (view === "data") views.data.show();
+    if (view === "discover") views.discover.show();
     const changed = active !== `${view}/${id}`;
     const sameView = active?.split("/")[0] === view;
     active = `${view}/${id}`;

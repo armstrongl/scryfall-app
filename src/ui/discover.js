@@ -7,7 +7,7 @@ import { MAX_DRAW, MIN_DRAW, POOL_DEBOUNCE_MS, SMALL_POOL_SIZE } from "../config
 import { cardKey, makeSnapshot } from "../cards.js";
 import { drawBatch, planCount, recentKeys, sampleFromPool } from "../draw.js";
 import { SORT_DIRECTIONS, SORT_OPTIONS, browseParams, emptyBrowse, mergePage, normalizeSort } from "../browse.js";
-import { buildQuery, defaultCriteria, filterChips, normalizeCriteria, scryfallSearchUrl } from "../query.js";
+import { buildQuery, defaultCriteria, filterChips, localDay, newestSetPreset, normalizeCriteria, scryfallSearchUrl } from "../query.js";
 import { errorMessage } from "../scryfall.js";
 import { openAddPanel } from "./add-panel.js";
 import { openExplore } from "./explore-panel.js";
@@ -82,8 +82,28 @@ export function createDiscoverView(app) {
   const renameBtn = h("button", { type: "button", class: "ghost", text: "Rename", onclick: () => showNameForm("rename") });
   const deleteBtn = h("button", { type: "button", class: "ghost", text: "Delete", onclick: confirmDelete });
 
+  /** The Newest Standard set preset, once Scryfall's set list says which set. */
+  let newestPreset = null;
+  let newestLoading = false;
+  /** False until the first count settles, so the count isn't kept waiting. */
+  let firstCountDone = false;
+  /** Asks the client for the newest Standard set. Without an answer, the preset isn't listed. */
+  function loadNewestSet() {
+    if (newestPreset || newestLoading || !firstCountDone) return;
+    newestLoading = true;
+    app.client.newestStandardSet(localDay(new Date()))
+      .then((set) => {
+        if (!set) return;
+        newestPreset = newestSetPreset(set);
+        renderPresets();
+      })
+      // A failure leaves the preset out. Coming back to Discover, or back
+      // online, asks again.
+      .catch(() => {})
+      .finally(() => { newestLoading = false; });
+  }
   function allPresets() {
-    return [...BUILT_INS, ...app.presets.slice().sort((a, b) => a.name.localeCompare(b.name))];
+    return [...BUILT_INS, ...(newestPreset ? [newestPreset] : []), ...app.presets.slice().sort((a, b) => a.name.localeCompare(b.name))];
   }
   function selectedPreset() {
     return allPresets().find((p) => p.id === presetSelect.value) ?? BUILT_IN_PRESET;
@@ -251,6 +271,18 @@ export function createDiscoverView(app) {
     const query = current.query;
     const controller = new AbortController();
     poolController = controller;
+    try {
+      await countPool(query, controller);
+    } finally {
+      if (!controller.signal.aborted) {
+        firstCountDone = true;
+        loadNewestSet();
+      }
+    }
+  }
+
+  /** @param {string} query @param {AbortController} controller */
+  async function countPool(query, controller) {
     try {
       const params = browseParams(NAME_SORT, 1);
       const list = await app.client.search(query, params, controller.signal);
@@ -636,14 +668,25 @@ export function createDiscoverView(app) {
   setMode(mode, false);
   if (mode === "browse") replace(browseStatus, "Choose a sort, then select Show cards.");
   schedulePool();
+  if (poolTimer === null) {
+    // No count to wait for.
+    firstCountDone = true;
+    loadNewestSet();
+  }
+  addEventListener("online", loadNewestSet);
 
   return {
     el,
     refresh() {
       renderPresets();
       renderHistory();
+      loadNewestSet();
     },
     refreshSaved,
+    /** Called when Discover is shown. */
+    show() {
+      loadNewestSet();
+    },
     /**
      * Loads criteria from elsewhere in the app, for example an Explore
      * search, and explains where they came from.

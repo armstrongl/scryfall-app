@@ -169,6 +169,7 @@ export const DOC_PAGES = [
         heading: "Choose what to search",
         blocks: [
           { p: `A preset is a saved set of filters. The built-in presets are **Arena Standard**, for cards legal in ${format("Standard", "standard")} on MTG Arena, and **Arena Brawl**, for cards legal in ${format("Brawl", "brawl")} on MTG Arena, with colors read as ${wiki("color identity", "Color identity")}.` },
+          { p: `The built-in **Newest Standard set** preset finds the cards in the newest set that is legal in Standard on MTG Arena. Its name shows the set. The app gets the set from ${link("Scryfall", SCRYFALL_SITE)} when it opens, so the preset shows up a moment after the page loads. A set counts from its release date, so a set that isn't out yet is never chosen. MTG Arena often gets a new set a few days before that date. If Scryfall can't be reached, the preset isn't listed until you come back to **Discover** with a connection.` },
           {
             steps: [
               "Choose a preset, then select **Apply**.",
@@ -208,7 +209,7 @@ export const DOC_PAGES = [
               ["Creature abilities", `In **Creature**. Finds cards with every ${wiki("keyword", "Keyword ability")} you tick. For example, **Flying** and **Lifelink** finds cards with both. For a keyword that isn't in the list, type it in **Keyword ability**.`],
               ["Power and Toughness", `In **Creature**. A minimum and a maximum, like **Mana value**. Cards with * in their ${wiki("power", "Power")} or ${wiki("toughness", "Toughness")}, such as ${card("Tarmogoyf")}, match only where Scryfall can compare them.`],
               ["First printed", `In **Printing**. The years that the card was first printed in, from and to. A ${wiki("reprint", "Reprint")} of an old card counts as old. With a year set, **Game** looks at every printing of the card, not one printing. But **Set**, **Rarity**, and **Paper price** look at the first printing only, and a note under **First printed** says so. For example, a year and a set together find cards first printed in that set.`],
-              ["Set", `In **Printing**. Type part of a set name, or its code, such as DSK, then tick one or more sets. The list of sets comes from ${link("Scryfall", SCRYFALL_SITE)} when you first open **Printing**. Ticked sets stay at the top of the list.`],
+              ["Set", `In **Printing**. Type part of a set name, or its code, such as DSK, then tick one or more sets. The list of sets comes from ${link("Scryfall", SCRYFALL_SITE)} when the page opens, or when you first open **Printing**. Ticked sets stay at the top of the list.`],
               ["Paper price at most (USD)", "In **Printing**. The highest paper price, in dollars, from Scryfall. The price isn't used when **Game** is **Arena** or **MTGO**, and its chip says so. Set **Game** to **Paper** or **Any** to use it."],
               ["Popularity", `In **Popularity**. How often Commander decks on ${link("EDHREC", EDHREC)} play the card. **Staples** are in the top 1,000, and **Popular** cards in the top 5,000. **Spicy** cards are rarely played: their rank is over 10,000. The rank counts Commander decks only, so it is a rough guide for Standard.`],
             ],

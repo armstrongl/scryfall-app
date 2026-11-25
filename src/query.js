@@ -142,6 +142,61 @@ export function setOptions(body) {
     .map((s) => ({ code: s.code, name: s.name, released: typeof s.released_at === "string" ? s.released_at : "" }))
     .sort((a, b) => (a.released === b.released ? a.name.localeCompare(b.name) : a.released < b.released ? 1 : -1));
 }
+
+/** The set types that can be the newest Standard set: main sets only. */
+const STANDARD_SET_TYPES = ["expansion", "core"];
+/** The most sets the app checks for the Newest Standard set preset. */
+export const STANDARD_SET_TRIES = 4;
+export const NEWEST_SET_PRESET_ID = "builtin-newest-standard";
+
+/**
+ * The sets that may be the newest set legal in Standard, newest first: the
+ * expansions and core sets already released on `today`. The /sets response
+ * has no legality, so each one is checked with standardSetCheck() before
+ * use. Sets in preview, with a release date after today, are left out.
+ * @param {any} body A Scryfall /sets response.
+ * @param {string} today The local date, YYYY-MM-DD.
+ * @param {number} [limit]
+ * @returns {{code: string, name: string, released: string}[]}
+ */
+export function standardSetCandidates(body, today, limit = STANDARD_SET_TRIES) {
+  if (!body || !Array.isArray(body.data)) return [];
+  return setOptions({
+    data: body.data.filter((s) => s && STANDARD_SET_TYPES.includes(s.set_type)
+      && /^\d{4}-\d{2}-\d{2}$/.test(s.released_at ?? "") && s.released_at <= today),
+  }).slice(0, limit);
+}
+
+/**
+ * The search that tells whether a set is legal in Standard on Arena: its
+ * new cards (not reprints) that are legal in Standard and are on Arena. A
+ * set that isn't legal, such as The Lord of the Rings: Tales of
+ * Middle-earth, or isn't on Arena, finds nothing.
+ * @param {string} code
+ */
+export const standardSetCheck = (code) => `e:${code} f:standard game:arena not:reprint`;
+
+/** @param {Date} date @returns {string} The date in local time, YYYY-MM-DD. */
+export function localDay(date) {
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+/**
+ * The built-in preset for the newest set legal in Standard on Arena: the
+ * Arena Standard criteria with that set.
+ * @param {{code: string, name: string}} set
+ */
+export function newestSetPreset(set) {
+  return Object.freeze({
+    id: NEWEST_SET_PRESET_ID,
+    name: `Newest Standard set: ${set.name}`,
+    builtIn: true,
+    criteria: { ...defaultCriteria(), sets: [{ code: set.code, name: set.name }] },
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+  });
+}
 /**
  * Formats whose decks are built by color identity: Commander and its
  * variants, Oathbreaker, and Brawl. Lands have no color, so in these

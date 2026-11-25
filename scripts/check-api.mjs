@@ -1,7 +1,9 @@
 // Runs the API checks from PLAN.md section 9 against the live Scryfall API.
 // Follows the Scryfall rules: Accept header, descriptive User-Agent, and at
 // least 500 ms between requests. Run: node scripts/check-api.mjs
-import { ABILITY_COUNTS, CARD_ROLES, buildQuery, emptyCriteria, setOptions } from "../src/query.js";
+import {
+  ABILITY_COUNTS, CARD_ROLES, buildQuery, emptyCriteria, localDay, setOptions, standardSetCandidates, standardSetCheck,
+} from "../src/query.js";
 import { PARTNER_QUERIES, rewardsQuery } from "../src/synergy.js";
 import { VERIFIED_TAGS } from "../src/explore.js";
 
@@ -110,6 +112,18 @@ const walker = await search(`!"Teferi, Hero of Dominaria" ${buildQuery({ ...empt
 console.log(`${walker.body.total_cards === 1 ? "ok  " : "BAD "} Brawl commander: a legendary planeswalker matches (${walker.status} ${walker.body.total_cards ?? walker.body.code})`);
 const sets = await get("/sets");
 console.log(`${sets.status === 200 && setOptions(sets.body).some((x) => x.code === "dsk") ? "ok  " : "BAD "} The set list: ${sets.status}, ${setOptions(sets.body).length} sets to choose from`);
+
+console.log("\n## Newest Standard set (the preset's check, for each candidate, and for The Lord of the Rings, which isn't legal in Standard)");
+const candidates = standardSetCandidates(sets.body, localDay(new Date()));
+let anyLegal = false;
+for (const set of candidates) {
+  const { status, body } = await search(standardSetCheck(set.code));
+  anyLegal ||= status === 200;
+  console.log(`${status === 200 ? "legal" : "none "} ${set.code.padEnd(5)} ${set.name}: ${status} ${body.total_cards ?? body.code}`);
+}
+console.log(`${anyLegal ? "ok  " : "BAD "} A candidate set is legal in Standard on Arena`);
+const ltr = await search(standardSetCheck("ltr"));
+console.log(`${ltr.status === 404 ? "ok  " : "BAD "} The Lord of the Rings finds no new Standard cards: ${ltr.status} ${ltr.body.total_cards ?? ltr.body.code}`);
 
 console.log("\n## Synergy queries (each partner query in src/synergy.js, in Standard on Arena)");
 const synergy = { ...PARTNER_QUERIES, "rewards (Elf)": rewardsQuery("Elf"), "exclude a card": 't:elf -!"Llanowar Elves"' };

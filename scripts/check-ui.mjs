@@ -324,6 +324,21 @@ async function discover(b, check) {
   await ev(clickText("#view-discover button", "Apply"));
   check("the Arena Brawl preset uses Brawl and color identity", /f:brawl/.test(await ev(QUERY))
     && await ev(`[...document.querySelectorAll(".chips .chip")].some((c) => /^Brawl/.test(c.textContent))`));
+  // The newest Standard set comes from Scryfall's set list, so it shows up
+  // after the first count.
+  const NEWEST = `document.querySelector('#view-discover .preset-row option[value="builtin-newest-standard"]')`;
+  check("the Newest Standard set preset is listed, named in plain words", await until(`!!${NEWEST}`)
+    && /^Newest Standard set: \S.* \(built in\)$/.test(await ev(`${NEWEST}.textContent`)), await ev(`${NEWEST}?.textContent`));
+  const setName = (await ev(`${NEWEST}?.textContent`) ?? "").replace(/^Newest Standard set: /, "").replace(/ \(built in\)$/, "");
+  await ev(setValue("#view-discover .preset-row select", "builtin-newest-standard", "change"));
+  check("the Newest Standard set preset can't be renamed or deleted", await ev(`document.querySelector("#view-discover .preset-row select").value === "builtin-newest-standard"`) && await ev(`[...document.querySelectorAll("#view-discover .preset-row button")].filter((x) => /^(Rename|Delete)$/.test(x.textContent)).every((x) => x.hidden)`));
+  await ev(clickText("#view-discover button", "Apply"));
+  check("the Newest Standard set preset searches the set in Standard on Arena, with plain chips",
+    /^f:standard game:arena -is:rebalanced e:[a-z0-9]+$/.test(await ev(QUERY))
+    && await ev(`(() => {
+      const chips = [...document.querySelectorAll(".chips .chip > span")].map((c) => c.textContent);
+      return chips.includes(${JSON.stringify(`Set: ${setName}`)}) && chips.some((c) => /Standard/.test(c)) && !chips.some((c) => /\\b(e|f|game|is):/.test(c));
+    })()`), `${await ev(QUERY)} | ${await ev(CHIPS)}`);
   await ev(setValue("#view-discover .preset-row select", "builtin-arena-standard", "change"));
   await ev(clickText("#view-discover button", "Apply"));
   await ev(setValue("#view-discover textarea", "t:goblin t:creature"));

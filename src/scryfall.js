@@ -11,7 +11,7 @@
 import {
   ACCEPT_HEADER, API_BASE, COLLECTION_BATCH_SIZE, RATE_LIMIT_PAUSE_MS, REQUEST_SPACING_MS,
 } from "./config.js";
-import { setOptions } from "./query.js";
+import { setOptions, standardSetCandidates, standardSetCheck } from "./query.js";
 
 /**
  * @typedef {Object} ApiError
@@ -242,6 +242,32 @@ export function createClient(options = {}) {
     return { data, notFound };
   }
 
+  /**
+   * Asks for a value once and keeps it while the page is open. After a
+   * failure, the next call asks again.
+   * @template T
+   * @param {() => Promise<T>} load
+   * @returns {() => Promise<T>}
+   */
+  function once(load) {
+    let promise = null;
+    return () => {
+      promise ??= load().catch((e) => {
+        promise = null;
+        throw e;
+      });
+      return promise;
+    };
+  }
+
+  /** @type {Map<string, () => Promise<{code: string, name: string, released: string}|null>>} */
+  const newest = new Map();
+  /** @param {string} q @param {AbortSignal} [signal] */
+  function random(q, signal) {
+    const qs = q ? `?q=${encodeURIComponent(q)}` : "";
+    return request(`/cards/random${qs}`, { signal });
+  }
+
   return {
     request,
     setsBody,
@@ -254,15 +280,37 @@ export function createClient(options = {}) {
       });
       return optionsPromise;
     },
+    /**
+     * The newest set legal in Standard on Arena on `today`, or null when
+     * none of the newest few sets checks out. Each candidate from /sets is
+     * checked with one random card request, newest first. A set with no
+     * match moves on to the next one. If Scryfall rejects the check, the
+     * answer is null. Kept while the page is open. After a network or
+     * server error, the next call asks again.
+     * @param {string} today The local date, YYYY-MM-DD.
+     */
+    newestStandardSet(today) {
+      if (!newest.has(today)) {
+        newest.set(today, once(async () => {
+          for (const set of standardSetCandidates(await setsBody(), today)) {
+            try {
+              await random(standardSetCheck(set.code));
+              return set;
+            } catch (e) {
+              if (e?.kind === "badRequest") return null;
+              if (e?.kind !== "notFound") throw e;
+            }
+          }
+          return null;
+        }));
+      }
+      return newest.get(today)();
+    },
     /** Number of requests waiting to start. */
     get pending() {
       return queue.length;
     },
-    /** @param {string} q @param {AbortSignal} [signal] */
-    random(q, signal) {
-      const qs = q ? `?q=${encodeURIComponent(q)}` : "";
-      return request(`/cards/random${qs}`, { signal });
-    },
+    random,
     /**
      * @param {string} q
      * @param {{unique?: string, order?: string, dir?: string, page?: number}} [params]

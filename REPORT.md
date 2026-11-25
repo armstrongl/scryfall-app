@@ -725,3 +725,42 @@ Where the docs were silent:
 ## Known problems
 
 - MTGGoldfish blocks scripted requests, and Untapped.gg builds its deck text in the browser, so no text copied from those sites is in the tests yet. The `4x`, small-letter set code, `*F*`, and header count forms are tested with text written in the forms that deck sites use. [Issue #59](https://github.com/armstrongl/scryfall-app/issues/59) is to add real copies.
+
+# Newest Standard set preset (25 November 2026)
+
+Discover has a third built-in preset, **Newest Standard set: Set Name**, for the cards in the newest set that is legal in Standard on MTG Arena ([issue #22](https://github.com/armstrongl/scryfall-app/issues/22)). It is the **Arena Standard** search with that set added. Its chips are the plain-word chips of those filters, such as **Set: Star Trek**.
+
+## Changes from the plan
+
+`PLAN.md` section 4.2 names one built-in preset. Discover now has three: **Arena Standard**, **Arena Brawl**, and **Newest Standard set**. Like the other built-in presets, it can't be renamed or deleted, and it isn't stored, backed up, or synced.
+
+## Decisions
+
+The [sets endpoint](https://scryfall.com/docs/api/sets) has no legality field, so the app picks the set in two steps, both through the queue in `src/scryfall.js`:
+
+1. From the `/sets` response, `standardSetCandidates()` in `src/query.js` keeps the expansions and core sets with a release date on or before today, in local time, newest first. The Set filter and deck import use the same response (`setsBody()` in `src/scryfall.js`), so it costs one request in a session.
+2. For each candidate, at most four, one random card request checks for new cards from the set that are legal in Standard and are on Arena: `e:<code> f:standard game:arena not:reprint` (`standardSetCheck()`). The first set with a card is the newest Standard set.
+
+Why each part:
+
+- **Expansions and core sets only.** Alchemy, Commander, promo, and other sets come out on the same days as the main sets. Leaving them out saves requests. It doesn't decide legality.
+- **Released on or before today.** On 25 November 2026, `/sets` listed two sets in preview with dates in 2027. Their cards weren't legal in Standard yet, but each would have cost a request.
+- **The check search.** Set type alone is not enough: Scryfall lists [The Lord of the Rings: Tales of Middle-earth](https://scryfall.com/sets/ltr) as `draft_innovation`, but other sets that aren't legal in Standard could be listed as expansions. `not:reprint` keeps reprints, which are often legal in Standard through another printing, from passing the check. `game:arena` leaves out sets that aren't on Arena. On 25 November 2026, the check found cards in Star Trek, Reality Fracture, The Hobbit, Marvel Super Heroes, Secrets of Strixhaven, and Teenage Mutant Ninja Turtles, and none in The Lord of the Rings, Through the Omenpaths, or the two preview sets. `scripts/check-api.mjs` runs the check again for the current candidates and for The Lord of the Rings.
+- **A random card, not a search.** The check needs only one card, so `/cards/random` sends back one card instead of a page of up to 175.
+
+Where the docs were silent:
+
+- The answer is kept until the page closes. A set with no match moves the check on to the next candidate. If Scryfall rejects the check query, the answer is no set, and it is kept. A network or server error stops the check, so an error never picks an older set. That error isn't kept: the app asks again when **Discover** is shown again, when the browser comes back online, or after a sync or preset change.
+- The requests start after Discover's first count settles, so the count isn't kept waiting. Until the answer comes, and when no candidate checks out, the preset isn't listed. No message is shown, because the other presets still work. The help page says so.
+- Arena often gets a set a few days before its paper release. Scryfall's release date is the paper date, so the preset changes to the new set on that date. Where the local date is ahead of the date Scryfall uses, the new set can pass the date filter before Scryfall marks its cards legal. The check then picks the previous set, and that answer is kept until the page is loaded again.
+
+## Known problems
+
+- Arena-only versions of a set. Scryfall lists [Through the Omenpaths](https://scryfall.com/sets/om1), the Arena version of Marvel's Spider-Man, as a digital expansion released on 23 September 2025. On 25 November 2026 the check found no new cards from it that are legal in Standard on Arena. So in a window like September 2025, the preset would name the set before it. This matches the **Arena Standard** preset, which also uses `f:standard game:arena`.
+- `f:standard` checks the card, not the printing. A card first printed in a set that isn't legal in Standard, and later reprinted in one that is, passes the check for the first set. Every candidate is an expansion or a core set inside the current Standard, so this can't change the answer today.
+
+## Tests
+
+- Written first and seen failing: `tests/newest-set.test.js`, which failed because `standardSetCandidates`, `standardSetCheck`, `localDay`, `newestSetPreset`, and the client's `newestStandardSet` didn't exist. It uses the real set list fixture, a new real fixture for a random Star Trek card (`random-standard-set.json`), and the real `random-404.json`.
+- Written first and seen failing: the browser checks in `scripts/check-ui.mjs` that the preset is listed with a plain-word name, can't be renamed or deleted, and searches its set in Standard on Arena with plain chips. Two of them failed before the code. The rename and delete check passed then, because the select fell back to **Arena Standard**, so it now also checks that the preset is selected.
+- After the Opus review, written first and seen failing: the unit test that a rejected check query gives no set and is kept. Added with it, and passing at once because the code already did this: the tests that a null answer is kept and that a server error stops the check. To see them able to fail, the code was broken on purpose twice, then restored each time. With every error moving on to the next set, the server error test failed. With the answer no longer kept, the null test failed.

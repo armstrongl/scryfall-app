@@ -444,6 +444,28 @@ test("two devices end up with the same lists, and a delete reaches both", async 
   assert.deepEqual(gh.remote().deletions.map((d) => d.id), [elves.id]);
 });
 
+test("a duplicated list syncs as a new list, and deleting the first list keeps the copy", async () => {
+  const { duplicateList } = await import("../src/lists.js");
+  const clock = fakeClock();
+  const gh = fakeGitHub();
+  const a = await connected(gh, clock);
+  const b = await connected(gh, clock);
+  const elves = createList("Elves", "deck", clock);
+  await a.storage.saveList(elves);
+  await a.syncer.syncNow();
+  await b.syncer.syncNow();
+  const copy = duplicateList(elves, clock);
+  await a.storage.saveList(copy);
+  await a.syncer.syncNow();
+  await b.syncer.syncNow();
+  assert.deepEqual(await names(b.storage), ["Elves", "Elves (copy)"]);
+  assert.deepEqual(gh.remote().lists.map((l) => l.id).sort(), [copy.id, elves.id].sort());
+  await a.storage.deleteList(elves.id);
+  await a.syncer.syncNow();
+  await b.syncer.syncNow();
+  assert.deepEqual(await names(b.storage), ["Elves (copy)"]);
+});
+
 test("a sync with no changes doesn't write to GitHub", async () => {
   const clock = fakeClock();
   const gh = fakeGitHub();

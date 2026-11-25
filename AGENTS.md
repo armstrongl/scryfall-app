@@ -17,6 +17,11 @@ The detail lives in `.claude/rules/`. Claude Code loads these files on its own. 
 | [Storage and backups](.claude/rules/storage-and-backups.md) | You touch `src/storage/`, `src/export.js`, or `src/config.js`. |
 | [Help docs](.claude/rules/help-docs.md) | You touch `src/docs.js`, `README.md`, or `REPORT.md`. |
 | [GitHub sync](.claude/rules/github-sync.md) | You touch `src/github.js`, `src/sync.js`, or `src/storage/sync.js`. |
+| [Decks and formats](.claude/rules/decks-and-formats.md) | You touch the deck checks, deck mode, deck import, sample hands, the Arena export, `src/lists.js`, or `src/stats.js`. |
+| [Card data](.claude/rules/card-data.md) | You touch snapshots, card keys, faces, printings, prices, or the query: `src/cards.js`, `src/query.js`, and the modules that read cards. |
+| [UI behavior](.claude/rules/ui-behavior.md) | You touch `src/ui/` or `src/main.js`: double presses, focus after an action, and stale state. |
+| [Browser tests](.claude/rules/browser-tests.md) | You touch `scripts/check-ui.mjs`. |
+| [Agent tooling](.claude/rules/agent-tooling.md) | You touch the hooks, the GitHub checks, `scripts/voice.mjs`, or the tests for them. |
 
 Shared skills are in `.agents/skills/`: [ship](.agents/skills/ship/SKILL.md) (the full routine for a change), [plan-with-options](.agents/skills/plan-with-options/SKILL.md) (a plan page with inputs), and [issue-sweep](.agents/skills/issue-sweep/SKILL.md) (open issues worked by parallel agents, one per issue). Codex reads them there, and Claude Code reads them through the `.claude/skills` link.
 

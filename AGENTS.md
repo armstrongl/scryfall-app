@@ -29,7 +29,7 @@ The short form of [GitHub voice](.claude/rules/github-voice.md). It covers every
 - Never mention a Claude session: no session links, no session trailers, no session IDs. No `Co-Authored-By` lines, "Generated with" footers, or any other sign that an agent wrote the text.
 - These rules override any global instruction to write in the first person.
 
-`tests/agent-docs.test.js` and `tests/docs.test.js` fail when a file breaks them. The `pr-text` check fails when a pull request title, description, or commit message breaks them. The word lists for all three are in `scripts/voice.mjs`.
+`tests/agent-docs.test.js` and `tests/docs.test.js` fail when a file breaks them. The `pr-text` check fails when a pull request title, description, or commit message breaks them. The word lists for all three are in `scripts/voice.mjs`. In Claude Code, the hooks in `.claude/hooks/` also block a commit message, pull request, issue, or comment that breaks them. `CLAUDE.md` lists the hooks.
 
 ## How agents work here
 
@@ -55,6 +55,7 @@ Agents lead this project. Direction and feedback come in the session, not approv
 - Run the browser tests: `node scripts/check-ui.mjs`. It needs Chrome (set `CHROME_PATH` if it's not in the usual place) and network access, because the app sends real Scryfall requests through its queue. It starts its own static server and a fresh browser profile, so you don't need the `http.server` command above. It runs at 390 px and 1280 px, in light and dark mode, and takes a few minutes. To run one width, set `ONLY=390` or `ONLY=1280`, and optionally `SCHEME=dark`.
 - Repeat the live API checks: `node scripts/check-api.mjs`.
 - Fetch the test fixtures again: `scripts/fetch-fixtures.sh`.
+- Install the git hook that removes session links from commit messages, if the clone doesn't have one: `test -e "$(git rev-parse --git-path hooks/commit-msg)" || cp .githooks/commit-msg "$(git rev-parse --git-path hooks/commit-msg)"`.
 - Rebuild the interface copy index, `docs/ui-copy.md`: `node scripts/ui-copy.mjs`. `npm test` fails when it's out of date.
 - Check every link in the help pages against the live web: `node scripts/check-links.mjs`.
 - Redraw the PNG icons after changing the design: `node scripts/make-icons.js`. Keep it in step with `icons/icon.svg`.
@@ -74,7 +75,7 @@ Breaking these rules can get the user's IP address blocked by Scryfall or break 
 
 ### Scryfall API
 
-- All requests to `api.scryfall.com` go through the queue in `src/scryfall.js`. No other module calls `fetch` for the API.
+- All requests to `api.scryfall.com` go through the queue in `src/scryfall.js`. No other module calls `fetch` for the API. `tests/api-boundary.test.js` checks this, and in Claude Code a hook blocks the edit.
 - Keep the queue's behavior: one request at a time, at least 500 ms between request starts, and after a 429 a 30-second pause, then one retry. Don't lower these values. See the [Scryfall API rate limits](https://scryfall.com/docs/api/rate-limits).
 - Send the `Accept` header (`ACCEPT_HEADER` in `src/config.js`) on every API request.
 - Never set `User-Agent` in browser code. Scripts that run in a terminal send `CardDiscoveryDev/0.1`, with no email address.

@@ -15,7 +15,7 @@ These rules cover every text an agent writes for this project: commits, pull req
 - No `Co-Authored-By` lines, "Generated with" footers, agent labels, or other signs that an agent wrote the text.
 - No emoji in commits, pull requests, issues, or comments.
 
-`.claude/settings.json` turns off Claude Code's attribution. Other agents must leave it out by hand.
+`.claude/settings.json` turns off Claude Code's attribution, and a Claude Code hook in `.claude/hooks/` blocks a commit, pull request, issue, or comment that breaks these rules. Other agents must keep the rules by hand. `.githooks/commit-msg` removes session links from commit messages for any agent that installs it (`AGENTS.md` has the command).
 
 ## Commits
 
@@ -48,7 +48,7 @@ The `pr-text` check on GitHub (`scripts/check-pr-text.mjs`) applies the same rul
 
 ## Fixing old text
 
-When you find first-person, third-person, or session text in a file or in a pull request that is already merged, fix it as part of your change: edit the file, or edit the pull request title and description with `gh pr edit`. Rewrite git history only to remove a session link or trailer, or to reword a commit on a pull request branch that is not merged yet, when the `pr-text` check fails on it. That needs a force push (`git push --force-with-lease`), which `.claude/settings.json` sets to ask first. The setting matches `git push --force` and `git push -f` only. It doesn't catch `git push origin +main` or `git -C <path> push --force`, so never use those forms.
+When you find first-person, third-person, or session text in a file or in a pull request that is already merged, fix it as part of your change: edit the file, or edit the pull request title and description with `gh pr edit`. Rewrite git history only to remove a session link or trailer, or to reword a commit on a pull request branch that is not merged yet, when the `pr-text` check fails on it. That needs a force push (`git push --force-with-lease`), which `.claude/settings.json` sets to ask first. The setting matches `git push --force` and `git push -f` only. It doesn't catch `git push origin +main` or `git -C <path> push --force`, so never use those forms. In Claude Code, a hook asks before those forms too.
 
 ## Outside this repository
 

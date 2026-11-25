@@ -280,7 +280,7 @@ The agent instructions were rebuilt so that every agent gets the same rules: Cla
 ## Decisions
 
 1. **Force pushes ask instead of being blocked.** A hard block would also stop the one allowed history rewrite: removing a session link. A prompt keeps that possible, with approval each time.
-2. **No hooks for now.** Hooks are a later body of work. [Issue #9](https://github.com/armstrongl/scryfall-app/issues/9) holds the plan.
+2. **Hooks came later.** Hooks were a later body of work, in [issue #9](https://github.com/armstrongl/scryfall-app/issues/9). They're described under "Claude Code hooks" below.
 3. **No GitHub workflow for now.** [Issue #10](https://github.com/armstrongl/scryfall-app/issues/10) held the plan for a check that runs on every pull request. The workflow came later: see "Changelog and pull request checks" and "Pull request text check".
 4. **No edits to old upgrade steps** stays a written rule, not a setting. A permission rule can't tell a new upgrade step from an edit to an old one.
 5. **`PLAN.md` changed only its voice.** What it specifies is unchanged.
@@ -586,3 +586,33 @@ The word lists are in `scripts/voice.mjs`. `tests/agent-docs.test.js`, `tests/do
 - The check can't stop a merge on its own. [Issue #35](https://github.com/armstrongl/scryfall-app/issues/35) has the steps to make the checks required.
 - The first-person check flags "US", as in "US dollars", because it ignores case. The voice tests do the same.
 - The check reads the text at the time of the run. A comment, a review, or an edit made after the merge isn't checked.
+
+# Claude Code hooks (25 November 2026)
+
+The voice rules and the Scryfall API rule were instructions, and an agent can skip an instruction. The session-link rule was kept only by a global git hook on one computer. [Issue #9](https://github.com/armstrongl/scryfall-app/issues/9) asked for [Claude Code hooks](https://code.claude.com/docs/en/hooks), which an agent can't skip. `CLAUDE.md` describes each hook.
+
+## What changed
+
+| Area | Now |
+| --- | --- |
+| `.claude/hooks/pre-tool-use.mjs` | Blocks a commit message or GitHub text with a session link, trailer, or ID, a `Co-Authored-By` line, a "Generated with" footer, or first-person or third-person words. Asks before a force push in any form. Blocks an edit that brings the Scryfall API into a module other than `src/scryfall.js`. |
+| `.claude/hooks/stop.mjs` | Reminds once to run `npm test` when files changed since the last commit. |
+| `.githooks/commit-msg` | A copy of the global `commit-msg` hook that removes session links, for every clone. |
+| `tests/api-boundary.test.js` | Fails when a module other than `src/scryfall.js` refers to the Scryfall API, or when a module other than `src/scryfall.js` and `src/github.js` calls `fetch`. It runs for every agent, on GitHub too. |
+
+## Decisions
+
+These were made where the docs were silent:
+
+- **A hook denies or asks, and never allows.** It can't loosen `.claude/settings.json`. An error in a hook, or input it can't read, gives no decision, so a broken hook never blocks normal work.
+- **Force pushes ask.** The permission rules ask only for `git push --force` and `git push -f`. The hook also asks for `git -C <path> push --force`, `--force-with-lease`, `--mirror`, `-uf`, and `+refspec`, the forms the rules miss.
+- **Other repositories get only the session and attribution checks.** A `gh` command with `--repo`, a `gh api` path, a GitHub MCP tool call for another repository, or a git repository with another `origin` is checked only for sessions and attribution. Other repositories have their own voice.
+- **Quoted words pass.** As in the voice tests, text in "double quotes", code spans, fenced code, block quotes, and links is left out, so a rule or a pull request can name a banned word. Capital "US" is the country, not the pronoun.
+- **The commit-msg hook isn't installed on its own.** Setting `core.hooksPath` would turn off the other hooks in `.git/hooks`, such as the global `pre-commit` hook. `AGENTS.md` has a command that copies it only where no `commit-msg` hook exists.
+- **The Stop hook reminds, and doesn't block.** It uses `additionalContext`, so the agent sees the reminder and can stop after it. It reminds once for each set of changes, and never while a stop hook is already active.
+- **The word lists are a copy for now.** [Issue #10](https://github.com/armstrongl/scryfall-app/issues/10) moves them into one shared module. `.claude/hooks/voice.mjs` has its own copy until then.
+
+## Tests
+
+- Written first, and seen failing because the scripts didn't exist: `tests/hooks.test.js`, which feeds each hook real hook input on stdin and checks the decision, and the settings test in `tests/agent-docs.test.js`, which checks that the hooks are registered, that each script exists, and that no hook allows a tool call.
+- Added after the code: `tests/api-boundary.test.js`. It passed at once, so a Scryfall `fetch` was added to `src/combos.js` on purpose to see both tests fail, then removed.

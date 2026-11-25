@@ -2,6 +2,7 @@
 // .claude/rules/, the shared skills, and the committed Claude settings.
 // They also check the voice of every text in the repository: no first
 // person and no Claude session links. tests/docs.test.js checks the third person.
+// The word lists are in scripts/voice.mjs.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
@@ -9,6 +10,7 @@ import { existsSync, lstatSync, mkdtempSync, readdirSync, readFileSync, readlink
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DOC_PAGES, pageText } from "../src/docs.js";
+import { FIRST_PERSON, NAMES, hasFirstPerson, hasSession } from "../scripts/voice.mjs";
 
 const ROOT = new URL("../", import.meta.url);
 const read = (path) => readFileSync(new URL(path, ROOT), "utf8").replace(/\r\n/g, "\n");
@@ -138,24 +140,19 @@ test("the committed Claude settings turn off attribution and ask before a force 
   assert.equal(settings.hooks, undefined, "hooks wait for issue work, not this file");
 });
 
-// Built in parts, so this file doesn't match its own check.
-const SESSION = new RegExp(["claude\\.ai/code/" + "session", "Claude-" + "Session:", "session_" + "01[A-Za-z0-9]{10,}"].join("|"), "i");
 const TEXT = /\.(md|js|mjs|json|html|css|sh|svg|webmanifest|txt|yml|yaml)$/;
 
 test("no file mentions a Claude session", () => {
   const found = [];
   for (const file of FILES.filter((f) => TEXT.test(f) && !f.startsWith("tests/fixtures/"))) {
-    read(file).split("\n").forEach((line, i) => { if (SESSION.test(line)) found.push(`${file}:${i + 1}`); });
+    read(file).split("\n").forEach((line, i) => { if (hasSession(line)) found.push(`${file}:${i + 1}`); });
   }
   assert.deepEqual(found, []);
 });
 
 // No first person anywhere: not in docs, help pages, interface copy, or code
-// comments. Text in code spans, quotes, and proper names is left out.
-const FIRST_PERSON = /\bI\b|\bI'(?:m|ve|d|ll)\b|\b(?:my|me|myself|mine|we|we're|we've|our|ours|us)\b/i;
-const NAMES = /Find My Combos/g;
-const strip = (line) => line.replace(/https?:\/\/\S+/g, "").replace(/`[^`]*`/g, "").replace(/"[^"]*"|“[^”]*”/g, "").replace(NAMES, "").replace(/\bI\/O\b/g, "");
-const hasFirstPerson = (line) => FIRST_PERSON.test(strip(line).replace(/\bi\b/g, "i_"));
+// comments. Text in code spans, quotes, and proper names is left out. The
+// word lists are in scripts/voice.mjs, shared with the pull request check.
 
 /** The comment text in one line of JavaScript, CSS, HTML, or shell. */
 function commentText(line, file) {

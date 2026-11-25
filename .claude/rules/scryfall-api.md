@@ -15,7 +15,7 @@ The [Scryfall API](https://scryfall.com/docs/api) is the app's only source of ca
 - Every request to `api.scryfall.com` goes through the queue in `src/scryfall.js`. No other module calls `fetch` for the API. `tests/api-boundary.test.js` fails when another module in `src/` names `api.scryfall.com` or `API_BASE`, or when a module other than `src/scryfall.js` and `src/github.js` calls `fetch`. In Claude Code, a hook blocks the edit.
 - One request at a time, at least 500 ms between request starts, and after a 429 a 30-second pause, then one retry. Don't lower these values. See [rate limits and good citizenship](https://scryfall.com/docs/api/rate-limits).
 - `createClient()` takes `fetchImpl`, so tests pass a fake fetch instead of mocking a global.
-- The queue spaces the requests of one run. Two runs at once double the rate from the same IP address. When several agents work at the same time, run `scripts/check-ui.mjs`, `scripts/check-api.mjs`, and `scripts/fetch-fixtures.sh` through `scripts/scryfall-lock.sh`, so that only one runs at a time. `tests/scryfall-lock.test.js` tests the lock.
+- The queue spaces the requests of one run. Two runs at once double the rate from the same IP address. So these scripts run through `scripts/scryfall-lock.sh`, as [Work beside other agents](shipping.md#work-beside-other-agents) says. `tests/scryfall-lock.test.js` tests the lock.
 
 ## Headers
 

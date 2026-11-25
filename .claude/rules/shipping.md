@@ -5,15 +5,24 @@ This is the routine for every change, from start to finish. The [ship skill](../
 ## Start
 
 1. Other agents may be working at the same time, each in its own worktree. Fetch first: `git fetch origin`. If the clone has no `commit-msg` hook, install the copy in `.githooks/` (`AGENTS.md` has the command).
-2. Make a branch from `origin/main` in your own worktree under `~/worktrees/`: `git worktree add ~/worktrees/scryfall-app-<name> -b <name> origin/main`. Name the branch for the change, such as `explore-icons`. In a Paradev (formerly Superset) workspace, the workspace already is the worktree. Name the workspace with `paradev ws update "$SUPERSET_WORKSPACE_ID" --name <name>`.
+2. Make a branch from `origin/main` in your own worktree under `~/worktrees/`: `git worktree add ~/worktrees/scryfall-app-<name> -b <name> origin/main`. Name the branch for the issue or the change, such as `explore-icons`, so that other agents can see who has it. In a Paradev (formerly Superset) workspace, the workspace already is the worktree. Name the workspace with `paradev ws update "$SUPERSET_WORKSPACE_ID" --name <name>`.
 3. Don't edit the main checkout at `~/Projects/scryfall-app`. Another agent may be using it.
 4. For a large change or one with open questions, plan first. Bring the plan as a page with inputs ([plan-with-options](../../.agents/skills/plan-with-options/SKILL.md)). For one quick choice, ask one question in the session.
+
+## Work beside other agents
+
+- These rules apply whenever other agents may be working at the same time. Assume they are unless `git worktree list` shows only your worktree and the main checkout.
+- Before you start, look for other agents: `git worktree list`, the open pull requests (`gh pr list`), and in Claude Code the sessions that ListAgents shows. Don't take an issue that another worktree or session already has. When two sessions overlap, agree on a split by message. The [issue-sweep skill](../../.agents/skills/issue-sweep/SKILL.md) has the full survey for a batch of issues.
+- Run `scripts/check-ui.mjs`, `scripts/check-api.mjs`, and `scripts/fetch-fixtures.sh` through the lock, so that only one agent at a time sends Scryfall requests: `scripts/scryfall-lock.sh node scripts/check-ui.mjs`. It waits while another run holds the lock, which can take a long time, so run it in the background: a foreground timeout kills the run.
+- Expect rebase conflicts in the shared docs: `AGENTS.md`, `CLAUDE.md`, this file, `CHANGELOG.md`, and `README.md`. Keep the changes from both sides.
+- When `CHANGELOG.md` already has a heading for the date, add to it ([Ship](#ship), step 3).
+- Remove a worktree only when it is yours, or when it has no uncommitted changes and its branch is merged.
 
 ## Build
 
 1. Write the test first and watch it fail for the expected reason. `AGENTS.md` says where each kind of test goes.
 2. Write the smallest code that passes, then refactor with the tests green.
-3. Run `npm test` and `node scripts/check-ui.mjs`. Both must pass. When other agents work at the same time, run the browser tests through the lock, so that only one run sends Scryfall requests: `scripts/scryfall-lock.sh node scripts/check-ui.mjs`.
+3. Run `npm test` and `node scripts/check-ui.mjs`. Both must pass. When other agents work at the same time, run the browser tests through the lock, as [Work beside other agents](#work-beside-other-agents) says.
 4. Check every place in "Keep the docs in step" in `AGENTS.md`.
 
 ## Review

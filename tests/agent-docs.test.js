@@ -44,6 +44,23 @@ const RULES = {
   "storage-and-backups.md": ["src/storage/**", "src/export.js", "src/config.js"],
   "help-docs.md": ["src/docs.js", "README.md", "REPORT.md"],
   "github-sync.md": ["src/github.js", "src/sync.js", "src/storage/sync.js"],
+  "decks-and-formats.md": ["src/deck-rules.js", "src/deck-mode.js", "src/deck-import.js", "src/export.js", "src/hand.js", "src/lists.js", "src/stats.js", "src/ui/deck-bar.js", "src/ui/import-panel.js"],
+  "card-data.md": ["src/cards.js", "src/query.js", "src/synergy.js", "src/browse.js", "src/draw.js", "src/saved.js", "src/buy.js", "src/deck-import.js"],
+  "ui-behavior.md": ["src/ui/**", "src/main.js"],
+  "browser-tests.md": ["scripts/check-ui.mjs"],
+  "agent-tooling.md": [
+    ".claude/hooks/**",
+    ".githooks/**",
+    ".github/**",
+    ".claude/settings.json",
+    "scripts/check-changelog.mjs",
+    "scripts/check-pr-text.mjs",
+    "scripts/voice.mjs",
+    "tests/agent-docs.test.js",
+    "tests/hooks.test.js",
+    "tests/check-pr-text.test.js",
+    "tests/check-changelog.test.js",
+  ],
 };
 const SKILLS = ["ship", "plan-with-options", "issue-sweep"];
 

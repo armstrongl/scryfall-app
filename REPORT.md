@@ -825,3 +825,31 @@ Where the docs were silent:
 ## Known problems
 
 - The text in the **Set** search box stays after a clear. It is not a filter, only the search over the set list.
+
+# Rules files for each area (25 November 2026)
+
+Five new rules files in `.claude/rules/`, each with `paths` front matter, so Claude Code loads it when an agent reads or edits a matching file: [Decks and formats](.claude/rules/decks-and-formats.md), [Card data](.claude/rules/card-data.md), [UI behavior](.claude/rules/ui-behavior.md), [Browser tests](.claude/rules/browser-tests.md), and [Agent tooling](.claude/rules/agent-tooling.md). Each one is written only from the repository's own record (the code, this report, pull requests, and issues), and cites its sources. A new section, "Work beside other agents", in [Shipping](.claude/rules/shipping.md) says how to work while other agents work at the same time.
+
+## What changed
+
+- `AGENTS.md` lists the five files in its rules table. `README.md` names them in the project layout.
+- Shipping has the new section: look for other agents first, name the worktree for the issue, run the Scryfall scripts through `scripts/scryfall-lock.sh`, expect conflicts in the shared docs, and remove only worktrees that are yours or finished.
+- An Opus review found that the Arena export rules didn't load for `src/export.js`, so Decks and formats now lists it too. It also found the lock rule in four places with different conditions. The condition is now in Shipping only, and the other files link to it.
+- The lock script itself came in [pull request #65](https://github.com/armstrongl/scryfall-app/pull/65). This change doesn't change it.
+
+## Decisions
+
+- All five files ship together, in one pull request.
+- The rules for working beside other agents go in Shipping, together with the committed lock script, not in a new file.
+- Card data is its own file, not part of the Scryfall API rules. Scryfall API keeps the requests, headers, and Tagger tags. Card data covers the card model once a Card object is in hand.
+- No new rule file for outside sites until issues [#5](https://github.com/armstrongl/scryfall-app/issues/5), [#30](https://github.com/armstrongl/scryfall-app/issues/30), and [#37](https://github.com/armstrongl/scryfall-app/issues/37) settle them, and none for accessibility, because [Design](.claude/rules/design.md) covers it.
+- Where two files would say the same thing, one says it and the other links to it. Paths can overlap: `src/deck-import.js` loads Decks and formats and Card data, and `src/ui/` loads Design and UI behavior.
+
+## Tests
+
+- Written first and seen failing: the five new entries in `RULES` in `tests/agent-docs.test.js`. The test failed because `AGENTS.md` didn't link to `decks-and-formats.md`. After the rows went into the table, it passed. The same test checks that each file's `paths` match the list and match files in the repository, and that every relative link resolves.
+- No app code changed. `node scripts/check-ui.mjs` passes: 1339 of 1339 checks at 390 px and 1280 px, in light and dark mode.
+
+## Known problems
+
+- The rules files name functions and constants in the code, and no test checks that those names still exist. A rename can leave a rule pointing at a name that is gone. Read the matching rules file when you rename something it names.
